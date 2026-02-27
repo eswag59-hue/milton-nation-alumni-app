@@ -1,24 +1,93 @@
-//
-//  ContentView.swift
-//  Milton Nation Alumni App
-//
-//  Created by Ezra Barishansky  on 2/10/26.
-//
-
 import SwiftUI
 
 struct ContentView: View {
-    var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
-        }
-        .padding()
-    }
-}
+    @Bindable var appViewModel: AppViewModel
 
-#Preview {
-    ContentView()
+    var body: some View {
+        if appViewModel.isAuthenticated {
+            if appViewModel.currentUser?.role.isAdmin == true && !appViewModel.isViewingAsUser {
+                AdminDashboardScreen()
+            } else if appViewModel.currentUser?.role == .alumni {
+                alumniTabView
+                    .sheet(isPresented: $appViewModel.showSobrietyCheck) {
+                        SobrietyCheckModal()
+                    }
+            } else {
+                // Clinical staff, or admin in "View as User" mode
+                alumniTabView
+            }
+        } else {
+            LoginScreen()
+        }
+    }
+
+    private var alumniTabView: some View {
+        TabView(selection: $appViewModel.selectedTab) {
+            Tab("Home", systemImage: "house.fill", value: .home) {
+                if appViewModel.isStrugglingMode {
+                    StrugglingModeLockedView()
+                } else {
+                    HomeScreen()
+                }
+            }
+
+            Tab("Community", systemImage: "person.2.fill", value: .community) {
+                if appViewModel.isStrugglingMode {
+                    StrugglingModeLockedView()
+                } else {
+                    CommunityScreen()
+                }
+            }
+
+            Tab("Meetings", systemImage: "calendar", value: .meetings) {
+                if appViewModel.isStrugglingMode {
+                    StrugglingModeLockedView()
+                } else {
+                    MeetingsScreen()
+                }
+            }
+
+            Tab("Chat", systemImage: "message.fill", value: .chat) {
+                ChatListScreen()
+            }
+
+            Tab("Profile", systemImage: "person.circle.fill", value: .profile) {
+                if appViewModel.isStrugglingMode {
+                    StrugglingModeLockedView()
+                } else {
+                    if let user = appViewModel.currentUser {
+                        NavigationStack {
+                            ProfileScreen(user: user)
+                        }
+                    }
+                }
+            }
+        }
+        .tint(AppTheme.accent)
+        .overlay(alignment: .bottom) {
+            // Floating "Back to Admin" button when viewing as user
+            if appViewModel.isViewingAsUser {
+                Button {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        appViewModel.isViewingAsUser = false
+                        appViewModel.selectedTab = .home
+                    }
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "arrow.left.circle.fill")
+                        Text("Back to Admin")
+                            .fontWeight(.semibold)
+                    }
+                    .font(.subheadline)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 10)
+                    .foregroundStyle(.white)
+                    .background(AppTheme.primary)
+                    .clipShape(Capsule())
+                    .shadow(color: .black.opacity(0.25), radius: 8, x: 0, y: 4)
+                }
+                .padding(.bottom, 60)
+            }
+        }
+    }
 }

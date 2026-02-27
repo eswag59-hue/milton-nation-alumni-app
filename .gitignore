@@ -1,0 +1,53 @@
+# Milton Nation Alumni App — .gitignore
+
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+
+# macOS
+.DS_Store
+*.swp
+*~
+
+# Supabase secrets — NEVER commit these
+**/Config/Debug.xcconfig
+**/Config/Release.xcconfig
+*.xcconfig
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Credentials
+*.pem
+*.p8
+*.p12
+*.key
+credentials.json
+
+# CocoaPods (if ever used)
+Pods/
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+
+# Archives
+*.xcarchive
+
+# One-time setup scripts — may contain sensitive env var references
+supabase/setup-phone-auth.sh
+
+# Claude AI project state (internal only)
+.claude/
+
+# Supabase CLI local cache (not needed in repo)
+supabase/.temp/
+supabase/supabase/

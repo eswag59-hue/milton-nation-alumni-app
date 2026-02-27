@@ -1,0 +1,215 @@
+import SwiftUI
+import Supabase
+
+@Observable
+final class ChatViewModel {
+    var conversations: [Conversation] = []
+    var assignedStaff: [User] = []
+    var messages: [ChatMessage] = []
+    var messageText = ""
+    var isLoading = false
+    var errorMessage: String?
+    var isUploadingMedia = false
+
+    /// The current user's ID, set by the caller so Realtime can
+    /// determine which messages are "from current user."
+    var currentUserId: UUID?
+
+    /// The conversation currently being viewed (for Realtime subscription).
+    private var activeConversationId: UUID?
+
+    // MARK: - Task Cancellation
+    private var loadConversationsTask: Task<Void, Never>?
+    private var loadMessagesTask: Task<Void, Never>?
+
+    let dataService: DataServiceProtocol
+    private let cache = OfflineCacheService.shared
+
+    init(dataService: DataServiceProtocol = MockDataService()) {
+        self.dataService = dataService
+    }
+
+    func loadConversations() {
+        loadConversationsTask?.cancel()
+        loadConversationsTask = Task {
+            await MainActor.run { isLoading = true; errorMessage = nil }
+            do {
+                async let convResult = dataService.fetchConversations()
+                async let staffResult = dataService.fetchAssignedStaff()
+                let convs = try await convResult
+                let staff = try await staffResult
+                guard !Task.isCancelled else { return }
+                await MainActor.run {
+                    conversations = convs
+                    assignedStaff = staff
+                    isLoading = false
+                    // Cache for offline access
+                    cache.cacheConversations(convs)
+                    cache.cacheAssignedStaff(staff)
+                }
+            } catch {
+                guard !Task.isCancelled else { return }
+                await MainActor.run {
+                    // Try offline cache fallback
+                    if let cachedConvs = cache.loadCachedConversations() {
+                        conversations = cachedConvs
+                    }
+                    if let cachedStaff = cache.loadCachedAssignedStaff() {
+                        assignedStaff = cachedStaff
+                    }
+                    if conversations.isEmpty {
+                        errorMessage = "Unable to load conversations. Please check your connection."
+                    }
+                    isLoading = false
+                }
+            }
+        }
+    }
+
+    func loadMessages(conversationId: UUID) {
+        activeConversationId = conversationId
+        loadMessagesTask?.cancel()
+        loadMessagesTask = Task {
+            await MainActor.run { isLoading = true }
+            do {
+                let fetched = try await dataService.fetchMessages(conversationId: conversationId)
+                guard !Task.isCancelled else { return }
+                await MainActor.run {
+                    messages = fetched
+                    isLoading = false
+                }
+            } catch {
+                guard !Task.isCancelled else { return }
+                await MainActor.run {
+                    messages = []
+                    isLoading = false
+                }
+            }
+            // Subscribe to real-time messages for this conversation
+            subscribeToMessages(conversationId: conversationId)
+        }
+    }
+
+    func sendMessage(conversationId: UUID) {
+        let content = messageText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !content.isEmpty else { return }
+        messageText = ""
+        Task {
+            // Run content through moderation pipeline
+            let moderationResult = await ContentFilterService.shared.moderateText(content)
+            let msgStatus = ContentFilterService.shared.messageStatus(for: moderationResult)
+
+            if let msg = try? await dataService.sendMessage(
+                conversationId: conversationId,
+                content: content,
+                type: .text,
+                status: msgStatus,
+                matchedKeywords: moderationResult.matchedKeywords
+            ) {
+                // Only append if not already added by Realtime
+                if !messages.contains(where: { $0.id == msg.id }) {
+                    messages.append(msg)
+                }
+            }
+        }
+    }
+
+    // MARK: - Media Upload
+
+    /// Upload media data (image/file) to Supabase Storage and send as a message.
+    func sendMedia(
+        data: Data,
+        type: MessageType,
+        fileName: String,
+        conversationId: UUID
+    ) {
+        Task {
+            await MainActor.run { isUploadingMedia = true }
+
+            var mediaURL: String?
+
+            // Upload to Supabase Storage if configured
+            if SupabaseConfig.isConfigured {
+                do {
+                    let fileExt = type == .image ? "jpg" : fileName.components(separatedBy: ".").last ?? "dat"
+                    let storagePath = "chat/\(conversationId.uuidString)/\(UUID().uuidString).\(fileExt)"
+
+                    try await SupabaseConfig.client.storage
+                        .from("chat-media")
+                        .upload(storagePath, data: data)
+
+                    let publicURL = try SupabaseConfig.client.storage
+                        .from("chat-media")
+                        .getPublicURL(path: storagePath)
+
+                    mediaURL = publicURL.absoluteString
+                } catch {
+                    #if DEBUG
+                    print("[ChatVM] ⚠️ Media upload failed: \(error.localizedDescription)")
+                    #endif
+                }
+            } else {
+                // Mock: generate a fake URL
+                mediaURL = "mock://media/\(UUID().uuidString)"
+            }
+
+            let label = type == .image ? "Photo" : fileName
+            if let msg = try? await dataService.sendMessage(
+                conversationId: conversationId,
+                content: label,
+                type: type,
+                status: .clean,
+                matchedKeywords: []
+            ) {
+                await MainActor.run {
+                    var message = msg
+                    message.mediaURL = mediaURL
+                    if !messages.contains(where: { $0.id == message.id }) {
+                        messages.append(message)
+                    }
+                    isUploadingMedia = false
+                }
+            } else {
+                await MainActor.run { isUploadingMedia = false }
+            }
+        }
+    }
+
+    // MARK: - Realtime
+
+    /// Subscribe to live message updates for the active conversation.
+    private func subscribeToMessages(conversationId: UUID) {
+        guard SupabaseConfig.isConfigured else { return }
+
+        RealtimeService.shared.subscribeToMessages(
+            conversationId: conversationId
+        ) { [weak self] message in
+            guard let self else { return }
+            // Avoid duplicates (e.g., messages we sent ourselves)
+            if !self.messages.contains(where: { $0.id == message.id }) {
+                var newMessage = message
+                // Determine if it's from the current user
+                // (the Realtime payload won't have isFromCurrentUser set)
+                if let uid = self.currentUserId {
+                    newMessage.isFromCurrentUser = message.senderId == uid
+                }
+                self.messages.append(newMessage)
+            }
+        }
+    }
+
+    /// Unsubscribe when leaving the conversation view.
+    func leaveConversation() {
+        RealtimeService.shared.unsubscribeFromMessages()
+        activeConversationId = nil
+    }
+
+    // MARK: - Cleanup
+
+    func cancelTasks() {
+        loadConversationsTask?.cancel()
+        loadMessagesTask?.cancel()
+        loadConversationsTask = nil
+        loadMessagesTask = nil
+    }
+}
