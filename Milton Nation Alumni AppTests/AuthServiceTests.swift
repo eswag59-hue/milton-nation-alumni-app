@@ -108,7 +108,8 @@ struct AuthServiceTests {
             password: "password123",
             sobrietyDate: Date(),
             dischargeDate: Date(),
-            recoveryProgram: "IOP"
+            recoveryProgram: "IOP",
+            facility: nil
         )
 
         #expect(user.role == .alumni)

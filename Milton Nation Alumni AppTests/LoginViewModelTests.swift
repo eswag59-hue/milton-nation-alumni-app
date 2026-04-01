@@ -116,6 +116,7 @@ struct LoginViewModelTests {
         vm.regPhone = "(555) 123-4567"
         vm.regPassword = "password123"
         vm.regConfirmPassword = "password123"
+        vm.regFacility = .florida
         let result = await vm.register()
         #expect(result == nil)
         #expect(vm.errorMessage == "Username cannot contain your real name.")
@@ -130,6 +131,7 @@ struct LoginViewModelTests {
         vm.regPhone = "(555) 123-4567"
         vm.regPassword = "password123"
         vm.regConfirmPassword = "password123"
+        vm.regFacility = .florida
         let result = await vm.register()
         #expect(result == nil)
         #expect(vm.errorMessage == "Username cannot contain your real name.")
@@ -144,6 +146,7 @@ struct LoginViewModelTests {
         vm.regPhone = "(555) 123-4567"
         vm.regPassword = "password123"
         vm.regConfirmPassword = "password123"
+        vm.regFacility = .florida
         let result = await vm.register()
         #expect(result != nil)
     }
@@ -157,6 +160,7 @@ struct LoginViewModelTests {
         vm.regPhone = "(555) 123-4567"
         vm.regPassword = "password123"
         vm.regConfirmPassword = "different456"
+        vm.regFacility = .florida
         let result = await vm.register()
         #expect(result == nil)
         #expect(vm.errorMessage == "Passwords do not match.")
@@ -171,6 +175,7 @@ struct LoginViewModelTests {
         vm.regPhone = "(555) 123-4567"
         vm.regPassword = "short"
         vm.regConfirmPassword = "short"
+        vm.regFacility = .florida
         let result = await vm.register()
         #expect(result == nil)
         #expect(vm.errorMessage == "Password must be at least 8 characters.")
@@ -185,6 +190,7 @@ struct LoginViewModelTests {
         vm.regPhone = "(555) 123-4567"
         vm.regPassword = "password123"
         vm.regConfirmPassword = "password123"
+        vm.regFacility = .florida
         let result = await vm.register()
         #expect(result != nil)
         #expect(vm.showRegistrationSuccess == true)
