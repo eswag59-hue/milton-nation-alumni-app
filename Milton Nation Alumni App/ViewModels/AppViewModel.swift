@@ -15,6 +15,10 @@ final class AppViewModel {
     // Admin: View as User mode
     var isViewingAsUser = false
 
+    // Facility (super admin cross-facility view)
+    var activeFacility: Facility = .florida
+    var showFacilityPicker = false
+
     let authService: AuthServiceProtocol
     let dataService: DataServiceProtocol
 
@@ -22,6 +26,13 @@ final class AppViewModel {
          dataService: DataServiceProtocol = MockDataService()) {
         self.authService = authService
         self.dataService = dataService
+    }
+
+    // MARK: - Facility
+
+    func selectFacility(_ facility: Facility) {
+        activeFacility = facility
+        showFacilityPicker = false
     }
 
     // MARK: - Auth
@@ -37,6 +48,9 @@ final class AppViewModel {
         // Register device for push notifications
         PushNotificationService.shared.registerDeviceToken(userId: user.id)
 
+        // Attach user context to crash reports
+        CrashReportingService.shared.setUser(user.id)
+
         // Request push notification permission on first login
         requestNotificationPermissionIfNeeded()
 
@@ -47,6 +61,11 @@ final class AppViewModel {
         // notification the moment an admin approves the account (works on simulator too)
         if user.status == .pending {
             startProfileApprovalMonitoring(userId: user.id)
+        }
+
+        // Super admin: show facility picker before entering admin dashboard
+        if user.role.isSuperAdmin {
+            showFacilityPicker = true
         }
 
         // If admin/super_admin, subscribe to new pending user registrations
@@ -109,6 +128,9 @@ final class AppViewModel {
                 // Unregister push notification device token
                 PushNotificationService.shared.unregisterDeviceToken()
 
+                // Remove user context from crash reports
+                CrashReportingService.shared.clearUser()
+
                 currentUser = nil
                 isAuthenticated = false
                 isStrugglingMode = false
@@ -131,6 +153,7 @@ final class AppViewModel {
                 _ = try await dataService.updateProfile(user: deactivatedUser)
                 AuditLogger.shared.log(.logout, userId: user.id, detail: "Account deactivated — pending deletion")
             } catch {
+                CrashReportingService.shared.recordError(error, context: "AppViewModel.deleteAccount")
                 #if DEBUG
                 print("[AppViewModel] Failed to deactivate account: \(error.localizedDescription)")
                 #endif
@@ -142,6 +165,7 @@ final class AppViewModel {
                 KeychainService.delete(key: .authToken)
                 RealtimeService.shared.disconnectAll()
                 PushNotificationService.shared.unregisterDeviceToken()
+                CrashReportingService.shared.clearUser()
                 currentUser = nil
                 isAuthenticated = false
                 isStrugglingMode = false
@@ -155,11 +179,18 @@ final class AppViewModel {
     // MARK: - Sobriety
 
     func resetSobrietyDate(to date: Date = Date()) {
-        guard currentUser != nil else { return }
-        currentUser?.sobrietyDate = date
+        guard let user = currentUser else { return }
+        let previousDate = user.sobrietyDate
+        currentUser?.sobrietyDate = date  // Optimistic update
         Task {
-            if let user = currentUser {
-                _ = try? await dataService.updateProfile(user: user)
+            do {
+                if let updatedUser = currentUser {
+                    _ = try await dataService.updateProfile(user: updatedUser)
+                }
+            } catch {
+                // Roll back optimistic update if save failed
+                await MainActor.run { currentUser?.sobrietyDate = previousDate }
+                CrashReportingService.shared.recordError(error, context: "AppViewModel.resetSobrietyDate")
             }
         }
     }

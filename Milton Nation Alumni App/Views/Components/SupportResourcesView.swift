@@ -223,14 +223,14 @@ struct SupportResource: Sendable {
         ]
     )
 
-    /// Milton Recovery Centers support line (placeholder number)
+    /// Milton Recovery Centers support line
     static let miltonSupportLine = SupportResource(
         name: "Milton Recovery Centers",
         icon: "person.2.fill",
         availability: "24/7 · Alumni Support",
         description: "Reach your care team directly.",
         actions: [
-            Action(label: "Call Support Line", icon: "phone.fill", url: "tel:+18005551234"),
+            Action(label: "Call (844) 406-4325", icon: "phone.fill", url: "tel:18444064325"),
         ]
     )
 

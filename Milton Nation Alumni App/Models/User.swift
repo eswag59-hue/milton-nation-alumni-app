@@ -55,6 +55,28 @@ enum MFAMethod: String, Codable {
     case sms, email, totp
 }
 
+/// The recovery facility a user belongs to. Determines which community content they see.
+enum Facility: String, Codable, CaseIterable, Identifiable {
+    case florida = "florida"
+    case ohio    = "ohio"
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .florida: return "Florida"
+        case .ohio:    return "Ohio"
+        }
+    }
+
+    var emoji: String {
+        switch self {
+        case .florida: return "🌴"
+        case .ohio:    return "🌻"
+        }
+    }
+}
+
 struct User: Identifiable, Codable, Hashable {
     static func == (lhs: User, rhs: User) -> Bool { lhs.id == rhs.id }
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
@@ -73,6 +95,10 @@ struct User: Identifiable, Codable, Hashable {
     var mfaMethod: MFAMethod?
     var totalPoints: Int
     var approvedPostCount: Int = 0
+    /// The facility this user belongs to. `nil` means the account is pending admin assignment.
+    var facility: Facility? = nil
+    /// For admin/staff roles: the facility they are assigned to manage. `nil` for super_admin (manages all).
+    var adminFacility: Facility? = nil
     var lastLogin: Date?
     var lastPointsAwarded: Date?
     var createdAt: Date

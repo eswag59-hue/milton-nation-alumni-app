@@ -11,14 +11,24 @@ struct SettingsScreen: View {
     @AppStorage("privacy_hide_sobriety") private var hideSobrietyDate = false
     @AppStorage("privacy_hide_profile_photo") private var hideProfilePhoto = false
 
+    @State private var showDeleteAccountAlert = false
+    @State private var showDeleteConfirmation = false
+    @State private var showDataExportSheet = false
+    @State private var exportedDataURL: URL?
+    @State private var isExportingData = false
+
     var body: some View {
         List {
             // MARK: - Notifications
             Section {
                 Toggle("Community Posts", isOn: $notifyCommunity)
+                    .onChange(of: notifyCommunity) { PushNotificationService.shared.syncPreferences() }
                 Toggle("Chat Messages", isOn: $notifyChat)
+                    .onChange(of: notifyChat) { PushNotificationService.shared.syncPreferences() }
                 Toggle("Meeting Reminders", isOn: $notifyMeetings)
+                    .onChange(of: notifyMeetings) { PushNotificationService.shared.syncPreferences() }
                 Toggle("Milestones & Badges", isOn: $notifyMilestones)
+                    .onChange(of: notifyMilestones) { PushNotificationService.shared.syncPreferences() }
 
                 Button {
                     if let url = URL(string: UIApplication.openSettingsURLString) {
@@ -64,26 +74,9 @@ struct SettingsScreen: View {
 
             // MARK: - Legal
             Section {
-                Link(destination: URL(string: "https://miltonrecovery.com/terms")!) {
-                    HStack {
-                        Text("Terms of Service")
-                            .foregroundStyle(AppTheme.textPrimary)
-                        Spacer()
-                        Image(systemName: "arrow.up.forward.square")
-                            .font(.caption)
-                            .foregroundStyle(AppTheme.textSecondary)
-                    }
-                }
-                Link(destination: URL(string: "https://miltonrecovery.com/privacy")!) {
-                    HStack {
-                        Text("Privacy Policy")
-                            .foregroundStyle(AppTheme.textPrimary)
-                        Spacer()
-                        Image(systemName: "arrow.up.forward.square")
-                            .font(.caption)
-                            .foregroundStyle(AppTheme.textSecondary)
-                    }
-                }
+                legalLink("Terms of Service",    urlString: "https://miltonrecovery.com/app-terms-conditions/")
+                legalLink("Privacy Policy",       urlString: "https://miltonrecovery.com/app-privacy-policy/")
+                legalLink("Support",              urlString: "https://miltonrecovery.com/app-support/")
             } header: {
                 Label("Legal", systemImage: "doc.text.fill")
             }
@@ -98,10 +91,57 @@ struct SettingsScreen: View {
                         Text("Clear Offline Cache")
                     }
                 }
+
+                // Download My Data (HIPAA Right to Access)
+                Button {
+                    exportMyData()
+                } label: {
+                    HStack {
+                        if isExportingData {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Image(systemName: "square.and.arrow.down")
+                        }
+                        Text("Download My Data")
+                            .foregroundStyle(AppTheme.textPrimary)
+                    }
+                }
+                .disabled(isExportingData)
             } header: {
                 Label("Data", systemImage: "externaldrive.fill")
             } footer: {
-                Text("Clears cached meetings, contacts, and quotes. Data will be re-downloaded on next use.")
+                Text("Clears cached meetings, contacts, and quotes. Data will be re-downloaded on next use. Download My Data exports your profile, posts, and account info as a JSON file.")
+            }
+
+            // MARK: - Account
+            Section {
+                Button(role: .destructive) {
+                    showDeleteAccountAlert = true
+                } label: {
+                    HStack {
+                        Image(systemName: "person.crop.circle.badge.minus")
+                        Text("Delete My Account")
+                    }
+                }
+            } header: {
+                Label("Account", systemImage: "person.circle.fill")
+            } footer: {
+                Text("Deleting your account begins a 30-day grace period. Your data will be permanently removed after 30 days. This action cannot be undone.")
+            }
+            .alert("Delete Account?", isPresented: $showDeleteAccountAlert) {
+                Button("Cancel", role: .cancel) {}
+                Button("Continue") { showDeleteConfirmation = true }
+            } message: {
+                Text("This will start a 30-day deletion process. Download your data first if you want a copy.")
+            }
+            .alert("Permanently Delete Account?", isPresented: $showDeleteConfirmation) {
+                Button("Cancel", role: .cancel) {}
+                Button("Delete My Account", role: .destructive) {
+                    AuditLogger.shared.log(.accountDeletionRequested, userId: appViewModel.currentUser?.id)
+                    appViewModel.deleteAccount()
+                }
+            } message: {
+                Text("Your account, posts, and messages will be permanently deleted after 30 days. You will be logged out immediately.")
             }
 
             // MARK: - About
@@ -125,7 +165,85 @@ struct SettingsScreen: View {
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
         .tint(AppTheme.accent)
+        .sheet(isPresented: $showDataExportSheet) {
+            if let url = exportedDataURL {
+                ShareSheet(activityItems: [url])
+            }
+        }
     }
+
+    // MARK: - Helpers
+
+    @ViewBuilder
+    private func legalLink(_ title: String, urlString: String) -> some View {
+        if let url = URL(string: urlString) {
+            Link(destination: url) {
+                HStack {
+                    Text(title)
+                        .foregroundStyle(AppTheme.textPrimary)
+                    Spacer()
+                    Image(systemName: "arrow.up.forward.square")
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.textSecondary)
+                }
+            }
+        }
+    }
+
+    // MARK: - Data Export
+
+    private func exportMyData() {
+        guard let user = appViewModel.currentUser else { return }
+        isExportingData = true
+
+        Task {
+            let exportDict: [String: Any] = [
+                "exported_at": ISO8601DateFormatter().string(from: Date()),
+                "profile": [
+                    "id": user.id.uuidString,
+                    "full_name": user.fullName,
+                    "username": user.username,
+                    "email": user.email,
+                    "phone": user.phone,
+                    "recovery_program": user.recoveryProgram,
+                    "sobriety_date": user.sobrietyDate.formatted(date: .abbreviated, time: .omitted),
+                    "discharge_date": user.dischargeDate.formatted(date: .abbreviated, time: .omitted),
+                    "total_points": user.totalPoints,
+                    "role": user.role.rawValue,
+                    "status": user.status.rawValue
+                ],
+                "note": "To request a full copy of all messages and posts, contact support@miltonrecovery.com"
+            ]
+
+            if let jsonData = try? JSONSerialization.data(withJSONObject: exportDict, options: .prettyPrinted) {
+                let fileName = "MiltonAlumni_MyData_\(Date().formatted(.iso8601)).json"
+                let url = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
+                try? jsonData.write(to: url)
+
+                AuditLogger.shared.log(.exportUserData, userId: user.id, detail: "User requested data export")
+
+                await MainActor.run {
+                    exportedDataURL = url
+                    isExportingData = false
+                    showDataExportSheet = true
+                }
+            } else {
+                await MainActor.run { isExportingData = false }
+            }
+        }
+    }
+}
+
+// MARK: - Share Sheet
+
+private struct ShareSheet: UIViewControllerRepresentable {
+    let activityItems: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 // MARK: - Appearance Mode

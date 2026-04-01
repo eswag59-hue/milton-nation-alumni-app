@@ -352,23 +352,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = VUQQKR3A6A;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "Milton Alumni";
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
-				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Milton Alumni uses your calendar to save meeting events so you never miss a session.";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Milton Alumni uses your camera to capture photos for community posts and chat messages.";
-				INFOPLIST_KEY_NSFaceIDUsageDescription = "Milton Alumni uses Face ID to securely sign you in.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Milton Alumni uses your location to find nearby support meetings in your area.";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Milton Alumni uses the microphone for voice messages in chat.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Milton Alumni lets you share photos from your library in community posts and chat messages.";
-				INFOPLIST_KEY_SUPABASE_ANON_KEY = "$(SUPABASE_ANON_KEY)";
-				INFOPLIST_KEY_SUPABASE_URL = "$(SUPABASE_URL)";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UIStatusBarStyle = "";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				INFOPLIST_FILE = Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -396,23 +380,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = VUQQKR3A6A;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "Milton Alumni";
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
-				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Milton Alumni uses your calendar to save meeting events so you never miss a session.";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Milton Alumni uses your camera to capture photos for community posts and chat messages.";
-				INFOPLIST_KEY_NSFaceIDUsageDescription = "Milton Alumni uses Face ID to securely sign you in.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Milton Alumni uses your location to find nearby support meetings in your area.";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Milton Alumni uses the microphone for voice messages in chat.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Milton Alumni lets you share photos from your library in community posts and chat messages.";
-				INFOPLIST_KEY_SUPABASE_ANON_KEY = "$(SUPABASE_ANON_KEY)";
-				INFOPLIST_KEY_SUPABASE_URL = "$(SUPABASE_URL)";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UIStatusBarStyle = "";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				INFOPLIST_FILE = Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

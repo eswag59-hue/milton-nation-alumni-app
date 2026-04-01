@@ -13,6 +13,10 @@ const corsHeaders = {
 const ROLE_NOTIFY_RATE_LIMIT = 5;
 const ROLE_NOTIFY_WINDOW_MINUTES = 60;
 
+// Rate limit for user-targeted notifications (prevents any user from spamming another)
+const USER_NOTIFY_RATE_LIMIT = 10;
+const USER_NOTIFY_WINDOW_MINUTES = 60;
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -74,6 +78,37 @@ serve(async (req: Request) => {
         });
       }
 
+      // ── Rate limit: non-admins may send at most USER_NOTIFY_RATE_LIMIT notifications
+      // per target user per hour — prevents a user from spamming another user.
+      if (!isAdmin) {
+        const windowStart = new Date(
+          Date.now() - USER_NOTIFY_WINDOW_MINUTES * 60 * 1000
+        ).toISOString();
+
+        const { count: recentCount } = await supabaseAdmin
+          .from("push_notification_log")
+          .select("id", { count: "exact", head: true })
+          .eq("sent_by", user.id)
+          .eq("target_user_id", userId)
+          .gte("created_at", windowStart);
+
+        if ((recentCount ?? 0) >= USER_NOTIFY_RATE_LIMIT) {
+          return new Response(
+            JSON.stringify({
+              error: `Notification rate limit reached. Maximum ${USER_NOTIFY_RATE_LIMIT} notifications per user per hour.`,
+            }),
+            {
+              status: 429,
+              headers: {
+                ...corsHeaders,
+                "Content-Type": "application/json",
+                "Retry-After": String(USER_NOTIFY_WINDOW_MINUTES * 60),
+              },
+            }
+          );
+        }
+      }
+
       const { data: tokens } = await supabaseAdmin
         .from("device_tokens")
         .select("token")
@@ -82,7 +117,28 @@ serve(async (req: Request) => {
       deviceTokens = tokens?.map((t: { token: string }) => t.token) ?? [];
 
     } else if (target === "role" && roles && Array.isArray(roles)) {
-      // Role-targeted notifications (e.g., new user notifying admins on registration)
+      // Role-targeted notifications — ADMIN ONLY: only admins/super_admins may notify a role
+      const { data: callerProfile, error: callerError } = await supabaseAdmin
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      if (callerError || !callerProfile) {
+        return new Response(JSON.stringify({ error: "Could not verify caller role" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const isAdmin = callerProfile.role === "admin" || callerProfile.role === "super_admin";
+      if (!isAdmin) {
+        return new Response(JSON.stringify({ error: "Forbidden: only admins can send role-targeted notifications" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       // ── Rate limit: max 5 role notifications per user per hour ────────────
       const windowStart = new Date(
         Date.now() - ROLE_NOTIFY_WINDOW_MINUTES * 60 * 1000

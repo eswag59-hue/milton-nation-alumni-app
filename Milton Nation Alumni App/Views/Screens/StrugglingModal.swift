@@ -50,7 +50,7 @@ struct StrugglingModal: View {
                             .clipShape(Capsule())
                             .frame(maxWidth: .infinity, alignment: .leading)
 
-                        phoneRow(name: "Milton Team", number: "(555) 100-2000", icon: "building.2.fill", isEmergency: false)
+                        phoneRow(name: "Milton Team", number: "(844) 975-4673", icon: "building.2.fill", isEmergency: false)
                     }
 
                     Divider()

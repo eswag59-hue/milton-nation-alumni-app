@@ -44,7 +44,8 @@ protocol DataServiceProtocol {
 
     // User Approval
     func fetchPendingUsers() async throws -> [User]
-    func approveUser(userId: UUID) async throws -> User
+    func fetchPendingUsers(facilityFilter: Facility?) async throws -> [User]
+    func approveUser(userId: UUID, facility: Facility) async throws -> User
     func rejectUser(userId: UUID) async throws
 
     // Invite
@@ -136,7 +137,7 @@ final class MockDataService: DataServiceProtocol {
                 userPhotoURL: nil,
                 content: body,
                 status: .approved,
-                createdAt: Calendar.current.date(byAdding: .minute, value: -(30 * (bodies.count - index)), to: Date())!
+                createdAt: Calendar.current.date(byAdding: .minute, value: -(30 * (bodies.count - index)), to: Date()) ?? Date()
             )
         }
     }
@@ -289,12 +290,19 @@ final class MockDataService: DataServiceProtocol {
         return MockDataService.mockPendingUsers
     }
 
-    func approveUser(userId: UUID) async throws -> User {
+    func fetchPendingUsers(facilityFilter: Facility?) async throws -> [User] {
+        try await Task.sleep(for: .milliseconds(200))
+        guard let filter = facilityFilter else { return MockDataService.mockPendingUsers }
+        return MockDataService.mockPendingUsers.filter { $0.facility == filter }
+    }
+
+    func approveUser(userId: UUID, facility: Facility) async throws -> User {
         try await Task.sleep(for: .milliseconds(300))
         guard var user = MockDataService.mockPendingUsers.first(where: { $0.id == userId }) else {
             throw NSError(domain: "data", code: 404, userInfo: [NSLocalizedDescriptionKey: "User not found"])
         }
         user.status = .active
+        user.facility = facility
         MockDataService.mockPendingUsers.removeAll { $0.id == userId }
         return user
     }
@@ -324,8 +332,8 @@ final class MockDataService: DataServiceProtocol {
             fullName: "Jordan Mitchell",
             username: "recovery_jordan",
             profilePhotoURL: nil,
-            sobrietyDate: Calendar.current.date(byAdding: .day, value: -45, to: Date())!,
-            dischargeDate: Calendar.current.date(byAdding: .day, value: -30, to: Date())!,
+            sobrietyDate: Calendar.current.date(byAdding: .day, value: -45, to: Date()) ?? Date(),
+            dischargeDate: Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date(),
             recoveryProgram: "IOP (Intensive Outpatient)",
             role: .alumni,
             status: .pending,
@@ -333,7 +341,7 @@ final class MockDataService: DataServiceProtocol {
             totalPoints: 0,
             lastLogin: nil,
             lastPointsAwarded: nil,
-            createdAt: Calendar.current.date(byAdding: .hour, value: -2, to: Date())!,
+            createdAt: Calendar.current.date(byAdding: .hour, value: -2, to: Date()) ?? Date(),
             updatedAt: Date()
         ),
         User(
@@ -343,8 +351,8 @@ final class MockDataService: DataServiceProtocol {
             fullName: "Casey Rivera",
             username: "fresh_start_casey",
             profilePhotoURL: nil,
-            sobrietyDate: Calendar.current.date(byAdding: .day, value: -90, to: Date())!,
-            dischargeDate: Calendar.current.date(byAdding: .day, value: -60, to: Date())!,
+            sobrietyDate: Calendar.current.date(byAdding: .day, value: -90, to: Date()) ?? Date(),
+            dischargeDate: Calendar.current.date(byAdding: .day, value: -60, to: Date()) ?? Date(),
             recoveryProgram: "Residential",
             role: .alumni,
             status: .pending,
@@ -352,8 +360,49 @@ final class MockDataService: DataServiceProtocol {
             totalPoints: 0,
             lastLogin: nil,
             lastPointsAwarded: nil,
-            createdAt: Calendar.current.date(byAdding: .hour, value: -5, to: Date())!,
+            createdAt: Calendar.current.date(byAdding: .hour, value: -5, to: Date()) ?? Date(),
             updatedAt: Date()
         ),
     ]
+}
+
+// MARK: - Meeting Service Protocol
+
+/// Focused protocol for Milton-organized meeting CRUD.
+/// Used by MeetingsViewModel — separate from the broader DataServiceProtocol.
+protocol MeetingServiceProtocol: Sendable {
+    func fetchMeetings() async throws -> [Meeting]
+    func createMeeting(_ meeting: Meeting) async throws -> Meeting
+    func updateMeeting(_ meeting: Meeting) async throws -> Meeting
+    func deleteMeeting(meetingId: UUID) async throws
+}
+
+// MARK: - Mock Meeting Service
+
+final class MockMeetingService: MeetingServiceProtocol {
+    private var meetings: [Meeting] = MockData.meetings
+
+    func fetchMeetings() async throws -> [Meeting] {
+        try await Task.sleep(for: .milliseconds(300))
+        return meetings.sorted { $0.startTime < $1.startTime }
+    }
+
+    func createMeeting(_ meeting: Meeting) async throws -> Meeting {
+        try await Task.sleep(for: .milliseconds(300))
+        meetings.append(meeting)
+        return meeting
+    }
+
+    func updateMeeting(_ meeting: Meeting) async throws -> Meeting {
+        try await Task.sleep(for: .milliseconds(300))
+        if let idx = meetings.firstIndex(where: { $0.id == meeting.id }) {
+            meetings[idx] = meeting
+        }
+        return meeting
+    }
+
+    func deleteMeeting(meetingId: UUID) async throws {
+        try await Task.sleep(for: .milliseconds(200))
+        meetings.removeAll { $0.id == meetingId }
+    }
 }

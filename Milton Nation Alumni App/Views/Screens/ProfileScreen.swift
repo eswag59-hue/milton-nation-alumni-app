@@ -127,6 +127,21 @@ struct ProfileScreen: View {
                             }
                             .frame(height: 8)
                         }
+                    } else if !viewModel.badges.isEmpty {
+                        // All badges earned 🎉
+                        HStack(spacing: 10) {
+                            Text("🏆")
+                                .font(.title2)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("All badges earned!")
+                                    .font(.caption.bold())
+                                    .foregroundStyle(AppTheme.accent)
+                                Text("You've reached the top. Legend status achieved.")
+                                    .font(.caption2)
+                                    .foregroundStyle(AppTheme.textSecondary)
+                            }
+                        }
+                        .padding(.vertical, 4)
                     }
 
                     // Badges grid

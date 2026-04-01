@@ -29,13 +29,31 @@ struct ChatListScreen: View {
                 ScrollView {
                     VStack(spacing: 12) {
                         // Care team chats
-                        if !clinicalStaff.isEmpty {
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Your Care Team")
-                                    .font(.headline)
-                                    .foregroundStyle(AppTheme.textPrimary)
-                                    .padding(.horizontal, 4)
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Your Care Team")
+                                .font(.headline)
+                                .foregroundStyle(AppTheme.textPrimary)
+                                .padding(.horizontal, 4)
 
+                            if clinicalStaff.isEmpty {
+                                HStack(spacing: 12) {
+                                    Image(systemName: "person.crop.circle.badge.questionmark")
+                                        .font(.title2)
+                                        .foregroundStyle(AppTheme.textSecondary.opacity(0.5))
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("No care team assigned yet")
+                                            .font(.subheadline.bold())
+                                            .foregroundStyle(AppTheme.textSecondary)
+                                        Text("Contact an admin to get connected with your counselor or therapist.")
+                                            .font(.caption)
+                                            .foregroundStyle(AppTheme.textSecondary.opacity(0.7))
+                                    }
+                                }
+                                .padding()
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(AppTheme.cardBackground)
+                                .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSmall))
+                            } else {
                                 ForEach(clinicalStaff) { staff in
                                     NavigationLink {
                                         let conv = viewModel.conversations.first(where: { $0.staffId == staff.id })
@@ -66,7 +84,7 @@ struct ChatListScreen: View {
                                 .padding(.horizontal, 4)
 
                             // Milton Team — phone call
-                            phoneContactRow(name: "Milton Team", number: "(555) 100-2000", icon: "building.2.fill", isCrisis: false)
+                            phoneContactRow(name: "Milton Team", number: "(844) 975-4673", icon: "building.2.fill", isCrisis: false)
 
                             // 988 Suicide & Crisis Lifeline — phone call
                             phoneContactRow(name: "988 Suicide & Crisis Lifeline", number: "988", icon: "phone.arrow.up.right.fill", isCrisis: true)

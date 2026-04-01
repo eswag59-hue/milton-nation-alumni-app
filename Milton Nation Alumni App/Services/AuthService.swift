@@ -5,8 +5,9 @@ protocol AuthServiceProtocol {
     func sendSMSOTP(userId: UUID) async throws
     func verifyMFA(userId: UUID, code: String) async throws -> User
     func logout() async throws
-    func register(fullName: String, email: String, phone: String, password: String, sobrietyDate: Date, dischargeDate: Date, recoveryProgram: String) async throws -> User
+    func register(fullName: String, email: String, phone: String, password: String, sobrietyDate: Date, dischargeDate: Date, recoveryProgram: String, facility: Facility?) async throws -> User
     func getCurrentUser() -> User?
+    func resetPassword(email: String) async throws
 }
 
 final class MockAuthService: AuthServiceProtocol {
@@ -14,7 +15,7 @@ final class MockAuthService: AuthServiceProtocol {
     private var pendingMFAUser: User?
 
     func login(email: String, password: String) async throws -> User {
-        try await Task.sleep(for: .milliseconds(500))
+        try? await Task.sleep(for: .milliseconds(500))
 
         // Role auto-detection based on email
         let user: User
@@ -41,11 +42,11 @@ final class MockAuthService: AuthServiceProtocol {
 
     func sendSMSOTP(userId: UUID) async throws {
         // Mock: simulate sending SMS
-        try await Task.sleep(for: .milliseconds(300))
+        try? await Task.sleep(for: .milliseconds(300))
     }
 
     func verifyMFA(userId: UUID, code: String) async throws -> User {
-        try await Task.sleep(for: .milliseconds(300))
+        try? await Task.sleep(for: .milliseconds(300))
         guard code.count == 6, code.allSatisfy(\.isNumber) else {
             throw NSError(domain: "auth", code: 401, userInfo: [NSLocalizedDescriptionKey: "Invalid verification code"])
         }
@@ -59,13 +60,13 @@ final class MockAuthService: AuthServiceProtocol {
     }
 
     func logout() async throws {
-        try await Task.sleep(for: .milliseconds(200))
+        try? await Task.sleep(for: .milliseconds(200))
         currentUser = nil
     }
 
-    func register(fullName: String, email: String, phone: String, password: String, sobrietyDate: Date, dischargeDate: Date, recoveryProgram: String) async throws -> User {
-        try await Task.sleep(for: .milliseconds(500))
-        let newUser = User(
+    func register(fullName: String, email: String, phone: String, password: String, sobrietyDate: Date, dischargeDate: Date, recoveryProgram: String, facility: Facility?) async throws -> User {
+        try? await Task.sleep(for: .milliseconds(500))
+        var newUser = User(
             id: UUID(),
             email: email,
             phone: phone,
@@ -84,10 +85,16 @@ final class MockAuthService: AuthServiceProtocol {
             createdAt: Date(),
             updatedAt: Date()
         )
+        newUser.facility = facility
         return newUser
     }
 
     func getCurrentUser() -> User? {
         currentUser
+    }
+
+    func resetPassword(email: String) async throws {
+        try? await Task.sleep(for: .milliseconds(500))
+        // Mock: pretend the reset email was sent
     }
 }

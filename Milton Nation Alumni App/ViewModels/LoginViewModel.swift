@@ -6,6 +6,7 @@ enum RecoveryProgram: String, CaseIterable, Identifiable {
     case detox = "Detox"
     case residential = "Residential"
     case op = "OP"
+    case other = "Other"
 
     var id: String { rawValue }
 
@@ -16,6 +17,7 @@ enum RecoveryProgram: String, CaseIterable, Identifiable {
         case .detox: return "Detox"
         case .residential: return "Residential"
         case .op: return "OP (Outpatient)"
+        case .other: return "Other"
         }
     }
 }
@@ -45,7 +47,7 @@ final class LoginViewModel {
         return max(0, end.timeIntervalSince(Date()))
     }
     private let maxAttempts = 5
-    private let lockoutDuration: TimeInterval = 30
+    private let lockoutDuration: TimeInterval = 900 // 15 minutes
 
     // Registration toggle & fields
     var isRegistering = false
@@ -58,6 +60,7 @@ final class LoginViewModel {
     var regSobrietyDate = Date()
     var regDischargeDate = Date()
     var regRecoveryProgram: RecoveryProgram = .residential
+    var regFacility: Facility? = nil
     var showRegistrationSuccess = false
 
     private let authService: AuthServiceProtocol
@@ -86,6 +89,29 @@ final class LoginViewModel {
         isLoading = true
         errorMessage = nil
 
+        #if DEBUG
+        // ── DEBUG FAST-PATH ──────────────────────────────────────────────────
+        // Skip network auth entirely. Works on simulator AND real device,
+        // regardless of build scheme or Supabase configuration.
+        //   Regular user  →  any email except the two below
+        //   Admin         →  admin@milton.com   (any password)
+        //   Super Admin   →  super@milton.com   (any password)
+        let debugUser: User
+        switch email.lowercased() {
+        case "admin@milton.com":  debugUser = MockData.adminUser
+        case "super@milton.com":  debugUser = MockData.superAdminUser
+        default:                  debugUser = MockData.currentUser
+        }
+        await MainActor.run {
+            failedAttempts = 0
+            lockoutEndDate = nil
+            pendingUser = debugUser
+            showTwoFactor = true
+            isLoading = false
+        }
+        return debugUser
+        // ────────────────────────────────────────────────────────────────────
+        #else
         do {
             let user = try await authService.login(email: email, password: password)
 
@@ -106,7 +132,7 @@ final class LoginViewModel {
                 AuditLogger.shared.log(.loginFailed, detail: "Email: \(email), attempt: \(failedAttempts)")
                 if failedAttempts >= maxAttempts {
                     lockoutEndDate = Date().addingTimeInterval(lockoutDuration)
-                    errorMessage = "Too many failed attempts. Try again in \(Int(lockoutDuration))s."
+                    errorMessage = "Too many failed attempts. Try again in 15 minutes."
                     AuditLogger.shared.log(.loginLockout, detail: "Email: \(email)")
                 } else {
                     errorMessage = "Invalid email or password. Please try again."
@@ -115,6 +141,7 @@ final class LoginViewModel {
             }
             return nil
         }
+        #endif
     }
 
     // MARK: - 2FA Verification
@@ -125,6 +152,18 @@ final class LoginViewModel {
         isLoading = true
         errorMessage = nil
 
+        #if DEBUG
+        // DEBUG: accept any 6-digit code instantly — no network call needed.
+        guard twoFactorCode.count == 6, twoFactorCode.allSatisfy(\.isNumber) else {
+            await MainActor.run {
+                errorMessage = "Enter any 6-digit code to continue."
+                isLoading = false
+            }
+            return nil
+        }
+        await MainActor.run { isLoading = false }
+        return user
+        #else
         do {
             let verifiedUser = try await authService.verifyMFA(userId: user.id, code: twoFactorCode)
             await MainActor.run { isLoading = false }
@@ -136,6 +175,7 @@ final class LoginViewModel {
             }
             return nil
         }
+        #endif
     }
 
     // MARK: - Registration
@@ -147,6 +187,11 @@ final class LoginViewModel {
               !regPhone.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               !regPassword.isEmpty else {
             errorMessage = "Please fill in all required fields."
+            return nil
+        }
+
+        guard regFacility != nil else {
+            errorMessage = "Please select your facility (Florida or Ohio)."
             return nil
         }
 
@@ -181,7 +226,8 @@ final class LoginViewModel {
                 password: regPassword,
                 sobrietyDate: regSobrietyDate,
                 dischargeDate: regDischargeDate,
-                recoveryProgram: regRecoveryProgram.displayName
+                recoveryProgram: regRecoveryProgram.displayName,
+                facility: regFacility
             )
             await MainActor.run {
                 isLoading = false
@@ -197,11 +243,41 @@ final class LoginViewModel {
             }
             return user
         } catch {
+            CrashReportingService.shared.recordError(error, context: "LoginViewModel.register")
             await MainActor.run {
                 errorMessage = "Registration failed. Please try again."
                 isLoading = false
             }
             return nil
+        }
+    }
+
+    // MARK: - Password Reset
+
+    var showForgotPassword = false
+    var resetEmail = ""
+    var isResettingPassword = false
+    var passwordResetSent = false
+
+    func sendPasswordReset() async {
+        let email = resetEmail.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !email.isEmpty else {
+            errorMessage = "Please enter your email address."
+            return
+        }
+        isResettingPassword = true
+        errorMessage = nil
+        do {
+            try await authService.resetPassword(email: email)
+            await MainActor.run {
+                passwordResetSent = true
+                isResettingPassword = false
+            }
+        } catch {
+            await MainActor.run {
+                errorMessage = "Could not send reset email. Please check your address and try again."
+                isResettingPassword = false
+            }
         }
     }
 

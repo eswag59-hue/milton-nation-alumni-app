@@ -80,6 +80,14 @@ enum AuditAction: String {
     case contentEscalated      // high_risk flag sent to server
     case contentFlagReviewed   // admin reviewed a content flag
     case contentFlagDismissed  // admin dismissed a content flag
+
+    // Emergency Access (Break-Glass)
+    case emergencyAccessGranted  // super_admin granted timed access to a user's data
+    case emergencyAccessRevoked  // super_admin manually revoked an emergency access grant
+
+    // User Rights (HIPAA)
+    case exportUserData           // user downloaded their own data
+    case accountDeletionRequested // user initiated account deletion
 }
 
 struct AuditEntry: Identifiable {

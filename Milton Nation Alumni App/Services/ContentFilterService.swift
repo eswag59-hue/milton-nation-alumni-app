@@ -102,9 +102,15 @@ final class ContentFilterService: @unchecked Sendable {
     func localFilter(_ text: String) -> ModerationResult {
         let result = analyzeLocal(text)
         switch result.riskLevel {
-        case .safe:       return ModerationResult(status: .clean, matchedKeywords: [])
-        case .lowRisk, .mediumRisk: return ModerationResult(status: .flagged, matchedKeywords: result.matches.map(\.keyword))
-        case .highRisk:   return ModerationResult(status: .crisis, matchedKeywords: result.matches.map(\.keyword))
+        case .safe:
+            // Emergency help-seeking phrases (e.g. "need help now") surface as crisis
+            // so admins are notified even when no harmful keywords are present.
+            let status: ModerationResult.Status = result.isEmergency ? .crisis : .clean
+            return ModerationResult(status: status, matchedKeywords: [])
+        case .lowRisk, .mediumRisk:
+            return ModerationResult(status: .flagged, matchedKeywords: result.matches.map(\.keyword))
+        case .highRisk:
+            return ModerationResult(status: .crisis, matchedKeywords: result.matches.map(\.keyword))
         }
     }
 
@@ -163,6 +169,7 @@ final class ContentFilterService: @unchecked Sendable {
                 ))
         } catch {
             // Log locally but don't crash — moderation cannot block the user flow
+            CrashReportingService.shared.recordError(error, context: "ContentFilterService.escalateToServer")
             #if DEBUG
             print("[ContentFilterService] ⚠️ Escalation failed: \(error.localizedDescription)")
             #endif
@@ -196,4 +203,7 @@ struct ModerationResult {
     }
     let status: Status
     let matchedKeywords: [String]
+
+    var isCrisis: Bool { status == .crisis }
+    var isFlagged: Bool { status == .flagged }
 }

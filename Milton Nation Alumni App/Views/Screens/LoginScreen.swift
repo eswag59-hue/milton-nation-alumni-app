@@ -3,9 +3,17 @@ import LocalAuthentication
 
 struct LoginScreen: View {
     @Environment(AppViewModel.self) private var appViewModel
-    @State private var viewModel = LoginViewModel()
-    @State private var authServiceInjected = false
+    @State private var viewModel: LoginViewModel
     @State private var showResendConfirmation = false
+
+    private enum LoginField: Hashable { case email, password, twoFactor }
+    @FocusState private var focusedField: LoginField?
+
+    /// Pass the auth service at construction time so the ViewModel is wired
+    /// correctly on the very first render — no async task injection required.
+    init(authService: AuthServiceProtocol) {
+        _viewModel = State(initialValue: LoginViewModel(authService: authService))
+    }
 
     var body: some View {
         NavigationStack {
@@ -39,12 +47,21 @@ struct LoginScreen: View {
                 }
                 .padding()
             }
+            .scrollDismissesKeyboard(.interactively)
             .background(AppTheme.background)
-            .task {
-                if !authServiceInjected {
-                    authServiceInjected = true
-                    viewModel = LoginViewModel(authService: appViewModel.authService)
+            .onAppear {
+                // Auto-focus email field so users can type immediately on the simulator
+                // without needing to tap the field first.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    focusedField = .email
                 }
+            }
+            .onChange(of: viewModel.showTwoFactor) {
+                if viewModel.showTwoFactor { focusedField = .twoFactor }
+                else { focusedField = .email }
+            }
+            .onChange(of: viewModel.isRegistering) {
+                if viewModel.isRegistering { focusedField = .email }
             }
             .alert("Registration Submitted", isPresented: $viewModel.showRegistrationSuccess) {
                 Button("OK") {
@@ -84,6 +101,9 @@ struct LoginScreen: View {
                     .textContentType(.emailAddress)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
+                    .focused($focusedField, equals: .email)
+                    .onSubmit { focusedField = .password }
+                    .submitLabel(.next)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 14)
                     .background(
@@ -92,7 +112,7 @@ struct LoginScreen: View {
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 4)
-                            .stroke(AppTheme.divider, lineWidth: 1)
+                            .stroke(focusedField == .email ? AppTheme.accent : AppTheme.divider, lineWidth: focusedField == .email ? 2 : 1)
                     )
             }
 
@@ -105,6 +125,9 @@ struct LoginScreen: View {
                     .textFieldStyle(.plain)
                     .foregroundStyle(AppTheme.textPrimary)
                     .textContentType(.password)
+                    .focused($focusedField, equals: .password)
+                    .onSubmit { Task { _ = await viewModel.login() } }
+                    .submitLabel(.go)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 14)
                     .background(
@@ -113,7 +136,7 @@ struct LoginScreen: View {
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 4)
-                            .stroke(AppTheme.divider, lineWidth: 1)
+                            .stroke(focusedField == .password ? AppTheme.accent : AppTheme.divider, lineWidth: focusedField == .password ? 2 : 1)
                     )
             }
 
@@ -159,6 +182,17 @@ struct LoginScreen: View {
             }
 
             Button {
+                viewModel.resetEmail = viewModel.email
+                viewModel.passwordResetSent = false
+                viewModel.errorMessage = nil
+                viewModel.showForgotPassword = true
+            } label: {
+                Text("Forgot password?")
+            }
+            .font(.subheadline)
+            .foregroundStyle(AppTheme.accent)
+
+            Button {
                 viewModel.errorMessage = nil
                 viewModel.isRegistering = true
             } label: {
@@ -171,6 +205,98 @@ struct LoginScreen: View {
         .padding()
         .cardStyle()
         .padding(.horizontal, 4)
+        .sheet(isPresented: $viewModel.showForgotPassword) {
+            forgotPasswordSheet
+        }
+    }
+
+    // MARK: - Forgot Password Sheet
+
+    @ViewBuilder
+    private var forgotPasswordSheet: some View {
+        @Bindable var viewModel = viewModel
+        NavigationStack {
+            VStack(spacing: 20) {
+                Image(systemName: "lock.rotation")
+                    .font(.system(size: 44))
+                    .foregroundStyle(AppTheme.accent)
+                    .padding(.top, 8)
+
+                if viewModel.passwordResetSent {
+                    VStack(spacing: 12) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 44))
+                            .foregroundStyle(AppTheme.accentSage)
+                        Text("Reset Email Sent")
+                            .font(.headline)
+                            .foregroundStyle(AppTheme.textPrimary)
+                        Text("Check your inbox for a password reset link. It may take a minute to arrive.")
+                            .font(.subheadline)
+                            .foregroundStyle(AppTheme.textSecondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(.horizontal)
+                } else {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Reset Your Password")
+                            .font(.headline)
+                            .foregroundStyle(AppTheme.textPrimary)
+                        Text("Enter the email address associated with your account and we'll send you a link to reset your password.")
+                            .font(.subheadline)
+                            .foregroundStyle(AppTheme.textSecondary)
+
+                        if let error = viewModel.errorMessage {
+                            Text(error)
+                                .font(.caption)
+                                .foregroundStyle(AppTheme.struggling)
+                                .padding(.vertical, 6)
+                        }
+
+                        TextField("Email address", text: $viewModel.resetEmail)
+                            .textFieldStyle(.plain)
+                            .keyboardType(.emailAddress)
+                            .textContentType(.emailAddress)
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 14)
+                            .background(AppTheme.cardBackground)
+                            .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSmall))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSmall)
+                                    .stroke(AppTheme.divider, lineWidth: 1)
+                            )
+
+                        Button {
+                            Task { await viewModel.sendPasswordReset() }
+                        } label: {
+                            HStack {
+                                if viewModel.isResettingPassword { ProgressView().tint(.white) }
+                                Text("Send Reset Link").font(.headline)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(AppTheme.accent)
+                            .foregroundStyle(.white)
+                            .clipShape(Capsule())
+                        }
+                        .disabled(viewModel.isResettingPassword)
+                    }
+                    .padding(.horizontal)
+                }
+
+                Spacer()
+            }
+            .background(AppTheme.background)
+            .navigationTitle("Forgot Password")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { viewModel.showForgotPassword = false }
+                        .foregroundStyle(AppTheme.accent)
+                }
+            }
+        }
     }
 
     // MARK: - Two-Factor View
@@ -207,6 +333,7 @@ struct LoginScreen: View {
                 .keyboardType(.numberPad)
                 .multilineTextAlignment(.center)
                 .font(.title2.monospaced())
+                .focused($focusedField, equals: .twoFactor)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 14)
                 .background(
@@ -329,6 +456,12 @@ struct LoginScreen: View {
             formField("Email", text: $viewModel.regEmail, contentType: .emailAddress, keyboard: .emailAddress)
             formField("Phone", text: $viewModel.regPhone, contentType: .telephoneNumber, keyboard: .phonePad)
 
+            Text("By providing your phone number, you consent to receive a one-time verification code via SMS. Message & data rates may apply.")
+                .font(.caption2)
+                .foregroundStyle(AppTheme.textSecondary)
+                .multilineTextAlignment(.leading)
+                .padding(.horizontal, 4)
+
             VStack(alignment: .leading, spacing: 6) {
                 Text("Password")
                     .font(.subheadline.bold())
@@ -417,6 +550,41 @@ struct LoginScreen: View {
                 }
             }
 
+            // Facility picker
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Your Facility")
+                    .font(.subheadline.bold())
+                    .foregroundStyle(AppTheme.textPrimary)
+                HStack(spacing: 12) {
+                    ForEach(Facility.allCases) { facility in
+                        let isSelected = viewModel.regFacility == facility
+                        Button {
+                            viewModel.regFacility = facility
+                        } label: {
+                            VStack(spacing: 4) {
+                                Text(facility.emoji)
+                                    .font(.title2)
+                                Text(facility.displayName)
+                                    .font(.caption.bold())
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .foregroundStyle(isSelected ? .white : AppTheme.textPrimary)
+                            .background(isSelected ? AppTheme.accent : AppTheme.cardBackground)
+                            .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSmall))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSmall)
+                                    .stroke(isSelected ? AppTheme.accent : AppTheme.divider, lineWidth: isSelected ? 2 : 1)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                Text("Select the Milton Recovery Center you attended.")
+                    .font(.caption2)
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+
             Button {
                 Task { _ = await viewModel.register() }
             } label: {
@@ -487,7 +655,20 @@ struct LoginScreen: View {
         context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: "Sign in to Milton Alumni") { success, error in
             Task { @MainActor in
                 if success {
-                    appViewModel.login(user: MockData.currentUser)
+                    // Try the in-memory cached user first (fast path when app hasn't been killed)
+                    if let user = appViewModel.authService.getCurrentUser() {
+                        appViewModel.login(user: user)
+                        return
+                    }
+                    // App was relaunched — restore session from Supabase using stored JWT
+                    if let supabaseAuth = appViewModel.authService as? SupabaseAuthService,
+                       let user = await supabaseAuth.restoreSession() {
+                        appViewModel.login(user: user)
+                    } else {
+                        // Session fully expired — require full MFA login again
+                        viewModel.errorMessage = "Your session has expired. Please log in with your email and password."
+                        KeychainService.delete(key: .mfaCompleted)
+                    }
                 } else {
                     viewModel.errorMessage = error?.localizedDescription ?? "Face ID authentication failed. Please use your password."
                 }

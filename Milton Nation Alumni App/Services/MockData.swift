@@ -3,25 +3,29 @@ import Foundation
 enum MockData {
 
     // MARK: - Current User
-    static let currentUser = User(
-        id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
-        email: "alex.demo@example.com",
-        phone: "(555) 123-4567",
-        fullName: "Alex Demo",
-        username: "recovery_warrior",
-        profilePhotoURL: nil,
-        sobrietyDate: Calendar.current.date(byAdding: .day, value: -1442, to: Date())!,
-        dischargeDate: Calendar.current.date(byAdding: .day, value: -1440, to: Date())!,
-        recoveryProgram: "Milton Recovery Residential",
-        role: .alumni,
-        status: .active,
-        mfaMethod: .sms,
-        totalPoints: 0,
-        lastLogin: Date(),
-        lastPointsAwarded: nil,
-        createdAt: Calendar.current.date(byAdding: .day, value: -1442, to: Date())!,
-        updatedAt: Date()
-    )
+    static let currentUser: User = {
+        var u = User(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
+            email: "alex.demo@example.com",
+            phone: "(555) 123-4567",
+            fullName: "Alex Demo",
+            username: "recovery_warrior",
+            profilePhotoURL: nil,
+            sobrietyDate: Calendar.current.date(byAdding: .day, value: -1442, to: Date())!,
+            dischargeDate: Calendar.current.date(byAdding: .day, value: -1440, to: Date())!,
+            recoveryProgram: "Milton Recovery Residential",
+            role: .alumni,
+            status: .active,
+            mfaMethod: .sms,
+            totalPoints: 0,
+            lastLogin: Date(),
+            lastPointsAwarded: nil,
+            createdAt: Calendar.current.date(byAdding: .day, value: -1442, to: Date())!,
+            updatedAt: Date()
+        )
+        u.facility = .florida
+        return u
+    }()
 
     // MARK: - Staff
     static let caseManager = User(
@@ -537,8 +541,8 @@ enum MockData {
 
     // MARK: - Company Contacts
     static let companyContacts: [CompanyContact] = [
-        CompanyContact(name: "Milton Team", phoneNumber: "(555) 100-2000", role: "General Inquiries"),
-        CompanyContact(name: "After-Hours Support", phoneNumber: "(555) 100-2001", role: "24/7 Support Line"),
+        CompanyContact(name: "Milton Team", phoneNumber: "(844) 975-4673", role: "General Inquiries"),
+        CompanyContact(name: "After-Hours Support", phoneNumber: "(844) 975-4673", role: "24/7 Support Line"),
     ]
 
     // MARK: - Announcements
@@ -558,25 +562,29 @@ enum MockData {
     ]
 
     // MARK: - Admin & Super Admin Test Users
-    static let adminUser = User(
-        id: UUID(uuidString: "00000000-0000-0000-0000-000000000A10")!,
-        email: "admin@milton.com",
-        phone: "(555) 500-1000",
-        fullName: "Admin User",
-        username: "admin_user",
-        profilePhotoURL: nil,
-        sobrietyDate: Date(),
-        dischargeDate: Date(),
-        recoveryProgram: "",
-        role: .admin,
-        status: .active,
-        mfaMethod: .email,
-        totalPoints: 0,
-        lastLogin: Date(),
-        lastPointsAwarded: nil,
-        createdAt: Date(),
-        updatedAt: Date()
-    )
+    static let adminUser: User = {
+        var u = User(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000A10")!,
+            email: "admin@milton.com",
+            phone: "(555) 500-1000",
+            fullName: "Admin User",
+            username: "admin_user",
+            profilePhotoURL: nil,
+            sobrietyDate: Date(),
+            dischargeDate: Date(),
+            recoveryProgram: "",
+            role: .admin,
+            status: .active,
+            mfaMethod: .email,
+            totalPoints: 0,
+            lastLogin: Date(),
+            lastPointsAwarded: nil,
+            createdAt: Date(),
+            updatedAt: Date()
+        )
+        u.adminFacility = .florida
+        return u
+    }()
 
     static let superAdminUser = User(
         id: UUID(uuidString: "00000000-0000-0000-0000-000000000A11")!,

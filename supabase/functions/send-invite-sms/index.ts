@@ -87,7 +87,14 @@ serve(async (req: Request) => {
       .eq("action", "send_invite")
       .gte("timestamp", windowStart);
 
-    if (!rateError && (recentInvites ?? 0) >= INVITE_RATE_LIMIT) {
+    // Fail-secure: if audit table is unreachable, deny rather than bypass rate limit.
+    if (rateError) {
+      return new Response(
+        JSON.stringify({ error: "Rate limit check failed. Please try again." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    if ((recentInvites ?? 0) >= INVITE_RATE_LIMIT) {
       return new Response(
         JSON.stringify({
           error: `Invite limit reached. Maximum ${INVITE_RATE_LIMIT} invites per hour.`,
@@ -131,7 +138,7 @@ serve(async (req: Request) => {
       `Stay connected with your recovery support network, track milestones, ` +
       `attend meetings, and chat with your care team.\n\n` +
       `Download the Milton Alumni app:\n` +
-      `iOS: https://apps.apple.com/app/milton-alumni/id_REPLACE_WITH_APP_STORE_ID\n\n` +
+      `iOS: ${Deno.env.get("APP_STORE_URL") ?? "https://apps.apple.com/app/miltonalumni"}\n\n` +
       `Your recovery community is waiting for you.\n` +
       `- Milton Recovery Centers`;
 

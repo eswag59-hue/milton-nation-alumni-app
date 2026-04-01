@@ -4,22 +4,20 @@ import SwiftUI
 final class MeetingsViewModel {
     var meetings: [Meeting] = []
     var isLoading = false
+    var isSaving = false
     var selectedMeeting: Meeting?
     var errorMessage: String?
 
     // MARK: - Filtering & Search
+
     var searchText = ""
     var selectedTypeFilter: MeetingType?
 
     var filteredMeetings: [Meeting] {
         var result = meetings
-
-        // Filter by meeting type
         if let typeFilter = selectedTypeFilter {
             result = result.filter { $0.meetingType == typeFilter }
         }
-
-        // Filter by search text
         if !searchText.isEmpty {
             result = result.filter {
                 $0.title.localizedCaseInsensitiveContains(searchText) ||
@@ -27,36 +25,40 @@ final class MeetingsViewModel {
                 ($0.locationAddress?.localizedCaseInsensitiveContains(searchText) ?? false)
             }
         }
-
         return result
     }
 
     // MARK: - RSVP
 
-    /// RSVP state persisted via UserDefaults.
     var rsvpMeetingIds: Set<UUID> = [] {
         didSet { persistRSVPs() }
     }
 
-    // MARK: - Task Cancellation
-    private var loadTask: Task<Void, Never>?
+    // MARK: - Dependencies
 
-    private let dataService: DataServiceProtocol
+    private var loadTask: Task<Void, Never>?
+    private let meetingService: MeetingServiceProtocol
     private let cache = OfflineCacheService.shared
 
-    init(dataService: DataServiceProtocol = MockDataService()) {
-        self.dataService = dataService
+    init(meetingService: MeetingServiceProtocol = {
+        #if DEBUG
+        return MockMeetingService()
+        #else
+        return SupabaseMeetingService()
+        #endif
+    }()) {
+        self.meetingService = meetingService
         loadPersistedRSVPs()
     }
 
-    // MARK: - Load Meetings
+    // MARK: - Load
 
     func loadMeetings() {
         loadTask?.cancel()
         loadTask = Task {
             await MainActor.run { isLoading = true; errorMessage = nil }
             do {
-                let fetched = try await dataService.fetchMeetings()
+                let fetched = try await meetingService.fetchMeetings()
                 guard !Task.isCancelled else { return }
                 await MainActor.run {
                     meetings = fetched
@@ -65,6 +67,7 @@ final class MeetingsViewModel {
                 }
             } catch {
                 guard !Task.isCancelled else { return }
+                CrashReportingService.shared.recordError(error, context: "MeetingsViewModel.fetchMeetings")
                 await MainActor.run {
                     if let cached = cache.loadCachedMeetings() {
                         meetings = cached
@@ -78,7 +81,68 @@ final class MeetingsViewModel {
         }
     }
 
-    // MARK: - RSVP Actions
+    // MARK: - Admin: Create
+
+    func createMeeting(_ meeting: Meeting) async {
+        await MainActor.run { isSaving = true; errorMessage = nil }
+        do {
+            let created = try await meetingService.createMeeting(meeting)
+            await MainActor.run {
+                meetings.append(created)
+                meetings.sort { $0.startTime < $1.startTime }
+                isSaving = false
+            }
+        } catch {
+            CrashReportingService.shared.recordError(error, context: "MeetingsViewModel.createMeeting")
+            await MainActor.run {
+                errorMessage = "Failed to create meeting: \(error.localizedDescription)"
+                isSaving = false
+            }
+        }
+    }
+
+    // MARK: - Admin: Update
+
+    func updateMeeting(_ meeting: Meeting) async {
+        await MainActor.run { isSaving = true; errorMessage = nil }
+        do {
+            let updated = try await meetingService.updateMeeting(meeting)
+            await MainActor.run {
+                if let idx = meetings.firstIndex(where: { $0.id == updated.id }) {
+                    meetings[idx] = updated
+                }
+                meetings.sort { $0.startTime < $1.startTime }
+                isSaving = false
+            }
+        } catch {
+            CrashReportingService.shared.recordError(error, context: "MeetingsViewModel.updateMeeting")
+            await MainActor.run {
+                errorMessage = "Failed to update meeting: \(error.localizedDescription)"
+                isSaving = false
+            }
+        }
+    }
+
+    // MARK: - Admin: Delete
+
+    func deleteMeeting(meetingId: UUID) async {
+        await MainActor.run { isSaving = true; errorMessage = nil }
+        do {
+            try await meetingService.deleteMeeting(meetingId: meetingId)
+            await MainActor.run {
+                meetings.removeAll { $0.id == meetingId }
+                isSaving = false
+            }
+        } catch {
+            CrashReportingService.shared.recordError(error, context: "MeetingsViewModel.deleteMeeting")
+            await MainActor.run {
+                errorMessage = "Failed to delete meeting: \(error.localizedDescription)"
+                isSaving = false
+            }
+        }
+    }
+
+    // MARK: - RSVP
 
     func toggleRSVP(for meetingId: UUID) {
         if rsvpMeetingIds.contains(meetingId) {
@@ -92,12 +156,10 @@ final class MeetingsViewModel {
         rsvpMeetingIds.contains(meetingId)
     }
 
-    // MARK: - Filter Actions
+    // MARK: - Filters
 
     func filterByType(_ type: MeetingType?) {
-        withAnimation(.easeInOut(duration: 0.2)) {
-            selectedTypeFilter = type
-        }
+        withAnimation(.easeInOut(duration: 0.2)) { selectedTypeFilter = type }
     }
 
     func clearFilters() {
@@ -114,13 +176,12 @@ final class MeetingsViewModel {
         loadTask = nil
     }
 
-    // MARK: - RSVP Persistence (UserDefaults)
+    // MARK: - RSVP Persistence
 
     private static let rsvpKey = "meeting_rsvp_ids"
 
     private func persistRSVPs() {
-        let strings = rsvpMeetingIds.map(\.uuidString)
-        UserDefaults.standard.set(strings, forKey: Self.rsvpKey)
+        UserDefaults.standard.set(rsvpMeetingIds.map(\.uuidString), forKey: Self.rsvpKey)
     }
 
     private func loadPersistedRSVPs() {

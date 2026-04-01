@@ -5,6 +5,7 @@ import MapKit
 /// Manages its own ViewModel and reacts to location updates.
 struct NearbyMeetingsView: View {
     @State private var viewModel = NearbyMeetingsViewModel()
+    @State private var cameraPosition: MapCameraPosition = .automatic
 
     var body: some View {
         Group {
@@ -71,7 +72,7 @@ struct NearbyMeetingsView: View {
     // MARK: - Map View
 
     private var mapView: some View {
-        Map {
+        Map(position: $cameraPosition) {
             // Show user's current location as blue dot
             UserAnnotation()
 
@@ -83,6 +84,7 @@ struct NearbyMeetingsView: View {
         .mapControls {
             MapUserLocationButton()
             MapCompass()
+            MapScaleView()
         }
         .mapStyle(.standard(elevation: .flat))
     }

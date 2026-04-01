@@ -7,6 +7,7 @@ struct Milton_Nation_Alumni_AppApp: App {
     @State private var sessionManager = SessionManager()
     @State private var networkMonitor = NetworkMonitor.shared
     @State private var isRestoringSession = false
+    @State private var deviceSecurityViolation: DeviceSecurityService.SecurityViolation?
     @AppStorage("appearance_mode") private var appearanceMode: AppearanceMode = .system
     @Environment(\.scenePhase) private var scenePhase
 
@@ -17,19 +18,21 @@ struct Milton_Nation_Alumni_AppApp: App {
         let dataService: DataServiceProtocol
 
         #if DEBUG
-        if SupabaseConfig.isConfigured {
-            authService = SupabaseAuthService()
-            dataService = SupabaseDataService()
-            AuditLogger.shared.persistToSupabase = true
-        } else {
-            authService = MockAuthService()
-            dataService = MockDataService()
-        }
+        // DEBUG (simulator + real device): always use mock services.
+        // Login with any email that isn't admin@milton.com or super@milton.com,
+        // any password, and any 6-digit OTP code.
+        // The real Supabase auth stack is only active in Release (App Store) builds.
+        authService = MockAuthService()
+        dataService = MockDataService()
         #else
+        // Release build: always Supabase.
         authService = SupabaseAuthService()
         dataService = SupabaseDataService()
         AuditLogger.shared.persistToSupabase = true
         #endif
+
+        // Install crash handler as early as possible — before any other async work.
+        CrashReportingService.shared.install()
 
         _appViewModel = State(initialValue: AppViewModel(
             authService: authService,
@@ -88,10 +91,33 @@ struct Milton_Nation_Alumni_AppApp: App {
                 }
             }
             .task {
+                // HIPAA: Verify device security before any data access.
+                // IMPORTANT: Run on a background thread via Task.detached — LAContext.canEvaluatePolicy
+                // can stall briefly (especially on simulator / cold boot). Calling it synchronously
+                // on the MainActor would block SwiftUI's render loop and freeze the login screen.
+                let securityService = DeviceSecurityService.shared
+                let violation = await Task.detached(priority: .userInitiated) {
+                    await securityService.evaluate()
+                }.value
+                deviceSecurityViolation = violation   // back on MainActor — safe to write @State
+                guard violation == nil else { return }
+
                 // Attempt to restore existing session on app launch
                 await restoreSessionIfNeeded()
-                // Refresh remote moderation keywords in the background (non-blocking)
+                // Upload crash report and refresh keywords in background — never block login screen
+                Task { await CrashReportingService.shared.uploadPendingReportIfNeeded() }
                 Task { await RemoteModerationKeywordsService.shared.refreshIfNeeded() }
+            }
+            .alert(
+                deviceSecurityViolation?.errorDescription ?? "Security Check Failed",
+                isPresented: Binding(
+                    get: { deviceSecurityViolation != nil },
+                    set: { if !$0 { deviceSecurityViolation = nil } }
+                )
+            ) {
+                // No dismiss — user must fix device settings and relaunch
+            } message: {
+                Text(deviceSecurityViolation?.recoverySuggestion ?? "")
             }
             .onChange(of: scenePhase) {
                 sessionManager.handleScenePhase(scenePhase)
@@ -99,6 +125,11 @@ struct Milton_Nation_Alumni_AppApp: App {
                 // Sync any pending audit entries when app comes to foreground
                 if scenePhase == .active {
                     AuditLogger.shared.syncPendingEntries()
+                }
+
+                // Flush buffered analytics on background so no events are lost if app is killed
+                if scenePhase == .background {
+                    AnalyticsService.shared.flush()
                 }
             }
             .onChange(of: sessionManager.isSessionExpired) {
@@ -141,11 +172,31 @@ struct Milton_Nation_Alumni_AppApp: App {
         isRestoringSession = true
         defer { isRestoringSession = false }
 
-        if let user = await supabaseAuth.restoreSession() {
+        // Race session restore against a 5-second timeout.
+        // Without this, a stale Keychain token + slow/no network causes
+        // the "Signing you in…" overlay to block the login screen for up to
+        // 75 seconds (the iOS TCP timeout) — making the app appear frozen.
+        let user: User? = await withTaskGroup(of: User?.self) { group in
+            group.addTask { await supabaseAuth.restoreSession() }
+            group.addTask {
+                try? await Task.sleep(for: .seconds(5))
+                return nil   // timeout sentinel
+            }
+            // Take whichever result arrives first, cancel the other.
+            for await result in group {
+                group.cancelAll()
+                return result
+            }
+            return nil
+        }
+
+        if let user {
             appViewModel.login(user: user)
         } else {
-            // Token was invalid — clean up
+            // Token was invalid or restore timed out — clear stale credentials
+            // so the user is presented with a clean login screen.
             KeychainService.delete(key: .authToken)
+            KeychainService.delete(key: .mfaCompleted)
         }
     }
 }

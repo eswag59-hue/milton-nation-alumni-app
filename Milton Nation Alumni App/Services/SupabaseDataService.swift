@@ -225,6 +225,7 @@ final class SupabaseDataService: DataServiceProtocol {
         var posts: [CommunityPost] = try await query
             .order("is_pinned", ascending: false)
             .order("created_at", ascending: false)
+            .limit(50)
             .execute()
             .value
 
@@ -321,6 +322,7 @@ final class SupabaseDataService: DataServiceProtocol {
             .select()
             .eq("post_id", value: postId.uuidString)
             .order("created_at", ascending: true)
+            .limit(100)
             .execute()
             .value
 
@@ -472,6 +474,7 @@ final class SupabaseDataService: DataServiceProtocol {
             .select()
             .eq("conversation_id", value: conversationId.uuidString)
             .order("created_at", ascending: true)
+            .limit(200)
             .execute()
             .value
 
@@ -738,9 +741,19 @@ final class SupabaseDataService: DataServiceProtocol {
     // MARK: - User Approval
 
     func fetchPendingUsers() async throws -> [User] {
-        let users: [User] = try await client.from("profiles")
+        try await fetchPendingUsers(facilityFilter: nil)
+    }
+
+    func fetchPendingUsers(facilityFilter: Facility?) async throws -> [User] {
+        var query = client.from("profiles")
             .select()
             .eq("status", value: "pending")
+
+        if let facility = facilityFilter {
+            query = query.eq("facility", value: facility.rawValue)
+        }
+
+        let users: [User] = try await query
             .order("created_at", ascending: false)
             .execute()
             .value
@@ -748,9 +761,9 @@ final class SupabaseDataService: DataServiceProtocol {
         return users
     }
 
-    func approveUser(userId: UUID) async throws -> User {
+    func approveUser(userId: UUID, facility: Facility) async throws -> User {
         let user: User = try await client.from("profiles")
-            .update(["status": "active"])
+            .update(["status": "active", "facility": facility.rawValue])
             .eq("id", value: userId.uuidString)
             .select()
             .single()

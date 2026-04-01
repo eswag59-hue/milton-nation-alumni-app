@@ -15,8 +15,9 @@ private struct VerifyOTPResponse: Decodable {
 }
 
 nonisolated private struct WelcomeEmailParams: Encodable, Sendable {
+    // NOTE: name is intentionally omitted — Resend has no HIPAA BAA.
+    // Never add PHI (name, phone, diagnosis, etc.) to this struct.
     let to: String
-    let name: String
 }
 
 nonisolated private struct AdminRegistrationNotifParams: Encodable, Sendable {
@@ -159,7 +160,8 @@ final class SupabaseAuthService: AuthServiceProtocol {
         password: String,
         sobrietyDate: Date,
         dischargeDate: Date,
-        recoveryProgram: String
+        recoveryProgram: String,
+        facility: Facility?
     ) async throws -> User {
         // Create auth user in Supabase Auth
         let authResponse = try await client.auth.signUp(
@@ -178,15 +180,18 @@ final class SupabaseAuthService: AuthServiceProtocol {
         // But we need to update the additional fields the trigger doesn't set.
         let dateFormatter = ISO8601DateFormatter()
 
+        var profileUpdate: [String: String] = [
+            "phone": phone,
+            "full_name": fullName,
+            "username": fullName.lowercased().replacingOccurrences(of: " ", with: "_"),
+            "sobriety_date": dateFormatter.string(from: sobrietyDate),
+            "discharge_date": dateFormatter.string(from: dischargeDate),
+            "recovery_program": recoveryProgram,
+        ]
+        if let facility { profileUpdate["facility"] = facility.rawValue }
+
         try await client.from("profiles")
-            .update([
-                "phone": phone,
-                "full_name": fullName,
-                "username": fullName.lowercased().replacingOccurrences(of: " ", with: "_"),
-                "sobriety_date": dateFormatter.string(from: sobrietyDate),
-                "discharge_date": dateFormatter.string(from: dischargeDate),
-                "recovery_program": recoveryProgram,
-            ])
+            .update(profileUpdate)
             .eq("id", value: authUser.id.uuidString)
             .execute()
 
@@ -204,24 +209,31 @@ final class SupabaseAuthService: AuthServiceProtocol {
         let capturedEmail = email
         let capturedName = fullName
         let capturedId = authUser.id.uuidString
+        let capturedFacility = facility?.displayName ?? "Unknown"
         Task {
             _ = try? await client.functions.invoke(
                 "send-welcome-email",
-                options: .init(method: .post, body: WelcomeEmailParams(to: capturedEmail, name: capturedName))
+                options: .init(method: .post, body: WelcomeEmailParams(to: capturedEmail))
             )
             _ = try? await client.functions.invoke(
                 "send-push-notification",
                 options: .init(method: .post, body: AdminRegistrationNotifParams(
                     target: "role",
                     roles: ["admin", "super_admin"],
-                    title: "New Member Request",
-                    body: "\(capturedName) has applied to join Milton Nation.",
-                    data: ["type": "new_registration", "userId": capturedId]
+                    title: "New Member Request (\(capturedFacility))",
+                    body: "\(capturedName) has applied to join the \(capturedFacility) community.",
+                    data: ["type": "new_registration", "userId": capturedId, "facility": facility?.rawValue ?? ""]
                 ))
             )
         }
 
         return profile
+    }
+
+    // MARK: - Password Reset
+
+    func resetPassword(email: String) async throws {
+        try await client.auth.resetPasswordForEmail(email)
     }
 
     // MARK: - Get Current User (Session Restore)
@@ -246,7 +258,13 @@ final class SupabaseAuthService: AuthServiceProtocol {
     /// Call this on app launch to restore an existing session from Supabase.
     /// If the JWT is still valid (or can be refreshed), sets `cachedUser`.
     func restoreSession() async -> User? {
+        // Skip the restore attempt entirely if no token is stored locally.
+        // This avoids a spurious Supabase network call on first launch.
+        guard KeychainService.loadString(key: .authToken) != nil else { return nil }
+
         do {
+            // Supabase SDK v2 automatically refreshes the access token if the
+            // refresh token is still valid, so this covers the "token expired" case.
             let session = try await client.auth.session
             let profile: User = try await client.from("profiles")
                 .select()
@@ -258,10 +276,22 @@ final class SupabaseAuthService: AuthServiceProtocol {
             cachedUser = profile
             return profile
         } catch {
-            // Session expired or invalid — clean up
-            KeychainService.delete(key: .authToken)
-            KeychainService.delete(key: .mfaCompleted)
-            cachedUser = nil
+            // Only purge stored credentials on definitive authentication failures.
+            // Network errors are transient — preserving the token allows the user
+            // to stay logged in once connectivity is restored.
+            let description = error.localizedDescription.lowercased()
+            let isDefinitiveAuthFailure =
+                description.contains("session") ||
+                description.contains("expired") ||
+                description.contains("unauthorized") ||
+                description.contains("invalid") ||
+                (error as NSError).code == 401
+
+            if isDefinitiveAuthFailure {
+                KeychainService.delete(key: .authToken)
+                KeychainService.delete(key: .mfaCompleted)
+                cachedUser = nil
+            }
             return nil
         }
     }

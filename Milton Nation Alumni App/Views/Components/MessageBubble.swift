@@ -47,7 +47,7 @@ struct MessageBubble: View {
                         Image(systemName: "waveform")
                             .font(.body)
                             .foregroundStyle(isFromCurrentUser ? .white.opacity(0.7) : AppTheme.textSecondary)
-                        Text("0:15")
+                        Text(Self.formatVoiceDuration(message.voiceDuration))
                             .font(.caption)
                             .foregroundStyle(isFromCurrentUser ? .white.opacity(0.7) : AppTheme.textSecondary)
                     }
@@ -80,5 +80,15 @@ struct MessageBubble: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(isFromCurrentUser ? "You" : "Staff") said: \(message.content ?? message.messageType.rawValue), \(message.createdAt.formatted(date: .omitted, time: .shortened))")
+    }
+
+    // MARK: - Helpers
+
+    private static func formatVoiceDuration(_ duration: TimeInterval?) -> String {
+        guard let duration, duration > 0 else { return "Voice" }
+        let total = Int(duration)
+        let minutes = total / 60
+        let seconds = total % 60
+        return String(format: "%d:%02d", minutes, seconds)
     }
 }

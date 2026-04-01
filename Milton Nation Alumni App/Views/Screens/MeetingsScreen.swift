@@ -7,6 +7,14 @@ struct MeetingsScreen: View {
     @State private var showCalendarAlert = false
     @State private var calendarAlertMessage = ""
     @State private var selectedTab: MeetingsTab = .miltonMeetings
+    @State private var showAddMeeting = false
+    @State private var meetingToEdit: Meeting?
+    @State private var showDirectionsChoice = false
+    @State private var selectedDirectionsAddress = ""
+
+    private var isAdmin: Bool {
+        appViewModel.currentUser?.role.isAdmin == true
+    }
 
     // MARK: - Tab Enum
 
@@ -49,15 +57,56 @@ struct MeetingsScreen: View {
                 if selectedTab == .miltonMeetings {
                     miltonMeetingsContent
                 } else {
-                    NearbyMeetingsView()
+                    VStack(spacing: 0) {
+                        NearbyMeetingsView()
+                        Text("Showing NA & AA meetings from participating intergroups via BMLT. For a complete AA meeting list, visit aa.org/find-aa.")
+                            .font(.caption2)
+                            .foregroundStyle(AppTheme.textSecondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 10)
+                    }
                 }
             }
             .background(AppTheme.background)
+            .toolbar {
+                if isAdmin && selectedTab == .miltonMeetings {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            showAddMeeting = true
+                        } label: {
+                            Image(systemName: "plus")
+                                .fontWeight(.semibold)
+                        }
+                        .accessibilityLabel("Add meeting")
+                    }
+                }
+            }
             .onAppear {
                 viewModel.loadMeetings()
             }
             .sheet(item: $viewModel.selectedMeeting) { meeting in
                 meetingDetailSheet(meeting: meeting)
+            }
+            .sheet(isPresented: $showAddMeeting) {
+                if let userId = appViewModel.currentUser?.id {
+                    AddEditMeetingSheet(
+                        existingMeeting: nil,
+                        currentUserId: userId,
+                        onSave: { meeting in await viewModel.createMeeting(meeting) },
+                        onDelete: nil
+                    )
+                }
+            }
+            .sheet(item: $meetingToEdit) { meeting in
+                if let userId = appViewModel.currentUser?.id {
+                    AddEditMeetingSheet(
+                        existingMeeting: meeting,
+                        currentUserId: userId,
+                        onSave: { updated in await viewModel.updateMeeting(updated) },
+                        onDelete: { id in await viewModel.deleteMeeting(meetingId: id) }
+                    )
+                }
             }
         }
     }
@@ -201,7 +250,7 @@ struct MeetingsScreen: View {
             viewModel.selectedMeeting = meeting
         } label: {
             VStack(alignment: .leading, spacing: 12) {
-                // Title + type badge
+                // Title + type badge + admin edit button
                 HStack {
                     Text(meeting.title)
                         .font(.headline)
@@ -209,6 +258,17 @@ struct MeetingsScreen: View {
                         .multilineTextAlignment(.leading)
                     Spacer()
                     typeBadge(meeting.meetingType)
+                    if isAdmin {
+                        Button {
+                            meetingToEdit = meeting
+                        } label: {
+                            Image(systemName: "pencil.circle.fill")
+                                .font(.title3)
+                                .foregroundStyle(AppTheme.accent)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Edit \(meeting.title)")
+                    }
                 }
 
                 // Description
@@ -327,13 +387,11 @@ struct MeetingsScreen: View {
                             .foregroundStyle(.white)
                     }
 
-                    // Location (tappable → Apple Maps directions)
+                    // Location (tappable → choose Apple Maps or Waze)
                     if let address = meeting.locationAddress {
                         Button {
-                            let encoded = address.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-                            if let url = URL(string: "https://maps.apple.com/?daddr=\(encoded)") {
-                                UIApplication.shared.open(url)
-                            }
+                            selectedDirectionsAddress = address
+                            showDirectionsChoice = true
                         } label: {
                             HStack(spacing: 8) {
                                 Image(systemName: "mappin.circle.fill")
@@ -356,7 +414,7 @@ struct MeetingsScreen: View {
                             .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSmall))
                         }
                         .accessibilityLabel("Get directions to \(address)")
-                        .accessibilityHint("Double tap to open Apple Maps with directions")
+                        .accessibilityHint("Double tap to choose Apple Maps or Waze")
                     }
 
                     // Virtual link
@@ -447,6 +505,15 @@ struct MeetingsScreen: View {
             } message: {
                 Text(calendarAlertMessage)
             }
+            .confirmationDialog(
+                "Get Directions",
+                isPresented: $showDirectionsChoice,
+                titleVisibility: .visible
+            ) {
+                Button("Apple Maps") { openAppleMaps(address: selectedDirectionsAddress) }
+                Button("Waze")       { openWaze(address: selectedDirectionsAddress) }
+                Button("Cancel", role: .cancel) { }
+            }
         }
     }
 
@@ -478,6 +545,25 @@ struct MeetingsScreen: View {
         case .inPerson: return AppTheme.accent
         case .virtual: return AppTheme.accentMedium
         case .hybrid: return AppTheme.accentSage
+        }
+    }
+
+    // MARK: - Directions
+
+    private func openAppleMaps(address: String) {
+        let encoded = address.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        if let url = URL(string: "https://maps.apple.com/?daddr=\(encoded)") {
+            UIApplication.shared.open(url)
+        }
+    }
+
+    private func openWaze(address: String) {
+        let encoded = address.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        let wazeURL = URL(string: "waze://?q=\(encoded)&navigate=yes")
+        if let wazeURL, UIApplication.shared.canOpenURL(wazeURL) {
+            UIApplication.shared.open(wazeURL)
+        } else if let webURL = URL(string: "https://waze.com/ul?q=\(encoded)&navigate=yes") {
+            UIApplication.shared.open(webURL)
         }
     }
 

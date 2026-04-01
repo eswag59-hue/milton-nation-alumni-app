@@ -89,7 +89,12 @@ final class CommunityViewModel {
 
         Task {
             // Run content through moderation pipeline
-            let moderationResult = await ContentFilterService.shared.moderateText(content)
+            let safetyResult = await ContentFilterService.shared.analyzeAndEscalate(content, feature: .communityPost)
+            let moderationResult = ModerationResult(
+                status: safetyResult.riskLevel == .highRisk ? .crisis
+                      : safetyResult.riskLevel == .safe     ? .clean : .flagged,
+                matchedKeywords: safetyResult.matches.map(\.keyword)
+            )
             let postStatus = ContentFilterService.shared.postStatus(
                 for: moderationResult,
                 approvedPostCount: approvedCount
@@ -136,12 +141,27 @@ final class CommunityViewModel {
 
     func toggleLike(post: CommunityPost) {
         guard let index = posts.firstIndex(where: { $0.id == post.id }) else { return }
+        // Capture original state for rollback if the server call fails
+        let wasLiked = posts[index].isLikedByCurrentUser
+        let originalCount = posts[index].likesCount
+        // Optimistic update
         posts[index].isLikedByCurrentUser.toggle()
         posts[index].likesCount += posts[index].isLikedByCurrentUser ? 1 : -1
         Task {
-            let _ = try? await dataService.toggleLike(postId: post.id)
-            if posts[index].isLikedByCurrentUser {
-                let _ = try? await dataService.awardPoints(action: .postLiked)
+            do {
+                _ = try await dataService.toggleLike(postId: post.id)
+                if !wasLiked {
+                    let _ = try? await dataService.awardPoints(action: .postLiked)
+                }
+            } catch {
+                // Roll back optimistic update — server rejected the change
+                await MainActor.run {
+                    if let i = posts.firstIndex(where: { $0.id == post.id }) {
+                        posts[i].isLikedByCurrentUser = wasLiked
+                        posts[i].likesCount = originalCount
+                    }
+                }
+                CrashReportingService.shared.recordError(error, context: "CommunityViewModel.toggleLike")
             }
         }
     }
@@ -177,21 +197,26 @@ final class CommunityViewModel {
         commentDrafts[postId] = ""
 
         Task {
-            // Run comment through local content filter
-            let filterResult = ContentFilterService.shared.localFilter(draft)
+            // Run comment through full moderation pipeline (local + server escalation)
+            let safetyResult = await ContentFilterService.shared.analyzeAndEscalate(
+                draft,
+                userId: currentUser?.id,
+                feature: .communityPost
+            )
             let commentStatus: PostStatus
-            switch filterResult.status {
-            case .crisis:  commentStatus = .flaggedForCrisis
-            case .flagged: commentStatus = .pendingReview
-            case .clean:   commentStatus = .approved
+            switch safetyResult.riskLevel {
+            case .highRisk: commentStatus = .flaggedForCrisis
+            case .mediumRisk, .lowRisk: commentStatus = .pendingReview
+            case .safe:     commentStatus = .approved
             }
 
-            if let comment = try? await dataService.addComment(
-                postId: postId,
-                content: draft,
-                status: commentStatus,
-                matchedKeywords: filterResult.matchedKeywords
-            ) {
+            do {
+                let comment = try await dataService.addComment(
+                    postId: postId,
+                    content: draft,
+                    status: commentStatus,
+                    matchedKeywords: safetyResult.matches.map(\.keyword)
+                )
                 let _ = try? await dataService.awardPoints(action: .postCreated)
                 await MainActor.run {
                     commentsByPost[postId, default: []].append(comment)
@@ -213,19 +238,28 @@ final class CommunityViewModel {
                         showPostSubmitted = true
                     }
                 }
+            } catch {
+                // Restore the draft so the user can retry
+                await MainActor.run {
+                    commentDrafts[postId] = draft
+                    postSubmissionMessage = "Failed to post comment. Please try again."
+                    showPostSubmitted = true
+                }
+                CrashReportingService.shared.recordError(error, context: "CommunityViewModel.submitComment")
             }
         }
     }
 
     /// Preload the latest comment for each post (for preview under posts).
+    /// Limited to the first 10 posts to avoid flooding the network with concurrent requests.
     func preloadLatestComments() {
-        for post in posts {
-            if commentsByPost[post.id] == nil {
-                Task {
-                    let fetched = (try? await dataService.fetchComments(postId: post.id)) ?? []
-                    await MainActor.run {
-                        commentsByPost[post.id] = fetched
-                    }
+        let postsToPreload = posts.prefix(10).filter { commentsByPost[$0.id] == nil }
+        for post in postsToPreload {
+            let postId = post.id
+            Task {
+                let fetched = (try? await dataService.fetchComments(postId: postId)) ?? []
+                await MainActor.run {
+                    commentsByPost[postId] = fetched
                 }
             }
         }
@@ -236,6 +270,8 @@ final class CommunityViewModel {
     /// Subscribe to live post updates (new approved posts, status changes).
     private func subscribeToPostUpdates() {
         guard SupabaseConfig.isConfigured else { return }
+        // Skip Realtime in unit test runs — the shared channel singleton causes fatal errors
+        guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else { return }
         isSubscribedToRealtime = true
 
         RealtimeService.shared.subscribeToPosts(

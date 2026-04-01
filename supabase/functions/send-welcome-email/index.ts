@@ -10,16 +10,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-/** Escape special HTML characters to prevent injection attacks. */
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#x27;");
-}
-
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -53,10 +43,15 @@ serve(async (req: Request) => {
     }
     // ──────────────────────────────────────────────────────────────────────────
 
-    const { to, name } = await req.json();
+    // NOTE: We intentionally do NOT accept or use the user's name here.
+    // This function is called via Resend, which does not hold a HIPAA BAA.
+    // Transmitting any PHI (name, email content, etc.) to a non-BAA provider
+    // is a HIPAA violation. The email destination (to) is required to route the
+    // message but is not included in the email body or subject.
+    const { to } = await req.json();
 
-    if (!to || !name) {
-      return new Response(JSON.stringify({ error: "to and name are required" }), {
+    if (!to) {
+      return new Response(JSON.stringify({ error: "to is required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -74,16 +69,16 @@ serve(async (req: Request) => {
 
     if (!RESEND_API_KEY) {
       // Gracefully skip — email not yet configured
-      console.warn("RESEND_API_KEY not set — skipping welcome email to", to);
+      console.warn("RESEND_API_KEY not set — skipping welcome email");
       return new Response(
         JSON.stringify({ sent: false, reason: "email_not_configured" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // HTML-escape user-supplied name BEFORE inserting into HTML template
-    const safeName = escapeHtml(name);
-
+    // Generic greeting — no PHI in body or subject.
+    // Resend does not hold a HIPAA BAA; never include name, DOB, diagnosis,
+    // or any other PHI in emails sent through this function.
     const html = `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><title>Welcome to Milton Nation</title></head>
@@ -94,7 +89,7 @@ serve(async (req: Request) => {
       <p style="color:rgba(255,255,255,0.8);margin:8px 0 0;font-size:14px;">Milton Recovery Centers Alumni Community</p>
     </div>
     <div style="padding:32px;">
-      <h2 style="color:#1a3a5c;margin:0 0 16px;">Welcome, ${safeName}! 🎉</h2>
+      <h2 style="color:#1a3a5c;margin:0 0 16px;">Welcome to Milton Nation! 🎉</h2>
       <p style="color:#444;line-height:1.6;margin:0 0 16px;">
         Your application to join the <strong>Milton Nation</strong> alumni community has been received
         and is currently <strong>pending admin review</strong>.
@@ -112,7 +107,8 @@ serve(async (req: Request) => {
       </div>
       <p style="color:#888;font-size:13px;margin:0;">
         Milton Recovery Centers &middot;
-        <a href="mailto:support@miltonrecoverycenters.com" style="color:#1a3a5c;">Contact Support</a>
+        <a href="https://miltonrecovery.com/app-support/" style="color:#1a3a5c;">Contact Support</a>
+        &middot; <a href="https://miltonrecovery.com" style="color:#1a3a5c;">miltonrecovery.com</a>
       </p>
     </div>
   </div>
@@ -126,9 +122,9 @@ serve(async (req: Request) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Milton Nation <onboarding@resend.dev>",
+        from: "Milton Nation <noreply@miltonrecovery.com>",
         to: [to],
-        subject: `Welcome to Milton Nation, ${safeName}!`,
+        subject: "Welcome to Milton Nation!",
         html,
       }),
     });

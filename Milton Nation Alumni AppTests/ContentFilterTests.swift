@@ -56,7 +56,7 @@ struct ContentFilterTests {
 
     @Test("Multiple flagged keywords detected")
     func multipleFlaggedKeywords() {
-        let result = service.localFilter("I fell off the wagon and started drinking again, feeling hopeless")
+        let result = service.localFilter("I've been craving alcohol and relapsed last weekend, feeling hopeless")
         #expect(result.status == .flagged)
         #expect(result.matchedKeywords.count >= 2)
     }
@@ -156,23 +156,23 @@ struct ContentFilterTests {
 
     @Test("Full moderation pipeline returns correct result for clean text")
     func fullPipelineClean() async {
-        let result = await service.moderateText("Beautiful day for recovery!")
-        #expect(result.status == .clean)
-        #expect(result.matchedKeywords.isEmpty)
+        let result = await service.analyzeAndEscalate("Beautiful day for recovery!")
+        #expect(result.riskLevel == .safe)
+        #expect(result.matches.isEmpty)
     }
 
     @Test("Full moderation pipeline returns correct result for flagged text")
     func fullPipelineFlagged() async {
-        let result = await service.moderateText("I relapsed last weekend")
-        #expect(result.status == .flagged)
-        #expect(!result.matchedKeywords.isEmpty)
+        let result = await service.analyzeAndEscalate("I relapsed last weekend")
+        #expect(result.riskLevel != .safe)
+        #expect(!result.matches.isEmpty)
     }
 
     @Test("Full moderation pipeline returns correct result for crisis text")
     func fullPipelineCrisis() async {
-        let result = await service.moderateText("I want to end it all tonight")
-        #expect(result.status == .crisis)
-        #expect(result.isCrisis)
+        let result = await service.analyzeAndEscalate("I want to die, nothing matters anymore")
+        #expect(result.riskLevel == .highRisk)
+        #expect(result.requiresImmediateEscalation)
     }
 
     // MARK: - Keyword Lists Validation

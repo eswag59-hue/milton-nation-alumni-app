@@ -89,7 +89,7 @@ struct BMTLMeetingModelTests {
             latitude: m.latitude, longitude: m.longitude,
             locationName: m.locationName,
             streetAddress: "", city: "Newark", state: "NJ", zip: "",
-            formats: m.formats, distanceMiles: nil
+            formats: m.formats, fellowship: .na, distanceMiles: nil
         )
         #expect(m.fullAddress == "Newark, NJ")
     }
@@ -238,6 +238,7 @@ extension BMTLMeeting {
             state: "NJ",
             zip: "07666",
             formats: "O,D",
+            fellowship: .na,
             distanceMiles: distanceMiles
         )
     }

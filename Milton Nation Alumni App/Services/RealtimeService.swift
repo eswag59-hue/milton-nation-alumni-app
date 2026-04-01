@@ -47,6 +47,7 @@ final class RealtimeService {
             do {
                 try await channel.subscribeWithError()
             } catch {
+                CrashReportingService.shared.recordError(error, context: "RealtimeService.subscribeToMessages")
                 #if DEBUG
                 print("[RealtimeService] ⚠️ messages channel error: \(error)")
                 #endif
@@ -93,6 +94,7 @@ final class RealtimeService {
             do {
                 try await channel.subscribeWithError()
             } catch {
+                CrashReportingService.shared.recordError(error, context: "RealtimeService.subscribeToPosts")
                 #if DEBUG
                 print("[RealtimeService] ⚠️ posts channel error: \(error)")
                 #endif
@@ -156,6 +158,7 @@ final class RealtimeService {
             do {
                 try await channel.subscribeWithError()
             } catch {
+                CrashReportingService.shared.recordError(error, context: "RealtimeService.subscribeToAdminPosts")
                 #if DEBUG
                 print("[RealtimeService] ⚠️ admin-posts channel error: \(error)")
                 #endif
@@ -223,6 +226,7 @@ final class RealtimeService {
             do {
                 try await channel.subscribeWithError()
             } catch {
+                CrashReportingService.shared.recordError(error, context: "RealtimeService.subscribeToConversations")
                 #if DEBUG
                 print("[RealtimeService] ⚠️ conversations channel error: \(error)")
                 #endif
@@ -275,6 +279,7 @@ final class RealtimeService {
             do {
                 try await channel.subscribeWithError()
             } catch {
+                CrashReportingService.shared.recordError(error, context: "RealtimeService.subscribeToUserProfile")
                 #if DEBUG
                 print("[RealtimeService] ⚠️ profile channel error: \(error)")
                 #endif
@@ -320,6 +325,7 @@ final class RealtimeService {
             do {
                 try await channel.subscribeWithError()
             } catch {
+                CrashReportingService.shared.recordError(error, context: "RealtimeService.subscribeToPendingUsers")
                 #if DEBUG
                 print("[RealtimeService] ⚠️ pending-users channel error: \(error)")
                 #endif

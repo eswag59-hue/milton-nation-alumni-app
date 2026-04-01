@@ -101,9 +101,8 @@ struct ContentSafetyEngine: Sendable {
     let config: ContentSafetyEngineConfig
 
     // Pre-compiled regex patterns — computed once at init.
-    // NSRegularExpression is documented as thread-safe for concurrent matching,
-    // so nonisolated(unsafe) is safe here (object is never mutated post-init).
-    nonisolated(unsafe) private static let compiledPatterns: [(regex: NSRegularExpression, category: ContentCategory, risk: ContentRiskLevel)] = {
+    // NSRegularExpression is thread-safe for concurrent read-only access (Apple docs).
+    private static let compiledPatterns: [(regex: NSRegularExpression, category: ContentCategory, risk: ContentRiskLevel)] = {
         ContentSafetyKeywords.patterns.compactMap { entry in
             guard let rx = try? NSRegularExpression(pattern: entry.pattern, options: [.caseInsensitive]) else {
                 assertionFailure("[ContentSafetyEngine] Failed to compile pattern: \(entry.pattern)")

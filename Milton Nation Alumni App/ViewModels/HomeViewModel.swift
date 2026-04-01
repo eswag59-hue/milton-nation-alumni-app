@@ -37,6 +37,7 @@ final class HomeViewModel {
                 }
             } catch {
                 guard !Task.isCancelled else { return }
+                CrashReportingService.shared.recordError(error, context: "HomeViewModel.loadData")
                 await MainActor.run {
                     // Try loading cached quote
                     if let cachedQuote = cache.loadCachedDailyQuote() {

@@ -128,18 +128,13 @@ serve(async (req: Request) => {
       );
     }
 
-    // Code matches — mark as verified and clean up
-    await supabaseAdmin
-      .from("sms_otp_challenges")
-      .update({ verified: true })
-      .eq("id", challenge.id);
-
-    // Clean up old challenges for this user
+    // Code matches — delete ALL challenges for this user immediately.
+    // There is no reason to keep a verified record; deleting prevents
+    // verified=true rows accumulating and eliminates replay-attack surface.
     await supabaseAdmin
       .from("sms_otp_challenges")
       .delete()
-      .eq("user_id", user.id)
-      .neq("id", challenge.id);
+      .eq("user_id", user.id);
 
     return new Response(
       JSON.stringify({ verified: true }),

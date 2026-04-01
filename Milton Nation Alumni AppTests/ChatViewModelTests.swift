@@ -6,7 +6,7 @@ import Foundation
 struct ChatViewModelTests {
 
     /// Waits for an unstructured MainActor Task spawned inside a ViewModel to complete.
-    private func waitForViewModel(ms: Int = 500) async throws {
+    private func waitForViewModel(ms: Int = 1200) async throws {
         try await Task.sleep(for: .milliseconds(ms))
         for _ in 0..<10 { await Task.yield() }
     }

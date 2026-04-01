@@ -16,18 +16,16 @@ final class NearbyMeetingsViewModel {
     init(locationService: LocationService = LocationService(),
          meetingService: BMTLMeetingServiceProtocol? = nil) {
         self.locationService = locationService
-        // On simulator: use mock data so the page always loads without GPS.
-        // On real device: use live BMLT API.
-        #if targetEnvironment(simulator)
-        self.meetingService = meetingService ?? MockBMTLMeetingService()
-        #else
-        self.meetingService = meetingService ?? BMTLMeetingService()
-        #endif
+        // Always use the live BMLT API so meetings reflect the device's actual location.
+        // The BMLT directory is worldwide — it returns real meetings near any coordinates,
+        // including simulator locations (e.g. California) and real devices (e.g. New Jersey).
+        // In unit tests: pass a MockBMTLMeetingService explicitly via the meetingService param.
+        self.meetingService = meetingService ?? CombinedNearbyMeetingService()
     }
 
     // MARK: - Lifecycle
 
-    /// Called when the Nearby tab appears for the first time.
+    /// Called when the Nearby tab appears.
     func onAppear() {
         guard !hasRequestedLocation else { return }
         hasRequestedLocation = true
@@ -36,6 +34,13 @@ final class NearbyMeetingsViewModel {
         case .notDetermined:
             locationService.requestLocationPermission()
         case .authorizedWhenInUse, .authorizedAlways:
+            // If we already have a location, fetch right away.
+            // requestCurrentLocation() may return the same coordinate → onChange
+            // won't fire (value didn't change) → meetings would never load.
+            if let existing = locationService.currentLocation {
+                fetchMeetings(for: existing)
+            }
+            // Always ask for a fresh fix so the map stays current.
             locationService.requestCurrentLocation()
         case .denied, .restricted:
             errorMessage = "Location access is required to find nearby meetings. Please enable it in Settings > Privacy > Location Services."
@@ -62,6 +67,7 @@ final class NearbyMeetingsViewModel {
                     errorMessage = "No support meetings found within \(Int(radiusMiles)) miles."
                 }
             } catch {
+                CrashReportingService.shared.recordError(error, context: "NearbyMeetingsViewModel.fetchNearbyMeetings")
                 errorMessage = error.localizedDescription
             }
             isLoading = false

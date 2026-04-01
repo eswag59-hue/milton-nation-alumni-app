@@ -49,6 +49,7 @@ final class ChatViewModel {
                 }
             } catch {
                 guard !Task.isCancelled else { return }
+                CrashReportingService.shared.recordError(error, context: "ChatViewModel.loadConversations")
                 await MainActor.run {
                     // Try offline cache fallback
                     if let cachedConvs = cache.loadCachedConversations() {
@@ -80,6 +81,7 @@ final class ChatViewModel {
                 }
             } catch {
                 guard !Task.isCancelled else { return }
+                CrashReportingService.shared.recordError(error, context: "ChatViewModel.loadMessages")
                 await MainActor.run {
                     messages = []
                     isLoading = false
@@ -96,7 +98,12 @@ final class ChatViewModel {
         messageText = ""
         Task {
             // Run content through moderation pipeline
-            let moderationResult = await ContentFilterService.shared.moderateText(content)
+            let safetyResult = await ContentFilterService.shared.analyzeAndEscalate(content, feature: .chat)
+            let moderationResult = ModerationResult(
+                status: safetyResult.riskLevel == .highRisk ? .crisis
+                      : safetyResult.riskLevel == .safe     ? .clean : .flagged,
+                matchedKeywords: safetyResult.matches.map(\.keyword)
+            )
             let msgStatus = ContentFilterService.shared.messageStatus(for: moderationResult)
 
             if let msg = try? await dataService.sendMessage(
@@ -144,6 +151,7 @@ final class ChatViewModel {
 
                     mediaURL = publicURL.absoluteString
                 } catch {
+                    CrashReportingService.shared.recordError(error, context: "ChatViewModel.sendMedia")
                     #if DEBUG
                     print("[ChatVM] ⚠️ Media upload failed: \(error.localizedDescription)")
                     #endif
@@ -180,6 +188,7 @@ final class ChatViewModel {
     /// Subscribe to live message updates for the active conversation.
     private func subscribeToMessages(conversationId: UUID) {
         guard SupabaseConfig.isConfigured else { return }
+        guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else { return }
 
         RealtimeService.shared.subscribeToMessages(
             conversationId: conversationId

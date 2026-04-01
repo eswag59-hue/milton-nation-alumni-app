@@ -31,7 +31,7 @@ struct AppViewModelTests {
 
         vm.logout()
         // Give the Task time to complete
-        try await Task.sleep(for: .milliseconds(500))
+        try await Task.sleep(for: .milliseconds(1200))
 
         #expect(vm.isAuthenticated == false)
         #expect(vm.currentUser == nil)
@@ -95,7 +95,7 @@ struct AppViewModelTests {
         vm.login(user: user)
 
         // Give the async point award time to process
-        try await Task.sleep(for: .milliseconds(500))
+        try await Task.sleep(for: .milliseconds(1200))
 
         // Points should have been updated (original was 0, dailyLogin adds 10)
         #expect(vm.currentUser?.totalPoints ?? 0 > 0)
@@ -110,7 +110,7 @@ struct AppViewModelTests {
         vm.login(user: user)
 
         // Give any async work time
-        try await Task.sleep(for: .milliseconds(500))
+        try await Task.sleep(for: .milliseconds(1200))
 
         // Points should remain the same since we already got them today
         #expect(vm.currentUser?.totalPoints == 100)

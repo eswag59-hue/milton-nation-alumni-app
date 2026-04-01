@@ -124,7 +124,7 @@ struct PostCard: View {
             }
 
             // Most recent comment preview (when comments not expanded)
-            if !isCommentsExpanded, let latestComment = comments.last ?? (post.commentsCount > 0 ? nil : nil) {
+            if !isCommentsExpanded, let latestComment = comments.last {
                 HStack(alignment: .top, spacing: 6) {
                     Image(systemName: "bubble.left.fill")
                         .font(.caption2)

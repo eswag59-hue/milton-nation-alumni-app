@@ -2,9 +2,22 @@ import SwiftUI
 import UIKit
 
 extension View {
-    /// Prevents this view and all subviews from appearing in screenshots,
-    /// screen recordings, AirPlay mirrors, or QuickTime captures.
-    /// The OS renders the protected area as solid black in any capture.
+    /// Protects PHI from screen recording, AirPlay mirroring, and QuickTime
+    /// capture by overlaying a black privacy screen whenever `UIScreen.isCaptured`
+    /// is true.
+    ///
+    /// **Why not the UITextField-wrapping technique?**
+    /// Embedding the entire app inside a UITextField's private secure container
+    /// (the older approach) wraps every SwiftUI view inside an extra
+    /// UIViewController + UIHostingController layer. That breaks UIKit's
+    /// responder chain, prevents SwiftUI TextFields from becoming first
+    /// responder, and silently eats all touch events — making the whole app
+    /// appear frozen. The private UITextField subview structure also changed in
+    /// iOS 17, making that technique unreliable.
+    ///
+    /// **This implementation** attaches a standard SwiftUI `.overlay` and
+    /// listens for `UIScreen.capturedDidChangeNotification`.  No UIKit view
+    /// wrapping, no responder-chain interference, works on simulator and device.
     func screenshotProtected() -> some View {
         modifier(ScreenshotProtectionModifier())
     }
@@ -13,91 +26,67 @@ extension View {
 // MARK: - Modifier
 
 private struct ScreenshotProtectionModifier: ViewModifier {
+
+    @State private var isBeingCaptured = false
+
     func body(content: Content) -> some View {
-        ScreenshotProtectionRepresentable {
-            content
-        }
-        .ignoresSafeArea()
-    }
-}
-
-// MARK: - UIViewControllerRepresentable Bridge
-
-/// Bridges SwiftUI content into a UIKit hierarchy where
-/// UITextField's secure container provides OS-level capture blocking.
-private struct ScreenshotProtectionRepresentable<Content: View>: UIViewControllerRepresentable {
-    @ViewBuilder let content: Content
-
-    func makeUIViewController(context: Context) -> ScreenshotProtectionViewController<Content> {
-        ScreenshotProtectionViewController(rootView: content)
-    }
-
-    func updateUIViewController(
-        _ vc: ScreenshotProtectionViewController<Content>,
-        context: Context
-    ) {
-        vc.hostingController.rootView = content
-    }
-}
-
-// MARK: - View Controller
-
-/// Embeds SwiftUI content inside a UITextField's private secure container.
-/// The system automatically blacks out anything inside this container
-/// in screenshots, screen recordings, and screen mirrors.
-final class ScreenshotProtectionViewController<Content: View>: UIViewController {
-
-    let hostingController: UIHostingController<Content>
-    private let secureTextField = UITextField()
-
-    init(rootView: Content) {
-        self.hostingController = UIHostingController(rootView: rootView)
-        super.init(nibName: nil, bundle: nil)
+        content
+            .overlay {
+                if isBeingCaptured {
+                    captureBlocker
+                }
+            }
+            // Set initial state synchronously so the overlay is ready before
+            // the first frame is drawn (e.g. if a recording is already active).
+            .onAppear {
+                isBeingCaptured = Self.isCaptured
+            }
+            // React to recording / mirroring starting or stopping.
+            .onReceive(
+                NotificationCenter.default.publisher(
+                    for: UIScreen.capturedDidChangeNotification
+                )
+            ) { notification in
+                if let screen = notification.object as? UIScreen {
+                    isBeingCaptured = screen.isCaptured
+                } else {
+                    isBeingCaptured = Self.isCaptured
+                }
+            }
     }
 
-    required init?(coder: NSCoder) { fatalError("init(coder:) not supported") }
-
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        view.backgroundColor = .clear
-        setupSecureContainer()
+    /// iOS 16+ deprecated `UIScreen.screens`; read `isCaptured` via the
+    /// connected scene's window instead.
+    private static var isCaptured: Bool {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first?
+            .screen
+            .isCaptured ?? false
     }
 
-    private func setupSecureContainer() {
-        // A UITextField with isSecureTextEntry=true has a private system subview
-        // that the OS uses to prevent its content from being captured.
-        // We exploit this by embedding our SwiftUI content inside it.
-        secureTextField.isSecureTextEntry = true
-        secureTextField.isUserInteractionEnabled = false
-        secureTextField.backgroundColor = .clear
-        secureTextField.frame = view.bounds
-        secureTextField.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        view.addSubview(secureTextField)
+    /// Full-screen black overlay shown during screen recording / mirroring.
+    private var captureBlocker: some View {
+        Color.black
+            .ignoresSafeArea()
+            .overlay {
+                VStack(spacing: 16) {
+                    Image(systemName: "lock.shield.fill")
+                        .font(.system(size: 52))
+                        .foregroundStyle(.white)
 
-        // The first (and only) subview is the OS secure container.
-        guard let secureContainer = secureTextField.subviews.first else {
-            // Fallback: add content directly if secure container not found
-            embedHostingController(in: view)
-            return
-        }
+                    Text("Screen Recording Blocked")
+                        .font(.title3.bold())
+                        .foregroundStyle(.white)
 
-        secureContainer.isUserInteractionEnabled = true
-        embedHostingController(in: secureContainer)
-    }
-
-    private func embedHostingController(in container: UIView) {
-        addChild(hostingController)
-        hostingController.view.translatesAutoresizingMaskIntoConstraints = false
-        hostingController.view.backgroundColor = .clear
-        container.addSubview(hostingController.view)
-
-        NSLayoutConstraint.activate([
-            hostingController.view.topAnchor.constraint(equalTo: container.topAnchor),
-            hostingController.view.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-            hostingController.view.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            hostingController.view.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-        ])
-
-        hostingController.didMove(toParent: self)
+                    Text("Milton Nation protects your health\ninformation from screen capture.")
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.75))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 32)
+                }
+            }
+            .transition(.opacity)
+            .animation(.easeInOut(duration: 0.25), value: isBeingCaptured)
     }
 }

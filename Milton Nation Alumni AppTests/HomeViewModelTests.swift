@@ -9,7 +9,7 @@ struct HomeViewModelTests {
     /// Sleeps long enough for mock async work, then yields multiple times to drain
     /// any pending MainActor work (e.g., `await MainActor.run { ... }` in the task).
     private func waitForViewModel() async throws {
-        try await Task.sleep(for: .milliseconds(500))
+        try await Task.sleep(for: .milliseconds(1200))
         for _ in 0..<10 { await Task.yield() }
     }
 

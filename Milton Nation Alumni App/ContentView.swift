@@ -5,8 +5,14 @@ struct ContentView: View {
 
     var body: some View {
         if appViewModel.isAuthenticated {
-            if appViewModel.currentUser?.role.isAdmin == true && !appViewModel.isViewingAsUser {
+            if appViewModel.currentUser?.status == .pending {
+                // New user awaiting admin facility assignment + approval
+                PendingApprovalScreen()
+            } else if appViewModel.currentUser?.role.isAdmin == true && !appViewModel.isViewingAsUser {
                 AdminDashboardScreen()
+                    .sheet(isPresented: $appViewModel.showFacilityPicker) {
+                        FacilityPickerScreen()
+                    }
             } else if appViewModel.currentUser?.role == .alumni {
                 alumniTabView
                     .sheet(isPresented: $appViewModel.showSobrietyCheck) {
@@ -17,7 +23,7 @@ struct ContentView: View {
                 alumniTabView
             }
         } else {
-            LoginScreen()
+            LoginScreen(authService: appViewModel.authService)
         }
     }
 

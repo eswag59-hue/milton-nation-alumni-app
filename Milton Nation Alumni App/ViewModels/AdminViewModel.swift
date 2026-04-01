@@ -109,8 +109,17 @@ final class AdminViewModel {
     // MARK: - Pending User Approvals
     var pendingUsers: [User] = []
     var pendingUserNotifications: [PendingUserNotification] = []
+    /// Admin's own facility — set by AdminDashboardScreen on appear. Nil = super_admin (sees all).
+    var adminFacilityFilter: Facility? = nil
+    /// Per-user facility overrides: admin can change a user's claimed facility before approving.
+    var facilityOverrides: [UUID: Facility] = [:]
     var unreadPendingUserCount: Int {
         pendingUsers.count
+    }
+
+    /// Returns the facility to assign for a given pending user (override if set, else user's claimed facility).
+    func effectiveFacility(for user: User) -> Facility {
+        facilityOverrides[user.id] ?? user.facility ?? .florida
     }
 
     // MARK: - Badge Earned Notifications
@@ -269,6 +278,7 @@ final class AdminViewModel {
         case gamification = "Gamification"
         case announcements = "Announcements"
         case contentFlags = "Content Flags"
+        case emergencyAccess = "Emergency Access"
 
         var icon: String {
             switch self {
@@ -285,6 +295,7 @@ final class AdminViewModel {
             case .gamification: return "star.circle.fill"
             case .announcements: return "megaphone.fill"
             case .contentFlags: return "flag.fill"
+            case .emergencyAccess: return "lock.open.trianglebadge.exclamationmark.fill"
             }
         }
 
@@ -303,6 +314,7 @@ final class AdminViewModel {
             case .gamification: return AppTheme.accentLime
             case .announcements: return AppTheme.accent
             case .contentFlags: return AppTheme.struggling
+            case .emergencyAccess: return .red
             }
         }
 
@@ -313,7 +325,7 @@ final class AdminViewModel {
 
         /// Sections accessible only by Super Admin
         static let superAdminOnlySections: Set<AdminSection> = [
-            .assignments, .contacts, .userManagement, .gamification
+            .assignments, .contacts, .userManagement, .gamification, .emergencyAccess
         ]
 
         /// Returns filtered sections based on the user's role
@@ -341,7 +353,7 @@ final class AdminViewModel {
             async let pending = try? dataService.fetchPendingPosts()
             async let allPosts = try? dataService.fetchPosts(category: nil)
             async let meetingsResult = try? dataService.fetchMeetings()
-            async let pendingUsersResult = try? dataService.fetchPendingUsers()
+            async let pendingUsersResult = try? dataService.fetchPendingUsers(facilityFilter: adminFacilityFilter)
 
             let pendingResult = await pending ?? []
             let allResult = await allPosts ?? []
@@ -442,13 +454,16 @@ final class AdminViewModel {
     // MARK: - Pending User Approval Actions
 
     func approvePendingUser(userId: UUID) {
+        guard let user = pendingUsers.first(where: { $0.id == userId }) else { return }
+        let facility = effectiveFacility(for: user)
         Task {
             do {
-                let approvedUser = try await dataService.approveUser(userId: userId)
+                let approvedUser = try await dataService.approveUser(userId: userId, facility: facility)
                 await MainActor.run {
                     pendingUsers.removeAll { $0.id == userId }
                     pendingUserNotifications.removeAll { $0.user.id == userId }
-                    AuditLogger.shared.log(.approveUser, userId: userId, detail: "Approved: \(approvedUser.fullName)")
+                    facilityOverrides.removeValue(forKey: userId)
+                    AuditLogger.shared.log(.approveUser, userId: userId, detail: "Approved: \(approvedUser.fullName) → \(facility.displayName)")
 
                     // Notify the user they've been approved
                     PushNotificationService.shared.scheduleLocalNotification(
@@ -458,6 +473,7 @@ final class AdminViewModel {
                     )
                 }
             } catch {
+                CrashReportingService.shared.recordError(error, context: "AdminViewModel.approvePendingUser")
                 #if DEBUG
                 print("[AdminViewModel] Failed to approve user: \(error.localizedDescription)")
                 #endif
@@ -476,6 +492,7 @@ final class AdminViewModel {
                     AuditLogger.shared.log(.rejectUser, userId: userId, detail: "Rejected: \(userName)")
                 }
             } catch {
+                CrashReportingService.shared.recordError(error, context: "AdminViewModel.rejectPendingUser")
                 #if DEBUG
                 print("[AdminViewModel] Failed to reject user: \(error.localizedDescription)")
                 #endif
@@ -486,7 +503,7 @@ final class AdminViewModel {
     /// Refresh just the pending users list (called after push notification tap).
     func refreshPendingUsers() {
         Task {
-            let users = (try? await dataService.fetchPendingUsers()) ?? []
+            let users = (try? await dataService.fetchPendingUsers(facilityFilter: adminFacilityFilter)) ?? []
             await MainActor.run {
                 pendingUsers = users
                 pendingUserNotifications = users.map { user in
@@ -967,6 +984,41 @@ final class AdminViewModel {
         showStaffPhotoPicker = false
     }
 
+    /// Upload staff photo to Supabase Storage and persist the URL to the profiles table.
+    func uploadStaffPhoto(data: Data, staffId: UUID) async {
+        guard SupabaseConfig.isConfigured else { return }
+        let path = "staff-photos/\(staffId.uuidString).jpg"
+        do {
+            try await SupabaseConfig.client.storage
+                .from("profile-photos")
+                .upload(path, data: data, options: .init(contentType: "image/jpeg", upsert: true))
+
+            let publicURL = try SupabaseConfig.client.storage
+                .from("profile-photos")
+                .getPublicURL(path: path)
+
+            let urlString = publicURL.absoluteString
+
+            // Update in-memory model
+            await MainActor.run { completePhotoUpload(photoURL: urlString) }
+
+            // Persist to profiles table
+            _ = try? await SupabaseConfig.client.from("profiles")
+                .update(["profile_photo_url": urlString])
+                .eq("id", value: staffId.uuidString)
+                .execute()
+        } catch {
+            CrashReportingService.shared.recordError(error, context: "AdminViewModel.uploadStaffPhoto")
+            await MainActor.run {
+                staffPhotoUploadId = nil
+                showStaffPhotoPicker = false
+            }
+            #if DEBUG
+            print("[AdminViewModel] Photo upload failed: \(error.localizedDescription)")
+            #endif
+        }
+    }
+
     // MARK: - Gamification Admin Controls
 
     private func loadGamificationData() {
@@ -1097,6 +1149,7 @@ final class AdminViewModel {
                     AuditLogger.shared.log(.sendInvite, detail: "Invited \(maskedPhone)\(name.isEmpty ? "" : " (\(name))")")
                 }
             } catch {
+                CrashReportingService.shared.recordError(error, context: "AdminViewModel.sendInvite")
                 await MainActor.run {
                     inviteSending = false
                     inviteError = error.localizedDescription
@@ -1132,6 +1185,7 @@ final class AdminViewModel {
                     self.isLoadingContentFlags = false
                 }
             } catch {
+                CrashReportingService.shared.recordError(error, context: "AdminViewModel.loadContentFlags")
                 await MainActor.run { self.isLoadingContentFlags = false }
                 #if DEBUG
                 print("[AdminViewModel] ⚠️ Failed to load content flags: \(error)")
@@ -1178,10 +1232,189 @@ final class AdminViewModel {
                 let auditAction: AuditAction = status == .dismissed ? .contentFlagDismissed : .contentFlagReviewed
                 AuditLogger.shared.log(auditAction, detail: "flagId:\(flagId.uuidString) → \(status.rawValue)")
             } catch {
+                CrashReportingService.shared.recordError(error, context: "AdminViewModel.updateFlagStatus:\(flagId.uuidString.prefix(8))")
                 #if DEBUG
                 print("[AdminViewModel] ⚠️ Failed to update flag \(flagId): \(error)")
                 #endif
             }
+        }
+    }
+
+    // MARK: - Break-Glass Emergency Access
+
+    /// Represents a single emergency access grant in the audit log.
+    struct EmergencyAccessEntry: Identifiable {
+        let id: UUID
+        let adminId: UUID
+        let adminName: String
+        let targetUserId: UUID
+        let targetUserName: String
+        let reason: String
+        let grantedAt: Date
+        let expiresAt: Date
+        var revokedAt: Date?
+
+        var isActive: Bool {
+            revokedAt == nil && Date() < expiresAt
+        }
+
+        var statusLabel: String {
+            if let revoked = revokedAt {
+                return "Revoked \(revoked.formatted(.relative(presentation: .named)))"
+            } else if Date() >= expiresAt {
+                return "Expired"
+            } else {
+                let remaining = Int(expiresAt.timeIntervalSinceNow / 60)
+                return "Active — expires in \(remaining)m"
+            }
+        }
+    }
+
+    // Break-glass UI state
+    var emergencyAccessLog: [EmergencyAccessEntry] = []
+    var emergencyAccessReason: String = ""
+    var isGrantingEmergencyAccess = false
+    var showBreakGlassConfirmation = false
+    var breakGlassTargetUser: User?
+    var emergencyAccessError: String?
+
+    /// Load the emergency access audit log from Supabase.
+    func loadEmergencyAccessLog(adminId: UUID) {
+        Task {
+            guard SupabaseConfig.isConfigured else {
+                // Mock data for simulator
+                await MainActor.run {
+                    emergencyAccessLog = []
+                }
+                return
+            }
+            do {
+                struct EALRow: Decodable {
+                    let id: UUID
+                    let admin_id: UUID
+                    let target_user_id: UUID
+                    let reason: String
+                    let granted_at: Date
+                    let expires_at: Date
+                    let revoked_at: Date?
+                }
+                let rows: [EALRow] = try await SupabaseConfig.client
+                    .from("emergency_access_log")
+                    .select()
+                    .order("granted_at", ascending: false)
+                    .limit(50)
+                    .execute()
+                    .value
+
+                let entries = rows.map { row in
+                    EmergencyAccessEntry(
+                        id: row.id,
+                        adminId: row.admin_id,
+                        adminName: "Super Admin",
+                        targetUserId: row.target_user_id,
+                        targetUserName: allUsers.first(where: { $0.id == row.target_user_id })?.fullName ?? "Unknown User",
+                        reason: row.reason,
+                        grantedAt: row.granted_at,
+                        expiresAt: row.expires_at,
+                        revokedAt: row.revoked_at
+                    )
+                }
+                await MainActor.run { emergencyAccessLog = entries }
+            } catch {
+                CrashReportingService.shared.recordError(error, context: "AdminViewModel.loadEmergencyAccessLog")
+            }
+        }
+    }
+
+    /// Grant 1-hour emergency access to a target user's data.
+    func grantEmergencyAccess(adminId: UUID, targetUser: User, reason: String) {
+        Task {
+            await MainActor.run {
+                isGrantingEmergencyAccess = true
+                emergencyAccessError = nil
+            }
+
+            let expiresAt = Date().addingTimeInterval(3600) // 1 hour
+
+            if SupabaseConfig.isConfigured {
+                do {
+                    struct InsertPayload: Encodable {
+                        let admin_id: String
+                        let target_user_id: String
+                        let reason: String
+                        let expires_at: String
+                    }
+                    let iso = ISO8601DateFormatter()
+                    let payload = InsertPayload(
+                        admin_id: adminId.uuidString,
+                        target_user_id: targetUser.id.uuidString,
+                        reason: reason,
+                        expires_at: iso.string(from: expiresAt)
+                    )
+                    try await SupabaseConfig.client
+                        .from("emergency_access_log")
+                        .insert(payload)
+                        .execute()
+                } catch {
+                    CrashReportingService.shared.recordError(error, context: "AdminViewModel.grantEmergencyAccess")
+                    await MainActor.run {
+                        emergencyAccessError = "Failed to log emergency access. Try again."
+                        isGrantingEmergencyAccess = false
+                    }
+                    return
+                }
+            }
+
+            AuditLogger.shared.log(
+                .emergencyAccessGranted,
+                userId: adminId,
+                detail: "target:\(targetUser.id.uuidString.prefix(8)) reason:\(reason.prefix(80))"
+            )
+
+            // Notify the affected user via local notification (real device would get APNS push)
+            PushNotificationService.shared.scheduleLocalNotification(
+                title: "Privacy Notice",
+                body: "An administrator accessed your account data under an emergency access procedure.",
+                userInfo: ["type": "emergency_access_notice", "userId": targetUser.id.uuidString]
+            )
+
+            await MainActor.run {
+                isGrantingEmergencyAccess = false
+                emergencyAccessReason = ""
+                breakGlassTargetUser = nil
+                showBreakGlassConfirmation = false
+            }
+
+            loadEmergencyAccessLog(adminId: adminId)
+        }
+    }
+
+    /// Revoke an active emergency access grant immediately.
+    func revokeEmergencyAccess(entryId: UUID, adminId: UUID) {
+        Task {
+            if SupabaseConfig.isConfigured {
+                do {
+                    struct RevokePayload: Encodable {
+                        let revoked_at: String
+                    }
+                    let iso = ISO8601DateFormatter()
+                    let payload = RevokePayload(revoked_at: iso.string(from: Date()))
+                    try await SupabaseConfig.client
+                        .from("emergency_access_log")
+                        .update(payload)
+                        .eq("id", value: entryId.uuidString)
+                        .execute()
+                } catch {
+                    CrashReportingService.shared.recordError(error, context: "AdminViewModel.revokeEmergencyAccess")
+                    return
+                }
+            }
+            AuditLogger.shared.log(
+                .emergencyAccessRevoked,
+                userId: adminId,
+                detail: "entryId:\(entryId.uuidString.prefix(8))"
+            )
+            loadEmergencyAccessLog(adminId: adminId)
         }
     }
 }

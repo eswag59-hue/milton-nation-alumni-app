@@ -1,4 +1,5 @@
 import Foundation
+import Supabase
 
 /// Lightweight analytics foundation for tracking user engagement.
 ///
@@ -93,11 +94,44 @@ final class AnalyticsService: @unchecked Sendable {
         let events = eventBuffer
         eventBuffer = []
 
-        // Analytics backend integration point:
-        // POST to Supabase Edge Function, Mixpanel, or Amplitude
         #if DEBUG
-        print("[Analytics] Flushed \(events.count) events")
+        print("[Analytics] Flushing \(events.count) events")
         #endif
+
+        guard SupabaseConfig.isConfigured else { return }
+
+        let userProps = userProperties
+        Task {
+            await Self.sendToSupabase(events, userProperties: userProps)
+        }
+    }
+
+    private static func sendToSupabase(
+        _ events: [AnalyticsEvent],
+        userProperties: [String: String]
+    ) async {
+        let userId = userProperties["user_id"].flatMap { UUID(uuidString: $0) }
+        let role   = userProperties["role"]
+
+        let records = events.map { event in
+            AnalyticsRecord(
+                userId: userId,
+                eventName: event.name,
+                properties: event.properties,
+                role: role
+            )
+        }
+
+        do {
+            try await SupabaseConfig.client
+                .from("analytics_events")
+                .insert(records)
+                .execute()
+        } catch {
+            #if DEBUG
+            print("[Analytics] Flush failed: \(error.localizedDescription)")
+            #endif
+        }
     }
 
     // MARK: - Event Names
@@ -149,4 +183,20 @@ private struct AnalyticsEvent: Sendable {
     let name: String
     let properties: [String: String]
     let timestamp: Date
+}
+
+// MARK: - Supabase Insert Record
+
+private struct AnalyticsRecord: Encodable {
+    let userId: UUID?
+    let eventName: String
+    let properties: [String: String]
+    let role: String?
+
+    enum CodingKeys: String, CodingKey {
+        case userId    = "user_id"
+        case eventName = "event_name"
+        case properties
+        case role
+    }
 }

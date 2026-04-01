@@ -27,7 +27,20 @@ struct AdminDashboardScreen: View {
             }
             .background(AppTheme.background)
             .onAppear {
+                // Set facility filter so admins only see their own facility's data
+                if appViewModel.currentUser?.role.isSuperAdmin == true {
+                    viewModel.adminFacilityFilter = appViewModel.activeFacility
+                } else {
+                    viewModel.adminFacilityFilter = appViewModel.currentUser?.adminFacility
+                }
                 viewModel.loadData()
+            }
+            .onChange(of: appViewModel.activeFacility) { _, newFacility in
+                // Super admin switched facility — reload with new filter
+                if appViewModel.currentUser?.role.isSuperAdmin == true {
+                    viewModel.adminFacilityFilter = newFacility
+                    viewModel.loadData()
+                }
             }
             .sheet(isPresented: $viewModel.showingContentEditor) {
                 contentEditorSheet
@@ -48,9 +61,9 @@ struct AdminDashboardScreen: View {
             .onChange(of: staffPhotoItem) {
                 Task {
                     if let data = try? await staffPhotoItem?.loadTransferable(type: Data.self),
-                       let _ = UIImage(data: data) {
-                        let mockURL = "mock://staff-photo/\(UUID().uuidString)"
-                        viewModel.completePhotoUpload(photoURL: mockURL)
+                       UIImage(data: data) != nil,
+                       let staffId = viewModel.staffPhotoUploadId {
+                        await viewModel.uploadStaffPhoto(data: data, staffId: staffId)
                     }
                     staffPhotoItem = nil
                 }
@@ -145,14 +158,38 @@ struct AdminDashboardScreen: View {
                     }
                 }
                 Spacer()
-                if let user = appViewModel.currentUser {
-                    Text(user.role.displayName)
-                        .font(.caption.bold())
-                        .padding(.horizontal, 10)
+                VStack(alignment: .trailing, spacing: 4) {
+                    if let user = appViewModel.currentUser {
+                        Text(user.role.displayName)
+                            .font(.caption.bold())
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .foregroundStyle(.white)
+                            .background(AppTheme.accent)
+                            .clipShape(Capsule())
+                    }
+                    // Facility badge + switch button (visible to all admins)
+                    Button {
+                        if appViewModel.currentUser?.role.isSuperAdmin == true {
+                            appViewModel.showFacilityPicker = true
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(appViewModel.activeFacility.emoji)
+                            Text(appViewModel.activeFacility.displayName)
+                                .font(.caption.bold())
+                            if appViewModel.currentUser?.role.isSuperAdmin == true {
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 9, weight: .bold))
+                            }
+                        }
+                        .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .foregroundStyle(.white)
-                        .background(AppTheme.accent)
+                        .foregroundStyle(AppTheme.accent)
+                        .background(AppTheme.accent.opacity(0.1))
                         .clipShape(Capsule())
+                    }
+                    .disabled(appViewModel.currentUser?.role.isSuperAdmin != true)
                 }
             }
             .padding(.horizontal)
@@ -326,6 +363,8 @@ struct AdminDashboardScreen: View {
             announcementsSection
         case .contentFlags:
             contentFlagsSection
+        case .emergencyAccess:
+            emergencyAccessSection
         }
     }
 
@@ -405,6 +444,37 @@ struct AdminDashboardScreen: View {
                 Label("Registered \(user.createdAt, style: .relative) ago", systemImage: "clock")
                     .font(.caption2)
                     .foregroundStyle(AppTheme.textSecondary)
+            }
+
+            // Facility assignment picker
+            VStack(alignment: .leading, spacing: 6) {
+                Text("ASSIGN TO FACILITY")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(AppTheme.textSecondary)
+                HStack(spacing: 8) {
+                    ForEach(Facility.allCases) { facility in
+                        let isSelected = viewModel.effectiveFacility(for: user) == facility
+                        Button {
+                            viewModel.facilityOverrides[user.id] = facility
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text(facility.emoji)
+                                Text(facility.displayName)
+                                    .font(.caption.bold())
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 6)
+                            .foregroundStyle(isSelected ? .white : AppTheme.textPrimary)
+                            .background(isSelected ? AppTheme.accent : AppTheme.background)
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .stroke(isSelected ? AppTheme.accent : AppTheme.divider, lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
             }
 
             // Action buttons
@@ -1115,9 +1185,21 @@ struct AdminDashboardScreen: View {
                                 Text(contact.name)
                                     .font(.caption.bold())
                                     .foregroundStyle(AppTheme.textPrimary)
-                                Text(contact.phoneNumber)
-                                    .font(.caption2)
-                                    .foregroundStyle(AppTheme.textSecondary)
+                                // Tappable phone number — opens native Phone app
+                                Button {
+                                    PhoneService.call(contact.phoneNumber)
+                                } label: {
+                                    HStack(spacing: 4) {
+                                        Text(contact.phoneNumber)
+                                            .font(.caption2)
+                                            .foregroundStyle(AppTheme.accent)
+                                        Image(systemName: "phone.fill")
+                                            .font(.caption2)
+                                            .foregroundStyle(AppTheme.accent)
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("Call \(contact.name) at \(contact.phoneNumber)")
                                 if let role = contact.role {
                                     Text(role)
                                         .font(.caption2)
@@ -1160,9 +1242,21 @@ struct AdminDashboardScreen: View {
                             Text(resource.name)
                                 .font(.caption.bold())
                                 .foregroundStyle(AppTheme.textPrimary)
-                            Text(resource.phoneNumber)
-                                .font(.caption2)
-                                .foregroundStyle(AppTheme.textSecondary)
+                            // Tappable phone number — opens native Phone app
+                            Button {
+                                PhoneService.call(resource.phoneNumber)
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Text(resource.phoneNumber)
+                                        .font(.caption2)
+                                        .foregroundStyle(AppTheme.struggling)
+                                    Image(systemName: "phone.fill")
+                                        .font(.caption2)
+                                        .foregroundStyle(AppTheme.struggling)
+                                }
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Call \(resource.name) at \(resource.phoneNumber)")
                         }
                         Spacer()
                     }
@@ -2347,6 +2441,189 @@ struct AdminDashboardScreen: View {
             }
             .padding(.vertical, 16)
             Spacer()
+        }
+    }
+
+    // MARK: - Emergency Access (Break-Glass) Section
+
+    private var emergencyAccessSection: some View {
+        @Bindable var viewModel = viewModel
+        return VStack(alignment: .leading, spacing: 16) {
+
+            // Warning banner
+            HStack(spacing: 10) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.red)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Emergency Access Only")
+                        .font(.caption.bold())
+                        .foregroundStyle(.red)
+                    Text("Every action is permanently logged and the user is notified. Use only in genuine emergencies (crisis, safety risk, unresponsive user).")
+                        .font(.caption2)
+                        .foregroundStyle(AppTheme.textSecondary)
+                }
+            }
+            .padding(12)
+            .background(Color.red.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+
+            // Grant new access
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Grant Emergency Access")
+                    .font(.subheadline.bold())
+                    .foregroundStyle(AppTheme.textPrimary)
+
+                // User picker
+                Menu {
+                    ForEach(viewModel.allUsers.filter { $0.role != UserRole.admin && $0.role != UserRole.superAdmin }) { user in
+                        Button(user.fullName) {
+                            viewModel.breakGlassTargetUser = user
+                        }
+                    }
+                } label: {
+                    HStack {
+                        Text(viewModel.breakGlassTargetUser?.fullName ?? "Select user…")
+                            .foregroundStyle(viewModel.breakGlassTargetUser == nil ? AppTheme.textSecondary : AppTheme.textPrimary)
+                        Spacer()
+                        Image(systemName: "chevron.down")
+                            .font(.caption)
+                            .foregroundStyle(AppTheme.textSecondary)
+                    }
+                    .padding(10)
+                    .background(AppTheme.background)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+
+                // Reason input
+                TextField("Reason for access (required)…", text: $viewModel.emergencyAccessReason, axis: .vertical)
+                    .font(.subheadline)
+                    .padding(10)
+                    .background(AppTheme.background)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .lineLimit(2...4)
+
+                if let err = viewModel.emergencyAccessError {
+                    Text(err)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+
+                Button {
+                    viewModel.showBreakGlassConfirmation = true
+                } label: {
+                    HStack {
+                        if viewModel.isGrantingEmergencyAccess {
+                            ProgressView().controlSize(.small).tint(.white)
+                        } else {
+                            Image(systemName: "lock.open.trianglebadge.exclamationmark.fill")
+                        }
+                        Text("Grant 1-Hour Emergency Access")
+                    }
+                    .font(.subheadline.bold())
+                    .frame(maxWidth: .infinity)
+                    .padding(12)
+                    .foregroundStyle(.white)
+                    .background(
+                        (viewModel.breakGlassTargetUser == nil || viewModel.emergencyAccessReason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            ? Color.red.opacity(0.4)
+                            : Color.red
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                }
+                .disabled(viewModel.breakGlassTargetUser == nil || viewModel.emergencyAccessReason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || viewModel.isGrantingEmergencyAccess)
+                .alert("Confirm Emergency Access", isPresented: $viewModel.showBreakGlassConfirmation) {
+                    Button("Cancel", role: .cancel) {}
+                    Button("Grant Access", role: .destructive) {
+                        if let adminId = appViewModel.currentUser?.id,
+                           let targetUser = viewModel.breakGlassTargetUser {
+                            viewModel.grantEmergencyAccess(
+                                adminId: adminId,
+                                targetUser: targetUser,
+                                reason: viewModel.emergencyAccessReason
+                            )
+                        }
+                    }
+                } message: {
+                    Text("This will grant 1-hour emergency access to \(viewModel.breakGlassTargetUser?.fullName ?? "this user")'s data. The user will be notified and this action will be permanently logged.")
+                }
+            }
+            .padding()
+            .background(AppTheme.cardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
+
+            // Active / Recent access log
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text("Access Log")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(AppTheme.textPrimary)
+                    Spacer()
+                    Button {
+                        if let adminId = appViewModel.currentUser?.id {
+                            viewModel.loadEmergencyAccessLog(adminId: adminId)
+                        }
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.caption)
+                            .foregroundStyle(AppTheme.textSecondary)
+                    }
+                }
+
+                if viewModel.emergencyAccessLog.isEmpty {
+                    emptyState(icon: "lock.shield.fill", message: "No emergency access events recorded")
+                } else {
+                    ForEach(viewModel.emergencyAccessLog) { entry in
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
+                                Text(entry.targetUserName)
+                                    .font(.caption.bold())
+                                    .foregroundStyle(AppTheme.textPrimary)
+                                Spacer()
+                                Text(entry.statusLabel)
+                                    .font(.caption2)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 2)
+                                    .foregroundStyle(entry.isActive ? .white : AppTheme.textSecondary)
+                                    .background(entry.isActive ? Color.red : AppTheme.background)
+                                    .clipShape(Capsule())
+                            }
+                            Text("Reason: \(entry.reason)")
+                                .font(.caption2)
+                                .foregroundStyle(AppTheme.textSecondary)
+                                .lineLimit(2)
+                            Text(entry.grantedAt.formatted(date: .abbreviated, time: .shortened))
+                                .font(.caption2)
+                                .foregroundStyle(AppTheme.textSecondary.opacity(0.7))
+
+                            if entry.isActive {
+                                Button {
+                                    if let adminId = appViewModel.currentUser?.id {
+                                        viewModel.revokeEmergencyAccess(entryId: entry.id, adminId: adminId)
+                                    }
+                                } label: {
+                                    Label("Revoke Now", systemImage: "xmark.shield.fill")
+                                        .font(.caption.bold())
+                                        .foregroundStyle(.red)
+                                }
+                            }
+                        }
+                        .padding(10)
+                        .background(entry.isActive ? Color.red.opacity(0.06) : AppTheme.background)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                        Divider()
+                    }
+                }
+            }
+            .padding()
+            .background(AppTheme.cardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
+        }
+        .padding(.horizontal)
+        .onAppear {
+            if let adminId = appViewModel.currentUser?.id {
+                viewModel.loadEmergencyAccessLog(adminId: adminId)
+            }
         }
     }
 }

@@ -21,6 +21,7 @@ struct ChatMessage: Identifiable, Codable {
     var content: String?
     var mediaURL: String?
     var fileName: String?
+    var voiceDuration: TimeInterval?   // seconds; nil when unknown
     var status: MessageModerationStatus = .clean
     var matchedKeywords: [String] = []
     var createdAt: Date

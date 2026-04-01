@@ -12,7 +12,7 @@ enum ContentRiskLevel: String, Codable, CaseIterable, Comparable, Sendable {
     private static let order: [ContentRiskLevel] = [.safe, .lowRisk, .mediumRisk, .highRisk]
 
     static func < (lhs: ContentRiskLevel, rhs: ContentRiskLevel) -> Bool {
-        order.firstIndex(of: lhs)! < order.firstIndex(of: rhs)!
+        (order.firstIndex(of: lhs) ?? 0) < (order.firstIndex(of: rhs) ?? 0)
     }
 
     var displayName: String {
@@ -128,6 +128,7 @@ enum ContentSafetyKeywords {
             "shoot myself", "shot myself",
             "cut my wrists", "slit my wrists",
             "going to end it", "gonna end it",
+            "want to end it all", "end it all",
             "plan to end it all", "decided to end it",
             // Imminent signals
             "said my goodbyes", "wrote a note",
@@ -150,7 +151,7 @@ enum ContentSafetyKeywords {
             "see no future", "no future for me",
             "thinking about self harm", "thinking about hurting myself",
             "hurting myself", "hurt myself",
-            "cutting myself", "started cutting",
+            "cutting", "cutting myself", "started cutting",
             "self harm", "self-harm", "selfharm",
             "burning myself",
         ],
@@ -243,7 +244,7 @@ enum ContentSafetyKeywords {
             "blacked out", "black out",
             "relapsed on alcohol", "drank alcohol",
             "back on the bottle", "back on the sauce",
-            "fell off the wagon", "broke my sobriety",
+            "broke my sobriety",
             "not sober anymore",
         ],
         medium: [

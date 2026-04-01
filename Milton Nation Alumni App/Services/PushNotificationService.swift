@@ -122,6 +122,7 @@ final class PushNotificationService: NSObject, @unchecked Sendable {
                 print("[PushNotification] ✅ Token synced to Supabase")
                 #endif
             } catch {
+                CrashReportingService.shared.recordError(error, context: "PushNotificationService.syncTokenToBackend")
                 #if DEBUG
                 print("[PushNotification] ⚠️ Failed to sync token: \(error.localizedDescription)")
                 #endif
@@ -151,15 +152,59 @@ final class PushNotificationService: NSObject, @unchecked Sendable {
         }
     }
 
+    // MARK: - Notification Preferences
+
+    /// Notification category used to gate delivery against user preferences.
+    enum NotificationType {
+        case communityPost
+        case chat
+        case meeting
+        case milestone
+        case general   // always delivered (crisis alerts, system messages)
+    }
+
+    /// Returns true if the user has enabled notifications for this category.
+    /// Reads from the same UserDefaults keys written by SettingsScreen.
+    func isEnabled(_ type: NotificationType) -> Bool {
+        switch type {
+        case .communityPost: return UserDefaults.standard.object(forKey: "notifications_community") as? Bool ?? true
+        case .chat:          return UserDefaults.standard.object(forKey: "notifications_chat") as? Bool ?? true
+        case .meeting:       return UserDefaults.standard.object(forKey: "notifications_meetings") as? Bool ?? true
+        case .milestone:     return UserDefaults.standard.object(forKey: "notifications_milestones") as? Bool ?? true
+        case .general:       return true
+        }
+    }
+
+    /// Sync notification preferences to the device_tokens record in Supabase
+    /// so the backend can filter push delivery server-side.
+    func syncPreferences() {
+        guard SupabaseConfig.isConfigured, let userId = currentUserId, let token = deviceToken else { return }
+        let prefs: [String: Bool] = [
+            "community": isEnabled(.communityPost),
+            "chat":      isEnabled(.chat),
+            "meetings":  isEnabled(.meeting),
+            "milestones": isEnabled(.milestone)
+        ]
+        Task {
+            _ = try? await SupabaseConfig.client.from("device_tokens")
+                .update(["notification_preferences": prefs])
+                .eq("user_id", value: userId.uuidString)
+                .eq("token", value: token)
+                .execute()
+        }
+    }
+
     // MARK: - Local Notifications (Fallback)
 
-    /// Schedule a local notification (used when push isn't available or for
-    /// immediate in-app events like comment notifications).
+    /// Schedule a local notification, respecting the user's per-category preferences.
     func scheduleLocalNotification(
         title: String,
         body: String,
+        type: NotificationType = .general,
         userInfo: [String: Any] = [:]
     ) {
+        guard isEnabled(type) else { return }
+
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body

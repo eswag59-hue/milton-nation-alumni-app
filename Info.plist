@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Bundle identity -->
+	<key>CFBundleDisplayName</key>
+	<string>Milton Alumni</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+
+	<!-- App Store category -->
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.healthcare-fitness</string>
+
+	<!-- URL schemes we query (required for canOpenURL to return true for waze://) -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>waze</string>
+	</array>
+
+	<!-- iOS requirement -->
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+
+	<!-- Privacy usage descriptions -->
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Milton Alumni uses your calendar to save meeting events so you never miss a session.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Milton Alumni uses your camera to capture photos for community posts and chat messages.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Milton Alumni uses Face ID to securely sign you in.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Milton Alumni uses your location to find nearby support meetings in your area.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Milton Alumni uses the microphone for voice messages in chat.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Milton Alumni lets you share photos from your library in community posts and chat messages.</string>
+
+	<!-- Supabase config (injected from xcconfig at build time) -->
+	<key>SUPABASE_ANON_KEY</key>
+	<string>$(SUPABASE_ANON_KEY)</string>
+	<key>SUPABASE_URL</key>
+	<string>$(SUPABASE_URL)</string>
+
+	<!-- UI configuration -->
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+		<key>UISceneConfigurations</key>
+		<dict/>
+	</dict>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>UILaunchScreen</key>
+	<dict/>
+	<key>NSContactsUsageDescription</key>
+	<string>Milton Alumni accesses your contacts so you can quickly invite people to join the recovery community.</string>
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>arm64</string>
+	</array>
+	<key>UIStatusBarStyle</key>
+	<string></string>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+	</array>
+</dict>
+</plist>

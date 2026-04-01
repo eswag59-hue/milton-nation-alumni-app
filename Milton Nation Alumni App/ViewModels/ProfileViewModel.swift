@@ -96,8 +96,10 @@ final class ProfileViewModel {
                 await MainActor.run {
                     user = saved
                     isUploadingPhoto = false
+                    photoUploadError = nil   // clear any previous error on success
                 }
             } catch {
+                CrashReportingService.shared.recordError(error, context: "ProfileViewModel.uploadProfilePhoto")
                 await MainActor.run {
                     photoUploadError = "Failed to upload photo. Please try again."
                     isUploadingPhoto = false

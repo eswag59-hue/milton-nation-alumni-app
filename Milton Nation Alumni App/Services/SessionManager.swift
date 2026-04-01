@@ -7,7 +7,7 @@ final class SessionManager {
     var showScreenshotAlert = false
 
     private var idleTimer: Timer?
-    private let timeoutInterval: TimeInterval = 15 * 60 // 15 minutes
+    private let timeoutInterval: TimeInterval = 30 * 60 // 30 minutes
 
     private var screenshotObserver: Any?
 
