@@ -194,7 +194,7 @@ struct ContentFlagsAdminView: View {
                             .foregroundStyle(AppTheme.accent)
                             .clipShape(Capsule())
                     }
-                    Text(flag.feature.rawValue.replacingOccurrences(of: "_", with: " ").capitalized)
+                    Text(flag.feature.displayName)
                         .font(.system(size: 9))
                         .foregroundStyle(AppTheme.textSecondary)
                 }
@@ -293,7 +293,7 @@ struct ContentFlagsAdminView: View {
                     Text("Categories: \(flag.categories.map { categoryLabel($0) }.joined(separator: ", "))")
                         .font(.caption)
                         .foregroundStyle(AppTheme.textSecondary)
-                    Text("Feature: \(flag.feature.rawValue.replacingOccurrences(of: "_", with: " ").capitalized)")
+                    Text("Feature: \(flag.feature.displayName)")
                         .font(.caption)
                         .foregroundStyle(AppTheme.textSecondary)
                     Text(flag.redactedSummary)

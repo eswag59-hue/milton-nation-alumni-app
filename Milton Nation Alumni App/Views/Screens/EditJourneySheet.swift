@@ -7,6 +7,7 @@ struct EditJourneySheet: View {
     @State private var selectedMonth: Int
     @State private var selectedDay: Int
     @State private var isSaving = false
+    @State private var saveError: String? = nil
 
     private let calendar = Calendar.current
     private let monthNames = Calendar.current.monthSymbols
@@ -148,6 +149,14 @@ struct EditJourneySheet: View {
                     .disabled(isSaving)
                 }
             }
+            .alert("Save Failed", isPresented: Binding(
+                get: { saveError != nil },
+                set: { if !$0 { saveError = nil } }
+            )) {
+                Button("OK", role: .cancel) { saveError = nil }
+            } message: {
+                Text(saveError ?? "")
+            }
         }
     }
 
@@ -178,11 +187,18 @@ struct EditJourneySheet: View {
         user.updatedAt = Date()
 
         Task {
-            _ = try? await appViewModel.dataService.updateProfile(user: user)
-            await MainActor.run {
-                appViewModel.currentUser = user
-                isSaving = false
-                dismiss()
+            do {
+                _ = try await appViewModel.dataService.updateProfile(user: user)
+                await MainActor.run {
+                    appViewModel.currentUser = user
+                    isSaving = false
+                    dismiss()
+                }
+            } catch {
+                await MainActor.run {
+                    isSaving = false
+                    saveError = "Failed to save. Please try again."
+                }
             }
         }
     }

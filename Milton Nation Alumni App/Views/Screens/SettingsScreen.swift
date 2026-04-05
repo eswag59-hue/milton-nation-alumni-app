@@ -218,14 +218,16 @@ struct SettingsScreen: View {
             if let jsonData = try? JSONSerialization.data(withJSONObject: exportDict, options: .prettyPrinted) {
                 let fileName = "MiltonAlumni_MyData_\(Date().formatted(.iso8601)).json"
                 let url = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
-                try? jsonData.write(to: url)
-
-                AuditLogger.shared.log(.exportUserData, userId: user.id, detail: "User requested data export")
-
-                await MainActor.run {
-                    exportedDataURL = url
-                    isExportingData = false
-                    showDataExportSheet = true
+                do {
+                    try jsonData.write(to: url)
+                    AuditLogger.shared.log(.exportUserData, userId: user.id, detail: "User requested data export")
+                    await MainActor.run {
+                        exportedDataURL = url
+                        isExportingData = false
+                        showDataExportSheet = true
+                    }
+                } catch {
+                    await MainActor.run { isExportingData = false }
                 }
             } else {
                 await MainActor.run { isExportingData = false }

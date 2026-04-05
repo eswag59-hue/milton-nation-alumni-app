@@ -193,7 +193,7 @@ struct ProfileScreen: View {
                     Divider().padding(.leading, 52)
                     infoRow(icon: "calendar.badge.clock", label: "Discharge Date", value: user.dischargeDate.formatted(date: .abbreviated, time: .omitted))
                     Divider().padding(.leading, 52)
-                    infoRow(icon: "clock.fill", label: "Days Since Admission", value: "\(viewModel.daysSinceAdmission) days")
+                    infoRow(icon: "clock.fill", label: "Days Since Discharge", value: "\(viewModel.daysSinceAdmission) days")
                 }
                 .cardStyle()
                 .padding(.horizontal)

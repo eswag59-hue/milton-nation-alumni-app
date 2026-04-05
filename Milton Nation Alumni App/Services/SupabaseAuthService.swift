@@ -145,10 +145,13 @@ final class SupabaseAuthService: AuthServiceProtocol {
     // MARK: - Logout
 
     func logout() async throws {
+        // Always clear local state even if signOut throws (network offline, etc.)
+        defer {
+            KeychainService.delete(key: .authToken)
+            KeychainService.delete(key: .mfaCompleted)
+            cachedUser = nil
+        }
         try await client.auth.signOut()
-        KeychainService.delete(key: .authToken)
-        KeychainService.delete(key: .mfaCompleted)
-        cachedUser = nil
     }
 
     // MARK: - Register

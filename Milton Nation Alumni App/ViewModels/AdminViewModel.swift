@@ -421,16 +421,16 @@ final class AdminViewModel {
         sobrietyNotifications = [
             SobrietyChangeNotification(
                 user: MockData.alumniRoster[0],
-                previousDate: Calendar.current.date(byAdding: .day, value: -365, to: Date())!,
-                newDate: Calendar.current.date(byAdding: .day, value: -3, to: Date())!,
-                changedAt: Calendar.current.date(byAdding: .hour, value: -6, to: Date())!,
+                previousDate: Calendar.current.date(byAdding: .day, value: -365, to: Date()) ?? Date(),
+                newDate: Calendar.current.date(byAdding: .day, value: -3, to: Date()) ?? Date(),
+                changedAt: Calendar.current.date(byAdding: .hour, value: -6, to: Date()) ?? Date(),
                 isRead: false
             ),
             SobrietyChangeNotification(
                 user: MockData.alumniRoster[1],
-                previousDate: Calendar.current.date(byAdding: .day, value: -200, to: Date())!,
-                newDate: Calendar.current.date(byAdding: .day, value: -1, to: Date())!,
-                changedAt: Calendar.current.date(byAdding: .day, value: -1, to: Date())!,
+                previousDate: Calendar.current.date(byAdding: .day, value: -200, to: Date()) ?? Date(),
+                newDate: Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date(),
+                changedAt: Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date(),
                 isRead: true
             ),
         ]
@@ -522,19 +522,19 @@ final class AdminViewModel {
             BadgeEarnedNotification(
                 user: MockData.alumniRoster[3],
                 badge: badges[0],
-                earnedAt: Calendar.current.date(byAdding: .hour, value: -2, to: Date())!,
+                earnedAt: Calendar.current.date(byAdding: .hour, value: -2, to: Date()) ?? Date(),
                 isRead: false
             ),
             BadgeEarnedNotification(
                 user: MockData.alumniRoster[1],
                 badge: badges[2],
-                earnedAt: Calendar.current.date(byAdding: .day, value: -1, to: Date())!,
+                earnedAt: Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date(),
                 isRead: false
             ),
             BadgeEarnedNotification(
                 user: MockData.alumniRoster[5],
                 badge: badges[4],
-                earnedAt: Calendar.current.date(byAdding: .day, value: -2, to: Date())!,
+                earnedAt: Calendar.current.date(byAdding: .day, value: -2, to: Date()) ?? Date(),
                 isRead: true
             ),
         ]
@@ -624,13 +624,13 @@ final class AdminViewModel {
                 id: UUID(), title: "Morning Meditation Reminder",
                 body: "Take 10 minutes each morning to center yourself. Focus on your breath and set an intention for the day.",
                 type: .reflection, isPinned: false,
-                createdAt: Calendar.current.date(byAdding: .day, value: -2, to: Date())!
+                createdAt: Calendar.current.date(byAdding: .day, value: -2, to: Date()) ?? Date()
             ),
             AdminContentItem(
                 id: UUID(), title: "New Group Session Starting",
                 body: "We are launching a new alumni support group every Wednesday at 6pm. All are welcome!",
                 type: .news, isPinned: true,
-                createdAt: Calendar.current.date(byAdding: .day, value: -1, to: Date())!
+                createdAt: Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
             ),
             AdminContentItem(
                 id: UUID(), title: "Holiday Hours Update",
@@ -818,8 +818,8 @@ final class AdminViewModel {
                 }
             }()
             let date = entry.isDays
-                ? Calendar.current.date(byAdding: .day, value: -1, to: Date())!
-                : Calendar.current.date(byAdding: .hour, value: entry.hoursAgo, to: Date())!
+                ? Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
+                : Calendar.current.date(byAdding: .hour, value: entry.hoursAgo, to: Date()) ?? Date()
 
             return ChatMonitorEntry(
                 alumniName: entry.alumni,

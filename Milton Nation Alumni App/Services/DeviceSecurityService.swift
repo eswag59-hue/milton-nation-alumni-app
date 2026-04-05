@@ -96,7 +96,7 @@ final class DeviceSecurityService: @unchecked Sendable {
         let testPath = "/private/jailbreak_test_\(UUID().uuidString).txt"
         do {
             try "test".write(toFile: testPath, atomically: true, encoding: .utf8)
-            try FileManager.default.removeItem(atPath: testPath)
+            try? FileManager.default.removeItem(atPath: testPath) // best-effort cleanup; file existing confirms jailbreak
             return true   // Wrote outside sandbox — jailbroken
         } catch {
             // Expected: permission denied on stock iOS
