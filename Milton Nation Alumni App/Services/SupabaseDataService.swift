@@ -455,6 +455,34 @@ final class SupabaseDataService: DataServiceProtocol {
         return meetings
     }
 
+    func createMeeting(_ meeting: Meeting) async throws -> Meeting {
+        let inserted: Meeting = try await client.from("meetings")
+            .insert(meeting)
+            .select()
+            .single()
+            .execute()
+            .value
+        return inserted
+    }
+
+    func updateMeeting(_ meeting: Meeting) async throws -> Meeting {
+        let updated: Meeting = try await client.from("meetings")
+            .update(meeting)
+            .eq("id", value: meeting.id.uuidString)
+            .select()
+            .single()
+            .execute()
+            .value
+        return updated
+    }
+
+    func deleteMeeting(meetingId: UUID) async throws {
+        try await client.from("meetings")
+            .delete()
+            .eq("id", value: meetingId.uuidString)
+            .execute()
+    }
+
     // MARK: - Chat
 
     func fetchConversations() async throws -> [Conversation] {
@@ -809,6 +837,169 @@ final class SupabaseDataService: DataServiceProtocol {
             .update(["status": "rejected"])
             .eq("id", value: userId.uuidString)
             .execute()
+    }
+
+    // MARK: - Admin: Roster & Assignments
+
+    func fetchAlumniUsers(facility: Facility?) async throws -> [User] {
+        var query = client.from("profiles")
+            .select()
+            .eq("role", value: "alumni")
+            .eq("status", value: "active")
+        if let facility {
+            query = query.eq("facility", value: facility.rawValue)
+        }
+        let users: [User] = try await query
+            .order("full_name", ascending: true)
+            .execute()
+            .value
+        return users
+    }
+
+    func fetchStaffMembers(facility: Facility?) async throws -> [User] {
+        var query = client.from("profiles")
+            .select()
+            .in("role", values: ["case_manager","therapist","counselor"])
+            .eq("status", value: "active")
+        if let facility {
+            query = query.eq("admin_facility", value: facility.rawValue)
+        }
+        let users: [User] = try await query
+            .order("full_name", ascending: true)
+            .execute()
+            .value
+        return users
+    }
+
+    nonisolated private struct StaffAssignmentRow: Decodable {
+        let userId: UUID
+        let staffId: UUID
+        enum CodingKeys: String, CodingKey {
+            case userId = "user_id"
+            case staffId = "staff_id"
+        }
+    }
+
+    func fetchStaffAssignments() async throws -> [(userId: UUID, staffId: UUID)] {
+        let rows: [StaffAssignmentRow] = try await client.from("staff_assignments")
+            .select("user_id, staff_id")
+            .execute()
+            .value
+        return rows.map { ($0.userId, $0.staffId) }
+    }
+
+    // MARK: - Admin: Notifications
+
+    nonisolated private struct SobrietyLogRow: Decodable {
+        let id: UUID
+        let userId: UUID
+        let previousDate: Date?
+        let newDate: Date
+        let changedAt: Date
+        let isReset: Bool
+        let userProfile: NestedProfile
+        struct NestedProfile: Decodable {
+            let fullName: String
+            let facility: String?
+            enum CodingKeys: String, CodingKey {
+                case fullName = "full_name"
+                case facility
+            }
+        }
+        enum CodingKeys: String, CodingKey {
+            case id, userId = "user_id"
+            case previousDate = "previous_date"
+            case newDate = "new_date"
+            case changedAt = "changed_at"
+            case isReset = "is_reset"
+            case userProfile = "user_profile:profiles!user_id"
+        }
+    }
+
+    func fetchSobrietyChanges(since: Date, facility: Facility?) async throws -> [SobrietyChangeRow] {
+        let formatter = ISO8601DateFormatter()
+        let rows: [SobrietyLogRow] = try await client.from("sobriety_change_log")
+            .select("id, user_id, previous_date, new_date, changed_at, is_reset, user_profile:profiles!user_id(full_name, facility)")
+            .gte("changed_at", value: formatter.string(from: since))
+            .order("changed_at", ascending: false)
+            .limit(50)
+            .execute()
+            .value
+        return rows
+            .filter { facility == nil || $0.userProfile.facility == facility?.rawValue }
+            .map {
+                SobrietyChangeRow(
+                    id: $0.id,
+                    userId: $0.userId,
+                    userName: $0.userProfile.fullName,
+                    previousDate: $0.previousDate,
+                    newDate: $0.newDate,
+                    changedAt: $0.changedAt,
+                    isReset: $0.isReset
+                )
+            }
+    }
+
+    nonisolated private struct BadgeAwardLogRow: Decodable {
+        let id: UUID
+        let userId: UUID
+        let badgeId: UUID
+        let earnedAt: Date
+        let userProfile: BProfile
+        let badge: BBadge
+        struct BProfile: Decodable {
+            let fullName: String
+            let facility: String?
+            enum CodingKeys: String, CodingKey {
+                case fullName = "full_name"
+                case facility
+            }
+        }
+        struct BBadge: Decodable {
+            let name: String
+            let emoji: String
+        }
+        enum CodingKeys: String, CodingKey {
+            case id
+            case userId = "user_id"
+            case badgeId = "badge_id"
+            case earnedAt = "earned_at"
+            case userProfile = "user_profile:profiles!user_id"
+            case badge = "badge:badges!badge_id"
+        }
+    }
+
+    func fetchRecentBadgeAwards(limit: Int, facility: Facility?) async throws -> [BadgeAwardRow] {
+        let rows: [BadgeAwardLogRow] = try await client.from("user_badges")
+            .select("id, user_id, badge_id, earned_at, user_profile:profiles!user_id(full_name, facility), badge:badges!badge_id(name, emoji)")
+            .order("earned_at", ascending: false)
+            .limit(limit)
+            .execute()
+            .value
+        return rows
+            .filter { facility == nil || $0.userProfile.facility == facility?.rawValue }
+            .map {
+                BadgeAwardRow(
+                    id: $0.id,
+                    userId: $0.userId,
+                    userName: $0.userProfile.fullName,
+                    badgeId: $0.badgeId,
+                    badgeName: $0.badge.name,
+                    badgeEmoji: $0.badge.emoji,
+                    earnedAt: $0.earnedAt
+                )
+            }
+    }
+
+    func fetchFlaggedMessages(limit: Int, facility: Facility?) async throws -> [ChatMessage] {
+        let messages: [ChatMessage] = try await client.from("messages")
+            .select()
+            .in("status", values: ["flagged","crisis"])
+            .order("created_at", ascending: false)
+            .limit(limit)
+            .execute()
+            .value
+        return messages
     }
 
     // MARK: - Invite

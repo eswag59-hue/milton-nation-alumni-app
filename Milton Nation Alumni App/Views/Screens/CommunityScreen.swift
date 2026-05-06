@@ -91,6 +91,16 @@ struct CommunityScreen: View {
                         }
                         .padding()
                     }
+                    // Pull-to-refresh: kicks off loadPosts() and resolves on completion
+                    .refreshable {
+                        await withCheckedContinuation { continuation in
+                            viewModel.loadPosts()
+                            // Tiny delay so the spinner is visible long enough to feel responsive
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                                continuation.resume()
+                            }
+                        }
+                    }
                 }
             }
             .background(AppTheme.background)

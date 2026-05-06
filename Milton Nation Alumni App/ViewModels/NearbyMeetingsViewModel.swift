@@ -52,25 +52,35 @@ final class NearbyMeetingsViewModel {
     // MARK: - Fetch
 
     /// Fetches meetings from the BMLT API using the given location.
+    /// All `@Observable` mutations are hopped to MainActor so SwiftUI never
+    /// renders from a background thread.
     func fetchMeetings(for location: CLLocation) {
         Task {
-            isLoading = true
-            errorMessage = nil
+            await MainActor.run {
+                isLoading = true
+                errorMessage = nil
+            }
             do {
-                meetings = try await meetingService.fetchNearbyMeetings(
+                let fetched = try await meetingService.fetchNearbyMeetings(
                     latitude: location.coordinate.latitude,
                     longitude: location.coordinate.longitude,
                     radiusMiles: radiusMiles,
                     maxResults: maxResults
                 )
-                if meetings.isEmpty {
-                    errorMessage = "No support meetings found within \(Int(radiusMiles)) miles."
+                await MainActor.run {
+                    meetings = fetched
+                    if meetings.isEmpty {
+                        errorMessage = "No support meetings found within \(Int(radiusMiles)) miles."
+                    }
+                    isLoading = false
                 }
             } catch {
                 CrashReportingService.shared.recordError(error, context: "NearbyMeetingsViewModel.fetchNearbyMeetings")
-                errorMessage = error.localizedDescription
+                await MainActor.run {
+                    errorMessage = error.localizedDescription
+                    isLoading = false
+                }
             }
-            isLoading = false
         }
     }
 

@@ -163,6 +163,35 @@ struct User: Identifiable, Codable, Hashable {
     }
 }
 
+// MARK: - Placeholder helper
+
+extension User {
+    /// Lightweight placeholder used when admin views receive only an id+name from
+    /// a JOIN and don't need to round-trip the full row. All other fields use
+    /// safe defaults so the User struct remains valid for SwiftUI rendering.
+    static func placeholder(id: UUID, fullName: String) -> User {
+        User(
+            id: id,
+            email: "",
+            phone: "",
+            fullName: fullName,
+            username: fullName.lowercased().replacingOccurrences(of: " ", with: "_"),
+            profilePhotoURL: nil,
+            sobrietyDate: Date(),
+            dischargeDate: Date(),
+            recoveryProgram: "",
+            role: .alumni,
+            status: .active,
+            mfaMethod: nil,
+            totalPoints: 0,
+            lastLogin: nil,
+            lastPointsAwarded: nil,
+            createdAt: Date(),
+            updatedAt: Date()
+        )
+    }
+}
+
 struct StaffAssignment: Identifiable, Codable {
     let id: UUID
     let userId: UUID

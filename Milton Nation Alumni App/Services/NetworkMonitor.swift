@@ -36,11 +36,21 @@ final class NetworkMonitor {
     private let monitor = NWPathMonitor()
     private let queue = DispatchQueue(label: "NetworkMonitor", qos: .utility)
 
+    /// Posted when the device's network reachability transitions from offline → online.
+    /// Subscribers (analytics, queued message senders, etc.) can use this to trigger retry.
+    static let didReconnect = Notification.Name("NetworkMonitorDidReconnect")
+
     private init() {
         monitor.pathUpdateHandler = { [weak self] path in
             Task { @MainActor [weak self] in
-                self?.isConnected = path.status == .satisfied
-                self?.connectionType = self?.resolveType(path) ?? .unknown
+                guard let self else { return }
+                let wasConnected = self.isConnected
+                self.isConnected = path.status == .satisfied
+                self.connectionType = self.resolveType(path)
+                // Post on offline→online transition only
+                if !wasConnected && self.isConnected {
+                    NotificationCenter.default.post(name: NetworkMonitor.didReconnect, object: nil)
+                }
             }
         }
         monitor.start(queue: queue)

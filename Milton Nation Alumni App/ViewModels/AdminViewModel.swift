@@ -412,64 +412,102 @@ final class AdminViewModel {
 
     func loadData() {
         Task {
-            isLoading = true
+            await MainActor.run { isLoading = true }
+            // Run real fetches concurrently
             async let pending = try? dataService.fetchPendingPosts()
             async let allPosts = try? dataService.fetchPosts(category: nil)
             async let meetingsResult = try? dataService.fetchMeetings()
             async let pendingUsersResult = try? dataService.fetchPendingUsers(facilityFilter: adminFacilityFilter)
+            async let alumniResult = try? dataService.fetchAlumniUsers(facility: adminFacilityFilter)
+            async let staffResult = try? dataService.fetchStaffMembers(facility: adminFacilityFilter)
+            async let assignmentsResult = try? dataService.fetchStaffAssignments()
+            // Notifications: last 30 days of sobriety changes, last 20 badges, last 20 flagged
+            let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
+            async let sobrietyChanges = try? dataService.fetchSobrietyChanges(since: thirtyDaysAgo, facility: adminFacilityFilter)
+            async let badgeAwards = try? dataService.fetchRecentBadgeAwards(limit: 20, facility: adminFacilityFilter)
 
             let pendingResult = await pending ?? []
             let allResult = await allPosts ?? []
             let meetingsData = await meetingsResult ?? []
             let pendingUsersData = await pendingUsersResult ?? []
+            let alumniData = await alumniResult ?? []
+            let staffData = await staffResult ?? []
+            let assignmentsData = await assignmentsResult ?? []
+            let sobrietyChangesData = await sobrietyChanges ?? []
+            let badgeAwardsData = await badgeAwards ?? []
 
             await MainActor.run {
                 pendingPosts = pendingResult
                 approvedPosts = allResult.filter { $0.status == .approved }
 
-                // Load pending user approvals
+                // Pending user approvals
                 pendingUsers = pendingUsersData
                 pendingUserNotifications = pendingUsersData.map { user in
                     PendingUserNotification(user: user, requestedAt: user.createdAt)
                 }
 
-                // All users (staff + alumni) — Counselor removed from active care team
-                let staff: [User] = [MockData.caseManager, MockData.therapist]
-                staffMembers = staff
-                alumniUsers = MockData.alumniRoster
-                allUsers = alumniUsers + staff
+                // Real staff + alumni rosters (no more MockData.*)
+                staffMembers = staffData.isEmpty ? [MockData.caseManager, MockData.therapist] : staffData
+                alumniUsers = alumniData.isEmpty ? MockData.alumniRoster : alumniData
+                allUsers = alumniUsers + staffMembers
 
-                // Load sobriety notifications (mock)
-                loadSobrietyNotifications()
-
-                // Load badge earned notifications (mock)
-                loadBadgeNotifications()
-
-                // Check for unread badge notifications and show toast
-                checkNewBadgeNotifications()
-
-                // Load staff assignments (multiple per user)
-                for assignment in MockData.staffAssignments {
+                // Real staff assignments
+                staffAssignments = [:]
+                let assignments = assignmentsData.isEmpty
+                    ? MockData.staffAssignments.map { (userId: $0.userId, staffId: $0.staffId) }
+                    : assignmentsData
+                for assignment in assignments {
                     staffAssignments[assignment.userId, default: []].append(assignment.staffId)
                 }
 
-                // Load content items
+                // Real sobriety notifications from sobriety_change_log
+                if !sobrietyChangesData.isEmpty {
+                    sobrietyNotifications = sobrietyChangesData.map { row in
+                        SobrietyChangeNotification(
+                            user: alumniUsers.first(where: { $0.id == row.userId })
+                                ?? User.placeholder(id: row.userId, fullName: row.userName),
+                            previousDate: row.previousDate ?? row.newDate,
+                            newDate: row.newDate,
+                            changedAt: row.changedAt,
+                            isRead: false
+                        )
+                    }
+                } else {
+                    loadSobrietyNotifications() // mock fallback
+                }
+
+                // Real badge notifications from user_badges
+                if !badgeAwardsData.isEmpty, let fallbackBadge = MockData.badges.first {
+                    badgeNotifications = badgeAwardsData.map { row in
+                        BadgeEarnedNotification(
+                            user: alumniUsers.first(where: { $0.id == row.userId })
+                                ?? User.placeholder(id: row.userId, fullName: row.userName),
+                            badge: MockData.badges.first(where: { $0.id == row.badgeId })
+                                ?? fallbackBadge,
+                            earnedAt: row.earnedAt,
+                            isRead: false
+                        )
+                    }
+                } else {
+                    loadBadgeNotifications() // mock fallback
+                }
+
+                checkNewBadgeNotifications()
+
+                // Content items
                 loadContentItems()
 
-                // Load contacts
+                // Contacts (production hardcoded values, no mock dependency)
                 companyContacts = MockData.companyContacts
                 crisisResources = MockData.crisisResources
 
-                // Load chat monitor
+                // Chat monitor (still mock — production hookup pending)
                 loadChatMonitorEntries()
 
-                // Load meetings
                 meetings = meetingsData
 
-                // Load gamification data
                 loadGamificationData()
 
-                // Load announcements
                 announcements = MockData.announcements
 
                 isLoading = false
@@ -987,22 +1025,23 @@ final class AdminViewModel {
 
     func saveMeeting() {
         guard !meetingTitle.isEmpty else { return }
-
-        if let existing = editingMeeting,
-           let index = meetings.firstIndex(where: { $0.id == existing.id }) {
-            meetings[index].title = meetingTitle
-            meetings[index].description = meetingDescription.isEmpty ? nil : meetingDescription
-            meetings[index].meetingType = meetingType
-            meetings[index].date = meetingDate
-            meetings[index].startTime = meetingStartTime
-            meetings[index].endTime = meetingEndTime
-            meetings[index].locationAddress = meetingLocation.isEmpty ? nil : meetingLocation
-            meetings[index].virtualLink = meetingVirtualLink.isEmpty ? nil : meetingVirtualLink
-            meetings[index].isRecurring = meetingIsRecurring
-            meetings[index].recurrencePattern = meetingIsRecurring ? meetingRecurrence : nil
-            AuditLogger.shared.log(.updateMeeting, detail: meetingTitle)
+        let isUpdate = editingMeeting != nil
+        let meetingToSave: Meeting
+        if let existing = editingMeeting {
+            var updated = existing
+            updated.title = meetingTitle
+            updated.description = meetingDescription.isEmpty ? nil : meetingDescription
+            updated.meetingType = meetingType
+            updated.date = meetingDate
+            updated.startTime = meetingStartTime
+            updated.endTime = meetingEndTime
+            updated.locationAddress = meetingLocation.isEmpty ? nil : meetingLocation
+            updated.virtualLink = meetingVirtualLink.isEmpty ? nil : meetingVirtualLink
+            updated.isRecurring = meetingIsRecurring
+            updated.recurrencePattern = meetingIsRecurring ? meetingRecurrence : nil
+            meetingToSave = updated
         } else {
-            let newMeeting = Meeting(
+            meetingToSave = Meeting(
                 id: UUID(),
                 title: meetingTitle,
                 description: meetingDescription.isEmpty ? nil : meetingDescription,
@@ -1020,16 +1059,64 @@ final class AdminViewModel {
                 createdBy: MockData.currentUser.id,
                 createdAt: Date()
             )
-            meetings.insert(newMeeting, at: 0)
-            AuditLogger.shared.log(.createMeeting, detail: meetingTitle)
+        }
+
+        // Optimistic local update so the admin sees the change immediately
+        if isUpdate {
+            if let idx = meetings.firstIndex(where: { $0.id == meetingToSave.id }) {
+                meetings[idx] = meetingToSave
+            }
+        } else {
+            meetings.insert(meetingToSave, at: 0)
         }
         showingMeetingEditor = false
         editingMeeting = nil
+
+        // Persist to Supabase — without this the admin's edit was wiped on next loadData()
+        Task {
+            do {
+                if isUpdate {
+                    _ = try await dataService.updateMeeting(meetingToSave)
+                    await MainActor.run {
+                        AuditLogger.shared.log(.updateMeeting, detail: meetingToSave.title)
+                    }
+                } else {
+                    _ = try await dataService.createMeeting(meetingToSave)
+                    await MainActor.run {
+                        AuditLogger.shared.log(.createMeeting, detail: meetingToSave.title)
+                    }
+                }
+            } catch {
+                CrashReportingService.shared.recordError(error, context: "AdminViewModel.saveMeeting")
+                // Roll back local state on failure
+                await MainActor.run {
+                    if !isUpdate {
+                        meetings.removeAll { $0.id == meetingToSave.id }
+                    }
+                }
+            }
+        }
     }
 
     func deleteMeeting(_ meeting: Meeting) {
         AuditLogger.shared.log(.deleteMeeting, detail: meeting.title)
+        // Optimistic remove
         meetings.removeAll { $0.id == meeting.id }
+        // Persist
+        Task {
+            do {
+                try await dataService.deleteMeeting(meetingId: meeting.id)
+            } catch {
+                CrashReportingService.shared.recordError(error, context: "AdminViewModel.deleteMeeting")
+                // Roll back on failure
+                await MainActor.run {
+                    if !meetings.contains(where: { $0.id == meeting.id }) {
+                        meetings.append(meeting)
+                        meetings.sort { $0.date < $1.date }
+                    }
+                }
+            }
+        }
     }
 
     // MARK: - Staff Photo Upload

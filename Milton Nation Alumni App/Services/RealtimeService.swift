@@ -396,6 +396,31 @@ final class RealtimeService {
         disconnectAll()
         NotificationCenter.default.post(name: RealtimeService.reconnectNeeded, object: nil)
     }
+
+    // MARK: - Subscription Retry with Exponential Backoff
+
+    /// Call from inside a `subscribe…` task when `subscribeWithError` throws.
+    /// Sleeps for an exponentially-growing delay (capped at 30s) and posts the
+    /// reconnect notification so the caller's outer subscribe layer is invoked again.
+    /// Returns immediately if attempt count exceeds the cap (8 retries ≈ 8.5 min total).
+    @Sendable
+    static func backoffAndRetry(attempt: Int) async {
+        guard attempt < 8 else {
+            #if DEBUG
+            print("[RealtimeService] ⚠️ Giving up after \(attempt) reconnect attempts")
+            #endif
+            return
+        }
+        // 1s, 2s, 4s, 8s, 16s, 30s, 30s, 30s
+        let delay = min(pow(2.0, Double(attempt)), 30.0)
+        #if DEBUG
+        print("[RealtimeService] retry attempt #\(attempt + 1) in \(delay)s")
+        #endif
+        try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+        await MainActor.run {
+            NotificationCenter.default.post(name: RealtimeService.reconnectNeeded, object: nil)
+        }
+    }
 }
 
 // MARK: - Helper Decodable for Conversation Updates

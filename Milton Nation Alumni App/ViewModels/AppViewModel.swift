@@ -141,8 +141,10 @@ final class AppViewModel {
     private func requestNotificationPermissionIfNeeded() {
         let hasRequested = UserDefaults.standard.bool(forKey: Self.hasRequestedNotificationKey)
         if !hasRequested {
-            // Small delay so the login UI settles before the system dialog appears
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            // Small delay so the login UI settles before the system dialog appears.
+            // Use a Task instead of GCD asyncAfter so it cancels cleanly on logout.
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(1500))
                 PushNotificationService.shared.requestPermission()
                 UserDefaults.standard.set(true, forKey: Self.hasRequestedNotificationKey)
             }

@@ -136,12 +136,19 @@ final class CombinedNearbyMeetingService: BMTLMeetingServiceProtocol {
 
 /// Returns mixed AA + NA in-person meetings for development and testing.
 final class MockBMTLMeetingService: BMTLMeetingServiceProtocol {
+    /// Returns canned meetings only when an XCTest run is detected — otherwise
+    /// returns an empty list. This prevents fake "Miami" meetings from polluting
+    /// the simulator UI when developers forget they're in DEBUG mode.
     func fetchNearbyMeetings(
         latitude: Double, longitude: Double,
         radiusMiles: Double = 10, maxResults: Int = 10
     ) async throws -> [BMTLMeeting] {
         try await Task.sleep(for: .milliseconds(800))
-        return Array(mockMeetings.prefix(maxResults))
+        // Only return canned data inside the XCTest harness
+        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil {
+            return Array(mockMeetings.prefix(maxResults))
+        }
+        return []
     }
 
     private let mockMeetings: [BMTLMeeting] = [

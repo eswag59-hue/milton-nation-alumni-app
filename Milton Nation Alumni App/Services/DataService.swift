@@ -17,6 +17,9 @@ protocol DataServiceProtocol {
 
     // Meetings
     func fetchMeetings() async throws -> [Meeting]
+    func createMeeting(_ meeting: Meeting) async throws -> Meeting
+    func updateMeeting(_ meeting: Meeting) async throws -> Meeting
+    func deleteMeeting(meetingId: UUID) async throws
 
     // Chat
     func fetchConversations() async throws -> [Conversation]
@@ -48,8 +51,42 @@ protocol DataServiceProtocol {
     func approveUser(userId: UUID, facility: Facility) async throws -> User
     func rejectUser(userId: UUID) async throws
 
+    // Admin: roster & assignments
+    func fetchAlumniUsers(facility: Facility?) async throws -> [User]
+    func fetchStaffMembers(facility: Facility?) async throws -> [User]
+    func fetchStaffAssignments() async throws -> [(userId: UUID, staffId: UUID)]
+
+    // Admin: notifications
+    func fetchSobrietyChanges(since: Date, facility: Facility?) async throws -> [SobrietyChangeRow]
+    func fetchRecentBadgeAwards(limit: Int, facility: Facility?) async throws -> [BadgeAwardRow]
+    func fetchFlaggedMessages(limit: Int, facility: Facility?) async throws -> [ChatMessage]
+
     // Invite
     func sendInvite(phone: String, name: String?) async throws -> String
+}
+
+// MARK: - Admin Notification DTOs
+
+/// Lightweight DTO for sobriety_change_log rows joined with profile name.
+struct SobrietyChangeRow: Sendable, Identifiable {
+    let id: UUID
+    let userId: UUID
+    let userName: String
+    let previousDate: Date?
+    let newDate: Date
+    let changedAt: Date
+    let isReset: Bool
+}
+
+/// Lightweight DTO for recent badge awards from user_badges joined with profile + badge.
+struct BadgeAwardRow: Sendable, Identifiable {
+    let id: UUID
+    let userId: UUID
+    let userName: String
+    let badgeId: UUID
+    let badgeName: String
+    let badgeEmoji: String
+    let earnedAt: Date
 }
 
 final class MockDataService: DataServiceProtocol {
@@ -173,6 +210,20 @@ final class MockDataService: DataServiceProtocol {
     func fetchMeetings() async throws -> [Meeting] {
         try await Task.sleep(for: .milliseconds(300))
         return MockData.meetings
+    }
+
+    func createMeeting(_ meeting: Meeting) async throws -> Meeting {
+        try await Task.sleep(for: .milliseconds(200))
+        return meeting
+    }
+
+    func updateMeeting(_ meeting: Meeting) async throws -> Meeting {
+        try await Task.sleep(for: .milliseconds(200))
+        return meeting
+    }
+
+    func deleteMeeting(meetingId: UUID) async throws {
+        try await Task.sleep(for: .milliseconds(150))
     }
 
     func fetchConversations() async throws -> [Conversation] {
@@ -310,6 +361,66 @@ final class MockDataService: DataServiceProtocol {
     func rejectUser(userId: UUID) async throws {
         try await Task.sleep(for: .milliseconds(300))
         MockDataService.mockPendingUsers.removeAll { $0.id == userId }
+    }
+
+    // MARK: - Admin: roster & assignments
+
+    func fetchAlumniUsers(facility: Facility?) async throws -> [User] {
+        try await Task.sleep(for: .milliseconds(200))
+        var users = MockData.alumniRoster
+        if let facility {
+            users = users.filter { $0.facility == facility }
+        }
+        return users
+    }
+
+    func fetchStaffMembers(facility: Facility?) async throws -> [User] {
+        try await Task.sleep(for: .milliseconds(200))
+        return [MockData.caseManager, MockData.therapist]
+    }
+
+    func fetchStaffAssignments() async throws -> [(userId: UUID, staffId: UUID)] {
+        try await Task.sleep(for: .milliseconds(200))
+        return MockData.staffAssignments.map { ($0.userId, $0.staffId) }
+    }
+
+    // MARK: - Admin: notifications (mock returns sample rows)
+
+    func fetchSobrietyChanges(since: Date, facility: Facility?) async throws -> [SobrietyChangeRow] {
+        try await Task.sleep(for: .milliseconds(200))
+        let now = Date()
+        return [
+            SobrietyChangeRow(
+                id: UUID(),
+                userId: MockData.alumniRoster[0].id,
+                userName: MockData.alumniRoster[0].fullName,
+                previousDate: Calendar.current.date(byAdding: .day, value: -365, to: now),
+                newDate: Calendar.current.date(byAdding: .day, value: -3, to: now) ?? now,
+                changedAt: Calendar.current.date(byAdding: .hour, value: -6, to: now) ?? now,
+                isReset: true
+            )
+        ]
+    }
+
+    func fetchRecentBadgeAwards(limit: Int, facility: Facility?) async throws -> [BadgeAwardRow] {
+        try await Task.sleep(for: .milliseconds(200))
+        let now = Date()
+        return MockData.badges.prefix(min(limit, 3)).enumerated().map { idx, badge in
+            BadgeAwardRow(
+                id: UUID(),
+                userId: MockData.alumniRoster[idx % MockData.alumniRoster.count].id,
+                userName: MockData.alumniRoster[idx % MockData.alumniRoster.count].fullName,
+                badgeId: badge.id,
+                badgeName: badge.name,
+                badgeEmoji: badge.emoji,
+                earnedAt: Calendar.current.date(byAdding: .hour, value: -idx * 4, to: now) ?? now
+            )
+        }
+    }
+
+    func fetchFlaggedMessages(limit: Int, facility: Facility?) async throws -> [ChatMessage] {
+        try await Task.sleep(for: .milliseconds(200))
+        return []
     }
 
     // MARK: - Invite

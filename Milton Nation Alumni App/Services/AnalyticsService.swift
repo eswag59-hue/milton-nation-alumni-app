@@ -26,8 +26,24 @@ final class AnalyticsService: @unchecked Sendable {
     private var userProperties: [String: String] = [:]
 
     private let queue = DispatchQueue(label: "com.miltonalumni.analytics", qos: .utility)
+    private var reconnectObserver: (any NSObjectProtocol)?
 
-    private init() {}
+    private init() {
+        // Auto-flush queued events when the device reconnects to the network
+        reconnectObserver = NotificationCenter.default.addObserver(
+            forName: NetworkMonitor.didReconnect,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.flush()
+        }
+    }
+
+    deinit {
+        if let observer = reconnectObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+    }
 
     // MARK: - User Identity
 
@@ -90,26 +106,42 @@ final class AnalyticsService: @unchecked Sendable {
     }
 
     private func flushInternal() {
-        guard !eventBuffer.isEmpty else { return }
-        let events = eventBuffer
+        // Combine in-memory buffer with persisted offline queue
+        let persisted = Self.loadPersistedQueue()
+        let combined = persisted + eventBuffer
         eventBuffer = []
+        Self.savePersistedQueue([])  // clear persisted queue while we attempt send
+
+        guard !combined.isEmpty else { return }
 
         #if DEBUG
-        print("[Analytics] Flushing \(events.count) events")
+        print("[Analytics] Flushing \(combined.count) events (buffered + persisted)")
         #endif
 
-        guard SupabaseConfig.isConfigured else { return }
+        guard SupabaseConfig.isConfigured else {
+            // Re-persist if not configured so we don't lose events
+            Self.savePersistedQueue(combined)
+            return
+        }
 
         let userProps = userProperties
         Task {
-            await Self.sendToSupabase(events, userProperties: userProps)
+            let success = await Self.sendToSupabase(combined, userProperties: userProps)
+            if !success {
+                // Network failure — re-persist the events for retry on next flush
+                // Cap at maxPersistedSize to prevent unbounded growth.
+                let toRetain = Array(combined.suffix(Self.maxPersistedSize))
+                Self.savePersistedQueue(toRetain)
+            }
         }
     }
 
+    /// Returns true on successful send, false otherwise.
+    @discardableResult
     private static func sendToSupabase(
         _ events: [AnalyticsEvent],
         userProperties: [String: String]
-    ) async {
+    ) async -> Bool {
         let userId = userProperties["user_id"].flatMap { UUID(uuidString: $0) }
         let role   = userProperties["role"]
 
@@ -127,9 +159,41 @@ final class AnalyticsService: @unchecked Sendable {
                 .from("analytics_events")
                 .insert(records)
                 .execute()
+            return true
         } catch {
             #if DEBUG
             print("[Analytics] Flush failed: \(error.localizedDescription)")
+            #endif
+            return false
+        }
+    }
+
+    // MARK: - Offline Queue (UserDefaults persistence)
+
+    /// Cap on how many events we'll retry. Once exceeded, oldest events are dropped.
+    private static let maxPersistedSize = 1000
+    private static let queueKey = "analytics_offline_queue_v1"
+
+    private static func loadPersistedQueue() -> [AnalyticsEvent] {
+        guard let data = UserDefaults.standard.data(forKey: queueKey) else { return [] }
+        do {
+            return try JSONDecoder().decode([AnalyticsEvent].self, from: data)
+        } catch {
+            return []
+        }
+    }
+
+    private static func savePersistedQueue(_ events: [AnalyticsEvent]) {
+        guard !events.isEmpty else {
+            UserDefaults.standard.removeObject(forKey: queueKey)
+            return
+        }
+        do {
+            let data = try JSONEncoder().encode(events)
+            UserDefaults.standard.set(data, forKey: queueKey)
+        } catch {
+            #if DEBUG
+            print("[Analytics] Failed to persist offline queue: \(error.localizedDescription)")
             #endif
         }
     }
@@ -179,7 +243,7 @@ final class AnalyticsService: @unchecked Sendable {
 
 // MARK: - Analytics Event Model
 
-private struct AnalyticsEvent: Sendable {
+private struct AnalyticsEvent: Codable, Sendable {
     let name: String
     let properties: [String: String]
     let timestamp: Date

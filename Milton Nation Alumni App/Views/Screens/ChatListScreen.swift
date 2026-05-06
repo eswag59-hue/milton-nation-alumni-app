@@ -3,9 +3,17 @@ import SwiftUI
 struct ChatListScreen: View {
     @Environment(AppViewModel.self) private var appViewModel
     @State private var viewModel = ChatViewModel()
+    @State private var searchText = ""
 
     private var clinicalStaff: [User] {
-        viewModel.assignedStaff.filter { $0.role.isClinical }
+        let all = viewModel.assignedStaff.filter { $0.role.isClinical }
+        let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return all }
+        let q = trimmed.lowercased()
+        return all.filter {
+            $0.fullName.lowercased().contains(q) ||
+            $0.role.displayName.lowercased().contains(q)
+        }
     }
 
     var body: some View {
@@ -116,6 +124,7 @@ struct ChatListScreen: View {
                 }
             }
             .background(AppTheme.background)
+            .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search care team")
             .onAppear {
                 viewModel.loadConversations()
             }
