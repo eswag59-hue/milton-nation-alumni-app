@@ -319,7 +319,15 @@ final class RealtimeService {
 
         let channel = client.realtimeV2.channel("pending-users")
 
-        let insertions = channel.postgresChange(InsertAction.self, schema: "public", table: "profiles")
+        // Server-side filter — only emit rows where status=pending. Without
+        // this, every new signup wakes every authenticated admin's WebSocket
+        // and decodes a full profile row before the post-filter drops it.
+        let insertions = channel.postgresChange(
+            InsertAction.self,
+            schema: "public",
+            table: "profiles",
+            filter: "status=eq.pending"
+        )
 
         Task {
             do {
@@ -365,6 +373,28 @@ final class RealtimeService {
         unsubscribeFromConversations()
         unsubscribeFromUserProfile()
         unsubscribeFromPendingUsers()
+    }
+
+    // MARK: - Reconnect Notification
+
+    /// Posted when the app returns to the foreground while the user is authenticated.
+    /// ViewModels that hold active Realtime subscriptions should observe this notification
+    /// and re-call their `subscribe…` methods so that any WebSocket connections that
+    /// dropped during backgrounding are re-established.
+    ///
+    /// Example:
+    /// ```swift
+    /// .onReceive(NotificationCenter.default.publisher(for: RealtimeService.reconnectNeeded)) {
+    ///     viewModel.setupSubscriptions()
+    /// }
+    /// ```
+    static let reconnectNeeded = Notification.Name("RealtimeServiceReconnectNeeded")
+
+    /// Call this when the app comes to the foreground (authenticated).
+    /// It disconnects stale channels and notifies all observers to re-subscribe.
+    func reconnectIfNeeded() {
+        disconnectAll()
+        NotificationCenter.default.post(name: RealtimeService.reconnectNeeded, object: nil)
     }
 }
 

@@ -43,9 +43,7 @@
 	<string>Milton Alumni uses Face ID to securely sign you in.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Milton Alumni uses your location to find nearby support meetings in your area.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Milton Alumni uses the microphone for voice messages in chat.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
+<key>NSPhotoLibraryUsageDescription</key>
 	<string>Milton Alumni lets you share photos from your library in community posts and chat messages.</string>
 
 	<!-- Supabase config (injected from xcconfig at build time) -->
@@ -72,9 +70,7 @@
 	<array>
 		<string>arm64</string>
 	</array>
-	<key>UIStatusBarStyle</key>
-	<string></string>
-	<key>UISupportedInterfaceOrientations</key>
+<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 	</array>

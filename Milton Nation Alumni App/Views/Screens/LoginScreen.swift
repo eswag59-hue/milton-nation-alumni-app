@@ -20,22 +20,23 @@ struct LoginScreen: View {
             ScrollView {
                 VStack(spacing: 24) {
                     // Logo & Branding
-                    VStack(spacing: 12) {
-                        MiltonLogoView(size: .extraLarge)
+                    VStack(spacing: 0) {
+                        MiltonLogoView(size: .splash)
 
-                        // App name
-                        Text("Milton Alumni")
-                            .font(.title3.bold())
-                            .foregroundStyle(AppTheme.textPrimary)
-                            .padding(.top, 16)
-
-                        // Tagline
                         Text("Driven by purpose. Committed to care.")
-                            .font(.subheadline)
+                            .font(.system(size: 14, weight: .regular))
                             .foregroundStyle(AppTheme.textSecondary)
+                            .tracking(0.4)
+                            .multilineTextAlignment(.center)
+                            .padding(.top, 20)
+
+                        Rectangle()
+                            .fill(AppTheme.textSecondary.opacity(0.15))
+                            .frame(width: 48, height: 1)
+                            .padding(.top, 24)
                     }
-                    .padding(.top, 40)
-                    .padding(.bottom, 8)
+                    .padding(.top, 48)
+                    .padding(.bottom, 16)
 
                     if viewModel.showTwoFactor {
                         twoFactorView

@@ -10,14 +10,40 @@ struct ContactCard: View {
         VStack(spacing: 12) {
             // Avatar + Info
             HStack(spacing: 12) {
-                Circle()
-                    .fill(AppTheme.accent.opacity(0.2))
-                    .frame(width: 52, height: 52)
-                    .overlay {
-                        Image(systemName: "person.fill")
-                            .font(.title3)
-                            .foregroundStyle(AppTheme.accent)
+                // Render the actual staff photo when available, falling back
+                // to the silhouette placeholder when missing or still loading.
+                if let urlString = photoURL, let url = URL(string: urlString) {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 52, height: 52)
+                                .clipShape(Circle())
+                        case .failure, .empty:
+                            Circle()
+                                .fill(AppTheme.accent.opacity(0.2))
+                                .frame(width: 52, height: 52)
+                                .overlay {
+                                    Image(systemName: "person.fill")
+                                        .font(.title3)
+                                        .foregroundStyle(AppTheme.accent)
+                                }
+                        @unknown default:
+                            EmptyView()
+                        }
                     }
+                } else {
+                    Circle()
+                        .fill(AppTheme.accent.opacity(0.2))
+                        .frame(width: 52, height: 52)
+                        .overlay {
+                            Image(systemName: "person.fill")
+                                .font(.title3)
+                                .foregroundStyle(AppTheme.accent)
+                        }
+                }
                 VStack(alignment: .leading, spacing: 4) {
                     Text(name)
                         .font(.headline)

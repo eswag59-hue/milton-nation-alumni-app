@@ -48,6 +48,8 @@ final class LoginViewModel {
     }
     private let maxAttempts = 5
     private let lockoutDuration: TimeInterval = 900 // 15 minutes
+    private let lockoutEndKey = "login_lockout_end_ts"
+    private let failedAttemptsKey = "login_failed_attempts"
 
     // Registration toggle & fields
     var isRegistering = false
@@ -67,6 +69,11 @@ final class LoginViewModel {
 
     init(authService: AuthServiceProtocol = MockAuthService()) {
         self.authService = authService
+        // Restore persisted lockout state so force-quit doesn't bypass it
+        failedAttempts = UserDefaults.standard.integer(forKey: failedAttemptsKey)
+        if let ts = UserDefaults.standard.object(forKey: lockoutEndKey) as? Double {
+            lockoutEndDate = Date(timeIntervalSince1970: ts)
+        }
     }
 
     // MARK: - Login
@@ -121,6 +128,9 @@ final class LoginViewModel {
             await MainActor.run {
                 failedAttempts = 0
                 lockoutEndDate = nil
+                // Clear persisted lockout on successful login
+                UserDefaults.standard.removeObject(forKey: lockoutEndKey)
+                UserDefaults.standard.removeObject(forKey: failedAttemptsKey)
                 pendingUser = user
                 showTwoFactor = true
                 isLoading = false
@@ -132,9 +142,13 @@ final class LoginViewModel {
                 AuditLogger.shared.log(.loginFailed, detail: "Email: \(email), attempt: \(failedAttempts)")
                 if failedAttempts >= maxAttempts {
                     lockoutEndDate = Date().addingTimeInterval(lockoutDuration)
+                    // Persist lockout so force-quit can't bypass it
+                    UserDefaults.standard.set(lockoutEndDate?.timeIntervalSince1970, forKey: lockoutEndKey)
+                    UserDefaults.standard.set(failedAttempts, forKey: failedAttemptsKey)
                     errorMessage = "Too many failed attempts. Try again in 15 minutes."
                     AuditLogger.shared.log(.loginLockout, detail: "Email: \(email)")
                 } else {
+                    UserDefaults.standard.set(failedAttempts, forKey: failedAttemptsKey)
                     errorMessage = "Invalid email or password. Please try again."
                 }
                 isLoading = false
@@ -221,6 +235,7 @@ final class LoginViewModel {
         do {
             let user = try await authService.register(
                 fullName: regFullName.trimmingCharacters(in: .whitespacesAndNewlines),
+                username: regUsername.trimmingCharacters(in: .whitespacesAndNewlines),
                 email: regEmail.trimmingCharacters(in: .whitespacesAndNewlines),
                 phone: regPhone.trimmingCharacters(in: .whitespacesAndNewlines),
                 password: regPassword,
@@ -303,5 +318,7 @@ final class LoginViewModel {
         pendingUser = nil
         failedAttempts = 0
         lockoutEndDate = nil
+        UserDefaults.standard.removeObject(forKey: lockoutEndKey)
+        UserDefaults.standard.removeObject(forKey: failedAttemptsKey)
     }
 }

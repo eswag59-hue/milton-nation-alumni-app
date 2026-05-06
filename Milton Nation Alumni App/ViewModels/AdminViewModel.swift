@@ -340,9 +340,72 @@ final class AdminViewModel {
     }
 
     private let dataService: DataServiceProtocol
+    private var reconnectObserver: (any NSObjectProtocol)?
 
     init(dataService: DataServiceProtocol = MockDataService()) {
         self.dataService = dataService
+        setupReconnectObserver()
+    }
+
+    deinit {
+        if let observer = reconnectObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+    }
+
+    // MARK: - Realtime Admin Subscriptions
+
+    /// Subscribe to new pending/flagged posts and status changes in real time.
+    func subscribeToAdminPostUpdates() {
+        guard SupabaseConfig.isConfigured else { return }
+        guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else { return }
+
+        RealtimeService.shared.subscribeToAdminPosts(
+            onNewPending: { [weak self] post in
+                guard let self else { return }
+                if !self.pendingPosts.contains(where: { $0.id == post.id }) {
+                    self.pendingPosts.insert(post, at: 0)
+                }
+            },
+            onStatusChange: { [weak self] updatedPost in
+                guard let self else { return }
+                // Update in pending list
+                if let index = self.pendingPosts.firstIndex(where: { $0.id == updatedPost.id }) {
+                    if updatedPost.status == .approved || updatedPost.status == .rejected {
+                        self.pendingPosts.remove(at: index)
+                    } else {
+                        self.pendingPosts[index] = updatedPost
+                    }
+                }
+                // Update in approved list
+                if let index = self.approvedPosts.firstIndex(where: { $0.id == updatedPost.id }) {
+                    if updatedPost.status == .approved {
+                        self.approvedPosts[index] = updatedPost
+                    } else {
+                        self.approvedPosts.remove(at: index)
+                    }
+                } else if updatedPost.status == .approved {
+                    self.approvedPosts.insert(updatedPost, at: 0)
+                }
+            }
+        )
+    }
+
+    /// Unsubscribe from admin post Realtime channel (call from onDisappear).
+    func unsubscribeFromAdminPostUpdates() {
+        RealtimeService.shared.unsubscribeFromAdminPosts()
+    }
+
+    /// Re-establishes Realtime subscriptions when the app returns to foreground.
+    private func setupReconnectObserver() {
+        reconnectObserver = NotificationCenter.default.addObserver(
+            forName: RealtimeService.reconnectNeeded,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self else { return }
+            self.subscribeToAdminPostUpdates()
+        }
     }
 
     // MARK: - Load All Data

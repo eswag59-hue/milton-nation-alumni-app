@@ -62,12 +62,27 @@ serve(async (req: Request) => {
 
     // ── Demo bypass: App Store reviewer account ──────────────────────────────
     // Gated by DEMO_BYPASS_ENABLED env var — must be explicitly enabled per-deployment.
-    if (DEMO_BYPASS_ENABLED && user.phone === DEMO_PHONE && code === DEMO_OTP) {
-      console.log("[verify-sms-otp] Demo bypass used for reviewer account");
-      return new Response(
-        JSON.stringify({ verified: true }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (DEMO_BYPASS_ENABLED && code === DEMO_OTP) {
+      // user.phone on the auth object may include a leading "+" or differ in
+      // format from the stored profiles.phone. Query the profiles table for the
+      // canonical phone so the comparison is format-independent.
+      const { data: demoProfile } = await supabaseAdmin
+        .from("profiles")
+        .select("phone")
+        .eq("id", user.id)
+        .single();
+
+      // Normalise both sides to digits-only for a robust comparison.
+      const normalise = (p: string | null | undefined) =>
+        (p ?? "").replace(/\D/g, "");
+
+      if (normalise(demoProfile?.phone) === normalise(DEMO_PHONE)) {
+        console.log("[verify-sms-otp] Demo bypass used for reviewer account");
+        return new Response(
+          JSON.stringify({ verified: true }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
     // ────────────────────────────────────────────────────────────────────────
 

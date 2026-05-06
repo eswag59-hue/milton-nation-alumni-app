@@ -123,25 +123,18 @@ struct SettingsScreen: View {
                         Text("Delete My Account")
                     }
                 }
+                // First alert is attached to the Button so it doesn't conflict with
+                // the second alert (Permanently Delete) which is on the List below.
+                .alert("Delete Account?", isPresented: $showDeleteAccountAlert) {
+                    Button("Cancel", role: .cancel) {}
+                    Button("Continue") { showDeleteConfirmation = true }
+                } message: {
+                    Text("This will start a 30-day deletion process. Download your data first if you want a copy.")
+                }
             } header: {
                 Label("Account", systemImage: "person.circle.fill")
             } footer: {
                 Text("Deleting your account begins a 30-day grace period. Your data will be permanently removed after 30 days. This action cannot be undone.")
-            }
-            .alert("Delete Account?", isPresented: $showDeleteAccountAlert) {
-                Button("Cancel", role: .cancel) {}
-                Button("Continue") { showDeleteConfirmation = true }
-            } message: {
-                Text("This will start a 30-day deletion process. Download your data first if you want a copy.")
-            }
-            .alert("Permanently Delete Account?", isPresented: $showDeleteConfirmation) {
-                Button("Cancel", role: .cancel) {}
-                Button("Delete My Account", role: .destructive) {
-                    AuditLogger.shared.log(.accountDeletionRequested, userId: appViewModel.currentUser?.id)
-                    appViewModel.deleteAccount()
-                }
-            } message: {
-                Text("Your account, posts, and messages will be permanently deleted after 30 days. You will be logged out immediately.")
             }
 
             // MARK: - About
@@ -165,6 +158,17 @@ struct SettingsScreen: View {
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
         .tint(AppTheme.accent)
+        // Second confirmation alert is on the List itself so it doesn't chain
+        // with the first alert — two .alert on the same view causes only the last to fire.
+        .alert("Permanently Delete Account?", isPresented: $showDeleteConfirmation) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete My Account", role: .destructive) {
+                AuditLogger.shared.log(.accountDeletionRequested, userId: appViewModel.currentUser?.id)
+                appViewModel.deleteAccount()
+            }
+        } message: {
+            Text("Your account, posts, and messages will be permanently deleted after 30 days. You will be logged out immediately.")
+        }
         .sheet(isPresented: $showDataExportSheet) {
             if let url = exportedDataURL {
                 ShareSheet(activityItems: [url])
@@ -216,7 +220,10 @@ struct SettingsScreen: View {
             ]
 
             if let jsonData = try? JSONSerialization.data(withJSONObject: exportDict, options: .prettyPrinted) {
-                let fileName = "MiltonAlumni_MyData_\(Date().formatted(.iso8601)).json"
+                // ":" is illegal in iOS export filenames — would break Files.app and AirDrop
+                let stamp = DateFormatter()
+                stamp.dateFormat = "yyyy-MM-dd-HHmmss"
+                let fileName = "MiltonAlumni_MyData_\(stamp.string(from: Date())).json"
                 let url = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
                 do {
                     try jsonData.write(to: url)

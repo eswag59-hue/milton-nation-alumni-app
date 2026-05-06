@@ -123,12 +123,12 @@ serve(async (req: Request) => {
     }
 
     // ── Audit log ──────────────────────────────────────────────────────────
+    // Note: audit_logs only has (id, user_id, action, detail, ip_address, timestamp, created_at).
+    // Do NOT add resource_type / resource_id — those columns do not exist.
     await supabaseAdmin.from("audit_logs").insert({
       user_id: caller.id,
       action: "assign_facility",
-      resource_type: "profile",
-      resource_id: userId,
-      detail: `Assigned to ${facility}, status set to active`,
+      detail: `Assigned user ${userId} to ${facility}; status set to active`,
       timestamp: new Date().toISOString(),
     });
 

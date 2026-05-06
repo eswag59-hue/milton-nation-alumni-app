@@ -44,9 +44,16 @@ enum SupabaseConfig {
     // MARK: - Shared Client
 
     /// Shared Supabase client instance used throughout the app.
+    /// One client, one backend — facility isolation is handled by Postgres RLS policies,
+    /// not by separate clients. See supabase/migrations/20260331_add_facility_isolation.sql.
     static let client = SupabaseClient(
         supabaseURL: url,
-        supabaseKey: anonKey
+        supabaseKey: anonKey,
+        options: .init(
+            auth: .init(
+                emitLocalSessionAsInitialSession: true
+            )
+        )
     )
 
     // MARK: - Storage Buckets

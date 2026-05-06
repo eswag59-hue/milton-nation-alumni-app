@@ -143,7 +143,11 @@ struct NearbyMeetingCard: View {
         let lat = meeting.latitude
         let lng = meeting.longitude
         let wazeURL = URL(string: "waze://?ll=\(lat),\(lng)&navigate=yes")
-        let webURL  = URL(string: "https://waze.com/ul?ll=\(lat),\(lng)&navigate=yes")!
+        guard let webURL = URL(string: "https://waze.com/ul?ll=\(lat),\(lng)&navigate=yes") else {
+            // Fallback: open Apple Maps if Waze web URL can't be constructed
+            openAppleMaps()
+            return
+        }
 
         if let wazeURL, UIApplication.shared.canOpenURL(wazeURL) {
             UIApplication.shared.open(wazeURL)

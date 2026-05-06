@@ -158,6 +158,7 @@ final class SupabaseAuthService: AuthServiceProtocol {
 
     func register(
         fullName: String,
+        username: String,
         email: String,
         phone: String,
         password: String,
@@ -186,7 +187,7 @@ final class SupabaseAuthService: AuthServiceProtocol {
         var profileUpdate: [String: String] = [
             "phone": phone,
             "full_name": fullName,
-            "username": fullName.lowercased().replacingOccurrences(of: " ", with: "_"),
+            "username": username,
             "sobriety_date": dateFormatter.string(from: sobrietyDate),
             "discharge_date": dateFormatter.string(from: dischargeDate),
             "recovery_program": recoveryProgram,

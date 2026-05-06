@@ -103,6 +103,7 @@ struct AuthServiceTests {
         let service = MockAuthService()
         let user = try await service.register(
             fullName: "New User",
+            username: "new_user",
             email: "new@example.com",
             phone: "(555) 111-2222",
             password: "password123",

@@ -121,6 +121,8 @@ struct ChatDetailScreen: View {
         .navigationTitle(staffName)
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
+            // Set current user ID so message bubbles know which side to render on
+            viewModel.currentUserId = appViewModel.currentUser?.id
             viewModel.loadMessages(conversationId: conversationId)
         }
         .onDisappear {

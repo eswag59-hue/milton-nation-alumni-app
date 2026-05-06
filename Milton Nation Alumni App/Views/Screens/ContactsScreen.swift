@@ -72,7 +72,13 @@ struct ContactsScreen: View {
                                 .foregroundStyle(AppTheme.textPrimary)
                             Spacer()
                             Button {
-                                viewModel.isEditingSponsor.toggle()
+                                if viewModel.isEditingSponsor {
+                                    // Persist to UserDefaults — without this, edits were
+                                    // lost when the user navigated away.
+                                    viewModel.saveSponsor()
+                                } else {
+                                    viewModel.isEditingSponsor = true
+                                }
                             } label: {
                                 Text(viewModel.isEditingSponsor ? "Save" : "Edit")
                                     .font(.subheadline)

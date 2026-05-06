@@ -55,21 +55,37 @@ struct ChatListScreen: View {
                                 .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSmall))
                             } else {
                                 ForEach(clinicalStaff) { staff in
-                                    NavigationLink {
-                                        let conv = viewModel.conversations.first(where: { $0.staffId == staff.id })
-                                        ChatDetailScreen(
-                                            staffName: staff.fullName,
-                                            staffRole: staff.role,
-                                            conversationId: conv?.id ?? UUID()
-                                        )
-                                    } label: {
+                                    let conv = viewModel.conversations.first(where: { $0.staffId == staff.id })
+                                    if let conversation = conv {
+                                        NavigationLink {
+                                            ChatDetailScreen(
+                                                staffName: staff.fullName,
+                                                staffRole: staff.role,
+                                                conversationId: conversation.id
+                                            )
+                                        } label: {
+                                            ContactCard(
+                                                name: staff.fullName,
+                                                role: staff.role.displayName,
+                                                onMessage: {}
+                                            )
+                                        }
+                                        .buttonStyle(.plain)
+                                    } else {
+                                        // Conversation not yet created — show non-navigable card with note
                                         ContactCard(
                                             name: staff.fullName,
                                             role: staff.role.displayName,
                                             onMessage: {}
                                         )
+                                        .opacity(0.6)
+                                        .overlay(alignment: .trailing) {
+                                            Text("Pending setup")
+                                                .font(.caption2)
+                                                .foregroundStyle(AppTheme.textSecondary)
+                                                .padding(.trailing, 12)
+                                        }
                                     }
-                                    .buttonStyle(.plain)
                                 }
                             }
                         }
@@ -84,7 +100,7 @@ struct ChatListScreen: View {
                                 .padding(.horizontal, 4)
 
                             // Milton Team — phone call
-                            phoneContactRow(name: "Milton Team", number: "(844) 975-4673", icon: "building.2.fill", isCrisis: false)
+                            phoneContactRow(name: "Milton Team", number: "(844) 406-4325", icon: "building.2.fill", isCrisis: false)
 
                             // 988 Suicide & Crisis Lifeline — phone call
                             phoneContactRow(name: "988 Suicide & Crisis Lifeline", number: "988", icon: "phone.arrow.up.right.fill", isCrisis: true)

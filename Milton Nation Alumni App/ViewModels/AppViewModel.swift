@@ -21,16 +21,26 @@ final class AppViewModel {
 
     let authService: AuthServiceProtocol
     let dataService: DataServiceProtocol
+    private var reconnectObserver: (any NSObjectProtocol)?
 
     init(authService: AuthServiceProtocol = MockAuthService(),
          dataService: DataServiceProtocol = MockDataService()) {
         self.authService = authService
         self.dataService = dataService
+        setupReconnectObserver()
+    }
+
+    deinit {
+        if let observer = reconnectObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
     }
 
     // MARK: - Facility
 
     func selectFacility(_ facility: Facility) {
+        // UI-only filter — the Supabase backend is one project for both facilities.
+        // RLS policies handle server-side isolation; this drives the admin dashboard filter.
         activeFacility = facility
         showFacilityPicker = false
     }
@@ -77,6 +87,31 @@ final class AppViewModel {
                     body: "\(newUser.fullName) has applied to join Milton Nation.",
                     userInfo: ["type": "new_registration", "userId": newUser.id.uuidString]
                 )
+            }
+        }
+    }
+
+    // MARK: - Reconnect Observer
+
+    /// Re-establishes Realtime subscriptions when the app returns to foreground.
+    private func setupReconnectObserver() {
+        reconnectObserver = NotificationCenter.default.addObserver(
+            forName: RealtimeService.reconnectNeeded,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self, self.isAuthenticated, let user = self.currentUser else { return }
+            if user.status == .pending {
+                self.startProfileApprovalMonitoring(userId: user.id)
+            }
+            if user.role.isAdmin || user.role.isSuperAdmin {
+                RealtimeService.shared.subscribeToPendingUsers { newUser in
+                    PushNotificationService.shared.scheduleLocalNotification(
+                        title: "New Member Request",
+                        body: "\(newUser.fullName) has applied to join Milton Nation.",
+                        userInfo: ["type": "new_registration", "userId": newUser.id.uuidString]
+                    )
+                }
             }
         }
     }
@@ -217,9 +252,15 @@ final class AppViewModel {
 
         Task {
             if let newTotal = try? await dataService.awardPoints(action: .dailyLogin) {
-                await MainActor.run {
+                let updatedUser: User? = await MainActor.run {
                     currentUser?.totalPoints = newTotal
                     currentUser?.lastPointsAwarded = Date()
+                    return currentUser
+                }
+                // Persist lastPointsAwarded to Supabase so cold-restart doesn't
+                // re-award the daily login bonus on the same calendar day.
+                if let user = updatedUser {
+                    _ = try? await dataService.updateProfile(user: user)
                 }
             }
         }

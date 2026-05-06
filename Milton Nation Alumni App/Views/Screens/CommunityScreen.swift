@@ -97,17 +97,26 @@ struct CommunityScreen: View {
             .sheet(isPresented: $viewModel.showCreatePost) {
                 CreatePostSheet(viewModel: viewModel)
             }
-            .alert("Post Submitted", isPresented: $viewModel.showPostSubmitted) {
+            .alert(
+                viewModel.postSubmissionMessage.contains("published") ? "Post Published!" : "Post Submitted",
+                isPresented: $viewModel.showPostSubmitted
+            ) {
                 Button("OK") {}
             } message: {
-                Text("Your post has been submitted for review and will appear once approved.")
+                Text(viewModel.postSubmissionMessage)
             }
             .onAppear {
+                // Wire current user so post moderation thresholds apply correctly
+                viewModel.currentUser = appViewModel.currentUser
                 viewModel.loadPosts()
                 // Preload latest comments for preview under each post
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     viewModel.preloadLatestComments()
                 }
+            }
+            .onChange(of: appViewModel.currentUser?.approvedPostCount) {
+                // Keep in sync if admin approves a post while the user is in this screen
+                viewModel.currentUser = appViewModel.currentUser
             }
         }
     }

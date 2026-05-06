@@ -151,7 +151,24 @@ serve(async (req: Request) => {
         .eq("action", "send_push_notification")
         .gte("timestamp", windowStart);
 
-      if (!rateError && (recentNotifs ?? 0) >= ROLE_NOTIFY_RATE_LIMIT) {
+      // Fail-closed: if the rate-limit query itself errors, refuse the request
+      // rather than letting the notification through unchecked.
+      if (rateError) {
+        console.error("[send-push-notification] Rate-limit check failed:", rateError);
+        return new Response(
+          JSON.stringify({ error: "Rate limit check unavailable. Please try again shortly." }),
+          {
+            status: 429,
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "application/json",
+              "Retry-After": "60",
+            },
+          }
+        );
+      }
+
+      if ((recentNotifs ?? 0) >= ROLE_NOTIFY_RATE_LIMIT) {
         return new Response(
           JSON.stringify({
             error: `Notification rate limit reached. Maximum ${ROLE_NOTIFY_RATE_LIMIT} role notifications per hour.`,

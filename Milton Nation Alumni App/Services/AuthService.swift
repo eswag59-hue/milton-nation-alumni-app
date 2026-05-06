@@ -5,7 +5,7 @@ protocol AuthServiceProtocol {
     func sendSMSOTP(userId: UUID) async throws
     func verifyMFA(userId: UUID, code: String) async throws -> User
     func logout() async throws
-    func register(fullName: String, email: String, phone: String, password: String, sobrietyDate: Date, dischargeDate: Date, recoveryProgram: String, facility: Facility?) async throws -> User
+    func register(fullName: String, username: String, email: String, phone: String, password: String, sobrietyDate: Date, dischargeDate: Date, recoveryProgram: String, facility: Facility?) async throws -> User
     func getCurrentUser() -> User?
     func resetPassword(email: String) async throws
 }
@@ -64,14 +64,14 @@ final class MockAuthService: AuthServiceProtocol {
         currentUser = nil
     }
 
-    func register(fullName: String, email: String, phone: String, password: String, sobrietyDate: Date, dischargeDate: Date, recoveryProgram: String, facility: Facility?) async throws -> User {
+    func register(fullName: String, username: String, email: String, phone: String, password: String, sobrietyDate: Date, dischargeDate: Date, recoveryProgram: String, facility: Facility?) async throws -> User {
         try? await Task.sleep(for: .milliseconds(500))
         var newUser = User(
             id: UUID(),
             email: email,
             phone: phone,
             fullName: fullName,
-            username: fullName.lowercased().replacingOccurrences(of: " ", with: "_"),
+            username: username,
             profilePhotoURL: nil,
             sobrietyDate: sobrietyDate,
             dischargeDate: dischargeDate,

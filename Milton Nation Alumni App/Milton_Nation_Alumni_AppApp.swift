@@ -3,7 +3,7 @@ import SwiftUI
 @main
 struct Milton_Nation_Alumni_AppApp: App {
     @State private var appViewModel: AppViewModel
-    @State private var adminViewModel = AdminViewModel()
+    @State private var adminViewModel: AdminViewModel
     @State private var sessionManager = SessionManager()
     @State private var networkMonitor = NetworkMonitor.shared
     @State private var isRestoringSession = false
@@ -38,6 +38,10 @@ struct Milton_Nation_Alumni_AppApp: App {
             authService: authService,
             dataService: dataService
         ))
+        // Wire the SAME dataService into AdminViewModel — without this, admins
+        // in Release saw mock alumni rosters because AdminViewModel's default
+        // arg is MockDataService().
+        _adminViewModel = State(initialValue: AdminViewModel(dataService: dataService))
     }
 
     var body: some Scene {
@@ -75,10 +79,6 @@ struct Milton_Nation_Alumni_AppApp: App {
                             VStack(spacing: 24) {
                                 MiltonLogoView(size: .large)
 
-                                Text("Milton Alumni")
-                                    .font(.title3.bold())
-                                    .foregroundStyle(AppTheme.textPrimary)
-
                                 ProgressView()
                                     .controlSize(.regular)
                                     .tint(AppTheme.accent)
@@ -112,19 +112,31 @@ struct Milton_Nation_Alumni_AppApp: App {
                 deviceSecurityViolation?.errorDescription ?? "Security Check Failed",
                 isPresented: Binding(
                     get: { deviceSecurityViolation != nil },
-                    set: { if !$0 { deviceSecurityViolation = nil } }
+                    set: { _ in /* non-dismissible — user must fix device settings */ }
                 )
             ) {
                 // No dismiss — user must fix device settings and relaunch
+                Button("OK") {
+                    // Tapping OK does nothing; the alert is controlled by deviceSecurityViolation
+                    // which only clears if the violation is resolved on next app launch.
+                }
             } message: {
                 Text(deviceSecurityViolation?.recoverySuggestion ?? "")
             }
+            .interactiveDismissDisabled(deviceSecurityViolation != nil)
             .onChange(of: scenePhase) {
                 sessionManager.handleScenePhase(scenePhase)
 
-                // Sync any pending audit entries when app comes to foreground
                 if scenePhase == .active {
+                    // Sync any pending audit entries when app comes to foreground
                     AuditLogger.shared.syncPendingEntries()
+
+                    // Re-establish any Realtime WebSocket subscriptions that may have
+                    // dropped while the app was backgrounded. The notification triggers
+                    // each ViewModel to call its subscribe…() method again.
+                    if appViewModel.isAuthenticated {
+                        RealtimeService.shared.reconnectIfNeeded()
+                    }
                 }
 
                 // Flush buffered analytics on background so no events are lost if app is killed

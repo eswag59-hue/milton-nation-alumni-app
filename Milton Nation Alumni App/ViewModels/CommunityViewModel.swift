@@ -47,11 +47,19 @@ final class CommunityViewModel {
 
     // MARK: - Task Cancellation
     private var loadPostsTask: Task<Void, Never>?
+    private var reconnectObserver: (any NSObjectProtocol)?
 
     private let dataService: DataServiceProtocol
 
     init(dataService: DataServiceProtocol = MockDataService()) {
         self.dataService = dataService
+        setupReconnectObserver()
+    }
+
+    deinit {
+        if let observer = reconnectObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
     }
 
     // MARK: - Posts
@@ -100,40 +108,49 @@ final class CommunityViewModel {
                 approvedPostCount: approvedCount
             )
 
-            let _ = try? await dataService.createPost(
-                content: content,
-                category: category,
-                mediaData: mediaData,
-                mediaType: mediaType,
-                status: postStatus,
-                matchedKeywords: moderationResult.matchedKeywords
-            )
-            let _ = try? await dataService.awardPoints(action: .postCreated)
-            await MainActor.run {
-                newPostContent = ""
-                newPostCategory = .general
-                selectedMediaData = nil
-                selectedMediaType = nil
-                showCreatePost = false
+            do {
+                _ = try await dataService.createPost(
+                    content: content,
+                    category: category,
+                    mediaData: mediaData,
+                    mediaType: mediaType,
+                    status: postStatus,
+                    matchedKeywords: moderationResult.matchedKeywords
+                )
+                let _ = try? await dataService.awardPoints(action: .postCreated)
+                await MainActor.run {
+                    newPostContent = ""
+                    newPostCategory = .general
+                    selectedMediaData = nil
+                    selectedMediaType = nil
+                    showCreatePost = false
 
-                // Set appropriate user feedback
-                switch postStatus {
-                case .approved:
-                    postSubmissionMessage = "Post published!"
-                case .pending:
-                    postSubmissionMessage = "Post submitted for review."
-                case .pendingReview:
-                    postSubmissionMessage = "Post submitted for review."
-                case .flaggedForCrisis:
-                    postSubmissionMessage = "Your post has been submitted. A care team member will reach out to you."
-                case .rejected:
-                    postSubmissionMessage = "Post submitted."
+                    // Set appropriate user feedback
+                    switch postStatus {
+                    case .approved:
+                        postSubmissionMessage = "Post published!"
+                    case .pending:
+                        postSubmissionMessage = "Post submitted for review."
+                    case .pendingReview:
+                        postSubmissionMessage = "Post submitted for review."
+                    case .flaggedForCrisis:
+                        postSubmissionMessage = "Your post has been submitted. A care team member will reach out to you."
+                    case .rejected:
+                        postSubmissionMessage = "Post submitted."
+                    }
+                    showPostSubmitted = true
+
+                    // If auto-approved, increment the approved count
+                    if postStatus == .approved {
+                        currentUser?.approvedPostCount += 1
+                    }
                 }
-                showPostSubmitted = true
-
-                // If auto-approved, increment the approved count
-                if postStatus == .approved {
-                    currentUser?.approvedPostCount += 1
+            } catch {
+                // Network/server failure — surface the real error, keep the draft
+                CrashReportingService.shared.recordError(error, context: "CommunityViewModel.createPost")
+                await MainActor.run {
+                    postSubmissionMessage = "Couldn't post. Please check your connection and try again."
+                    showPostSubmitted = true
                 }
             }
         }
@@ -266,6 +283,19 @@ final class CommunityViewModel {
     }
 
     // MARK: - Realtime Subscriptions
+
+    /// Re-subscribes to post updates when the app returns to foreground.
+    private func setupReconnectObserver() {
+        reconnectObserver = NotificationCenter.default.addObserver(
+            forName: RealtimeService.reconnectNeeded,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self else { return }
+            self.isSubscribedToRealtime = false
+            self.subscribeToPostUpdates()
+        }
+    }
 
     /// Subscribe to live post updates (new approved posts, status changes).
     private func subscribeToPostUpdates() {

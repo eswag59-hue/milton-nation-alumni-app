@@ -2,12 +2,22 @@ import SwiftUI
 import PhotosUI
 
 struct ProfileScreen: View {
+    /// The user passed in at view-creation. Used as a seed; the body always
+    /// reads `appViewModel.currentUser` so updates (sobriety reset, points,
+    /// approval status) propagate live.
     let user: User
     @Environment(AppViewModel.self) private var appViewModel
     @State private var viewModel: ProfileViewModel
     @State private var showDeleteConfirmation = false
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var profileImage: Image?
+
+    /// Live user — falls back to the init-time `user` if AppViewModel hasn't
+    /// hydrated yet (e.g. previews). Avoids the "ProfileScreen shows stale
+    /// sobriety date until logout/login" bug.
+    private var liveUser: User {
+        appViewModel.currentUser ?? user
+    }
 
     init(user: User) {
         self.user = user
@@ -31,6 +41,27 @@ struct ProfileScreen: View {
                                     .scaledToFill()
                                     .frame(width: 80, height: 80)
                                     .clipShape(Circle())
+                            } else if let urlString = liveUser.profilePhotoURL,
+                                      let url = URL(string: urlString) {
+                                AsyncImage(url: url) { phase in
+                                    switch phase {
+                                    case .success(let image):
+                                        image
+                                            .resizable()
+                                            .scaledToFill()
+                                            .frame(width: 80, height: 80)
+                                            .clipShape(Circle())
+                                    default:
+                                        Circle()
+                                            .fill(AppTheme.accent.opacity(0.2))
+                                            .frame(width: 80, height: 80)
+                                            .overlay {
+                                                Image(systemName: "person.fill")
+                                                    .font(.system(size: 36))
+                                                    .foregroundStyle(AppTheme.accent)
+                                            }
+                                    }
+                                }
                             } else {
                                 Circle()
                                     .fill(AppTheme.accent.opacity(0.2))
@@ -65,13 +96,13 @@ struct ProfileScreen: View {
                     }
                     .accessibilityLabel("Change profile photo")
                     .accessibilityHint("Double tap to choose a photo from your library")
-                    Text(user.fullName)
+                    Text(liveUser.fullName)
                         .font(.title2.bold())
                         .foregroundStyle(AppTheme.textPrimary)
-                    Text("@\(user.username)")
+                    Text("@\(liveUser.username)")
                         .font(.subheadline)
                         .foregroundStyle(AppTheme.accent)
-                    Text(user.email)
+                    Text(liveUser.email)
                         .font(.caption)
                         .foregroundStyle(AppTheme.textSecondary)
 

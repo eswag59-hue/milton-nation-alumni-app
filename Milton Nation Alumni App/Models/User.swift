@@ -75,6 +75,22 @@ enum Facility: String, Codable, CaseIterable, Identifiable {
         case .ohio:    return "🌻"
         }
     }
+
+    /// Support phone number for this facility.
+    var supportPhone: String {
+        switch self {
+        case .florida: return "(844) 406-4325"
+        case .ohio:    return "(844) 406-4325"   // Update if Ohio has a separate support line
+        }
+    }
+
+    /// Facility team display name used in chat and support screens.
+    var teamName: String {
+        switch self {
+        case .florida: return "Milton Team Florida"
+        case .ohio:    return "Milton Team Ohio"
+        }
+    }
 }
 
 struct User: Identifiable, Codable, Hashable {
@@ -103,6 +119,28 @@ struct User: Identifiable, Codable, Hashable {
     var lastPointsAwarded: Date?
     var createdAt: Date
     var updatedAt: Date
+
+    // Explicit CodingKeys are required because Swift's `.convertFromSnakeCase` strategy
+    // lowercases the final component of an acronym: "profile_photo_url" → "profilePhotoUrl"
+    // (lowercase 'l'), which does NOT match the Swift property "profilePhotoURL" (uppercase 'L').
+    // By specifying the raw value for URL-suffixed keys we bridge that gap while letting all
+    // other snake_case fields decode automatically via the strategy.
+    enum CodingKeys: String, CodingKey {
+        case id, email, phone, username, role, status, facility
+        case fullName           // "full_name"        → "fullName"
+        case profilePhotoURL = "profilePhotoUrl"  // "profile_photo_url" → "profilePhotoUrl"
+        case sobrietyDate       // "sobriety_date"    → "sobrietyDate"
+        case dischargeDate      // "discharge_date"   → "dischargeDate"
+        case recoveryProgram    // "recovery_program" → "recoveryProgram"
+        case mfaMethod          // "mfa_method"       → "mfaMethod"
+        case totalPoints        // "total_points"     → "totalPoints"
+        case approvedPostCount  // "approved_post_count" → "approvedPostCount"
+        case adminFacility      // "admin_facility"   → "adminFacility"
+        case lastLogin          // "last_login"       → "lastLogin"
+        case lastPointsAwarded  // "last_points_awarded" → "lastPointsAwarded"
+        case createdAt          // "created_at"       → "createdAt"
+        case updatedAt          // "updated_at"       → "updatedAt"
+    }
 
     var firstName: String {
         fullName.components(separatedBy: " ").first ?? fullName

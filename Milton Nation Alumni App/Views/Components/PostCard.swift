@@ -80,20 +80,59 @@ struct PostCard: View {
                 .lineLimit(5)
 
             // Media preview
-            if post.mediaURL != nil {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(AppTheme.background)
-                    .frame(height: 200)
-                    .overlay {
-                        VStack(spacing: 4) {
-                            Image(systemName: post.mediaType == .video ? "play.circle.fill" : "photo.fill")
-                                .font(.largeTitle)
-                                .foregroundStyle(AppTheme.textSecondary.opacity(0.5))
-                            Text(post.mediaType == .video ? "Video" : "Photo")
-                                .font(.caption)
-                                .foregroundStyle(AppTheme.textSecondary)
+            if let mediaURLString = post.mediaURL, let mediaURL = URL(string: mediaURLString) {
+                if post.mediaType == .video {
+                    // Video — show thumbnail placeholder with play icon
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(AppTheme.background)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 200)
+                        .overlay {
+                            VStack(spacing: 4) {
+                                Image(systemName: "play.circle.fill")
+                                    .font(.largeTitle)
+                                    .foregroundStyle(AppTheme.textSecondary.opacity(0.5))
+                                Text("Video")
+                                    .font(.caption)
+                                    .foregroundStyle(AppTheme.textSecondary)
+                            }
+                        }
+                } else {
+                    // Image — load from URL with AsyncImage
+                    AsyncImage(url: mediaURL) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .scaledToFill()
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 200)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                        case .failure:
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(AppTheme.background)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 200)
+                                .overlay {
+                                    VStack(spacing: 4) {
+                                        Image(systemName: "exclamationmark.triangle")
+                                            .foregroundStyle(AppTheme.textSecondary)
+                                        Text("Image unavailable")
+                                            .font(.caption)
+                                            .foregroundStyle(AppTheme.textSecondary)
+                                    }
+                                }
+                        case .empty:
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(AppTheme.background.opacity(0.5))
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 200)
+                                .overlay { ProgressView() }
+                        @unknown default:
+                            EmptyView()
                         }
                     }
+                }
             }
 
             // Actions

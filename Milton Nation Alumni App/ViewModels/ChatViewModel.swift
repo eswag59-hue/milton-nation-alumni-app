@@ -21,12 +21,20 @@ final class ChatViewModel {
     // MARK: - Task Cancellation
     private var loadConversationsTask: Task<Void, Never>?
     private var loadMessagesTask: Task<Void, Never>?
+    private var reconnectObserver: (any NSObjectProtocol)?
 
     let dataService: DataServiceProtocol
     private let cache = OfflineCacheService.shared
 
     init(dataService: DataServiceProtocol = MockDataService()) {
         self.dataService = dataService
+        setupReconnectObserver()
+    }
+
+    deinit {
+        if let observer = reconnectObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
     }
 
     func loadConversations() {
@@ -106,17 +114,27 @@ final class ChatViewModel {
             )
             let msgStatus = ContentFilterService.shared.messageStatus(for: moderationResult)
 
-            if let msg = try? await dataService.sendMessage(
-                conversationId: conversationId,
-                content: content,
-                type: .text,
-                status: msgStatus,
-                matchedKeywords: moderationResult.matchedKeywords
-            ) {
-                // Only append if not already added by Realtime
-                if !messages.contains(where: { $0.id == msg.id }) {
-                    messages.append(msg)
+            do {
+                let msg = try await dataService.sendMessage(
+                    conversationId: conversationId,
+                    content: content,
+                    type: .text,
+                    status: msgStatus,
+                    matchedKeywords: moderationResult.matchedKeywords
+                )
+                await MainActor.run {
+                    // Only append if not already added by Realtime
+                    if !messages.contains(where: { $0.id == msg.id }) {
+                        messages.append(msg)
+                    }
                 }
+            } catch {
+                // Restore the typed text so the user can retry, surface the error
+                await MainActor.run {
+                    messageText = content
+                    errorMessage = "Couldn't send message. Please try again."
+                }
+                CrashReportingService.shared.recordError(error, context: "ChatViewModel.sendMessage")
             }
         }
     }
@@ -155,6 +173,12 @@ final class ChatViewModel {
                     #if DEBUG
                     print("[ChatVM] ⚠️ Media upload failed: \(error.localizedDescription)")
                     #endif
+                    // Abort — don't send a "Photo" message with no actual photo
+                    await MainActor.run {
+                        isUploadingMedia = false
+                        errorMessage = "Couldn't upload media. Check your connection and try again."
+                    }
+                    return
                 }
             } else {
                 // Mock: generate a fake URL
@@ -162,13 +186,14 @@ final class ChatViewModel {
             }
 
             let label = type == .image ? "Photo" : fileName
-            if let msg = try? await dataService.sendMessage(
-                conversationId: conversationId,
-                content: label,
-                type: type,
-                status: .clean,
-                matchedKeywords: []
-            ) {
+            do {
+                let msg = try await dataService.sendMessage(
+                    conversationId: conversationId,
+                    content: label,
+                    type: type,
+                    status: .clean,
+                    matchedKeywords: []
+                )
                 await MainActor.run {
                     var message = msg
                     message.mediaURL = mediaURL
@@ -177,13 +202,29 @@ final class ChatViewModel {
                     }
                     isUploadingMedia = false
                 }
-            } else {
-                await MainActor.run { isUploadingMedia = false }
+            } catch {
+                await MainActor.run {
+                    isUploadingMedia = false
+                    errorMessage = "Couldn't send media. Please try again."
+                }
+                CrashReportingService.shared.recordError(error, context: "ChatViewModel.sendMedia.sendMessage")
             }
         }
     }
 
     // MARK: - Realtime
+
+    /// Re-subscribes to the active conversation when the app returns to foreground.
+    private func setupReconnectObserver() {
+        reconnectObserver = NotificationCenter.default.addObserver(
+            forName: RealtimeService.reconnectNeeded,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self, let conversationId = self.activeConversationId else { return }
+            self.subscribeToMessages(conversationId: conversationId)
+        }
+    }
 
     /// Subscribe to live message updates for the active conversation.
     private func subscribeToMessages(conversationId: UUID) {

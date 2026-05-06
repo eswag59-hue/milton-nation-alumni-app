@@ -50,7 +50,7 @@ struct StrugglingModal: View {
                             .clipShape(Capsule())
                             .frame(maxWidth: .infinity, alignment: .leading)
 
-                        phoneRow(name: "Milton Team", number: "(844) 975-4673", icon: "building.2.fill", isEmergency: false)
+                        phoneRow(name: "Milton Team", number: "(844) 406-4325", icon: "building.2.fill", isEmergency: false)
                     }
 
                     Divider()
@@ -90,6 +90,7 @@ struct StrugglingModal: View {
                     .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSmall))
                     .onChange(of: notifyCareTeam) {
                         if notifyCareTeam {
+                            notifyCareTeamNow()
                             showNotificationSent = true
                         }
                     }
@@ -139,14 +140,55 @@ struct StrugglingModal: View {
                 chatViewModel.loadConversations()
             }
             .navigationDestination(item: $navigateToStaff) { staff in
-                let conv = chatViewModel.conversations.first(where: { $0.staffId == staff.id })
-                ChatDetailScreen(
-                    staffName: staff.fullName,
-                    staffRole: staff.role,
-                    conversationId: conv?.id ?? UUID()
-                )
+                if let conv = chatViewModel.conversations.first(where: { $0.staffId == staff.id }) {
+                    ChatDetailScreen(
+                        staffName: staff.fullName,
+                        staffRole: staff.role,
+                        conversationId: conv.id
+                    )
+                } else {
+                    // No conversation yet — prompt admin to assign care team
+                    VStack(spacing: 16) {
+                        Image(systemName: "person.crop.circle.badge.questionmark")
+                            .font(.system(size: 48))
+                            .foregroundStyle(AppTheme.textSecondary)
+                        Text("No conversation yet")
+                            .font(.headline)
+                            .foregroundStyle(AppTheme.textPrimary)
+                        Text("Contact your admin to get connected with \(staff.fullName).")
+                            .font(.subheadline)
+                            .foregroundStyle(AppTheme.textSecondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 32)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(AppTheme.background)
+                    .navigationTitle(staff.fullName)
+                    .navigationBarTitleDisplayMode(.inline)
+                }
             }
         }
+    }
+
+    // MARK: - Care Team Notification
+
+    /// Sends a real alert to the care team when the user toggles "Notify care team".
+    private func notifyCareTeamNow() {
+        let userId = appViewModel.currentUser?.id
+        let userName = appViewModel.currentUser?.fullName ?? "A member"
+
+        // 1. Audit log — creates a server-side record staff can review
+        AuditLogger.shared.log(.contentEscalated, userId: userId, detail: "User triggered Notify Care Team in StrugglingModal")
+
+        // 2. Local notification fires immediately on this device (visible on simulator)
+        //    In production, the Supabase send-push-notification Edge Function pushes to
+        //    all staff in the user's facility via APNs.
+        PushNotificationService.shared.scheduleLocalNotification(
+            title: "⚠️ Member Needs Support",
+            body: "\(userName) has requested care team support right now.",
+            userInfo: ["type": "care_team_alert", "userId": userId?.uuidString ?? ""]
+        )
+
     }
 
     // MARK: - Phone call row (opens native Phone app via tel:)

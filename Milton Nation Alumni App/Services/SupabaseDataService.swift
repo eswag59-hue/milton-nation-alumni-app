@@ -214,9 +214,12 @@ final class SupabaseDataService: DataServiceProtocol {
     func fetchPosts(category: PostCategory?) async throws -> [CommunityPost] {
         let userId = try await currentUserId
 
+        // Show approved posts from everyone, PLUS the current user's own
+        // pending / pending_review / flagged posts so they can see their own
+        // submissions while waiting for moderation.
         var query = client.from("posts")
             .select()
-            .eq("status", value: "approved")
+            .or("status.eq.approved,user_id.eq.\(userId.uuidString)")
 
         if let category {
             query = query.eq("category", value: category.rawValue)
@@ -272,10 +275,10 @@ final class SupabaseDataService: DataServiceProtocol {
                     options: .init(contentType: mediaType == .video ? "video/mp4" : "image/jpeg")
                 )
 
-            // Generate a signed URL (1 hour expiry)
+            // Generate a signed URL (7-day expiry so post images don't go dark)
             mediaURL = try await client.storage
                 .from(SupabaseConfig.postMediaBucket)
-                .createSignedURL(path: filePath, expiresIn: 3600)
+                .createSignedURL(path: filePath, expiresIn: 604_800)
                 .absoluteString
         }
 
@@ -399,12 +402,25 @@ final class SupabaseDataService: DataServiceProtocol {
             .execute()
             .value
 
-        // If approved, increment the author's approved post count
+        // If approved, increment the author's approved post count.
+        // PostgREST doesn't support column arithmetic in update payloads, so we
+        // fetch the current value first and update with the incremented integer.
         if action == .approved {
-            _ = try? await client.from("profiles")
-                .update(["approved_post_count": "approved_post_count + 1"])
+            struct ApprovedCountRow: Decodable {
+                let approvedPostCount: Int
+                enum CodingKeys: String, CodingKey { case approvedPostCount = "approved_post_count" }
+            }
+            if let row = try? await (client.from("profiles")
+                .select("approved_post_count")
                 .eq("id", value: post.userId.uuidString)
+                .single()
                 .execute()
+                .value as ApprovedCountRow) {
+                _ = try? await client.from("profiles")
+                    .update(["approved_post_count": row.approvedPostCount + 1])
+                    .eq("id", value: post.userId.uuidString)
+                    .execute()
+            }
         }
 
         return post

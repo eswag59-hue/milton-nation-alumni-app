@@ -11,6 +11,11 @@ struct CreatePostSheet: View {
     @State private var showVideoPicker = false
     @State private var showCamera = false
 
+    private var isSubmitDisabled: Bool {
+        let trimmed = viewModel.newPostContent.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty || trimmed.count > 1000
+    }
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 20) {
@@ -176,13 +181,11 @@ struct CreatePostSheet: View {
                         .padding(.vertical, 14)
                         .foregroundStyle(.white)
                         .background(
-                            viewModel.newPostContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                                ? AppTheme.textSecondary
-                                : AppTheme.accent
+                            isSubmitDisabled ? AppTheme.textSecondary : AppTheme.accent
                         )
                         .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
                 }
-                .disabled(viewModel.newPostContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .disabled(isSubmitDisabled)
             }
             .padding()
             .navigationTitle("Create Post")
@@ -195,18 +198,26 @@ struct CreatePostSheet: View {
             // Photo picker — images only
             .photosPicker(isPresented: $showPhotoPicker, selection: $selectedPhotoItem, matching: .images)
             .onChange(of: selectedPhotoItem) {
-                if selectedPhotoItem != nil {
+                if let item = selectedPhotoItem {
                     viewModel.selectedMediaType = .image
-                    viewModel.selectedMediaData = Data()
+                    Task {
+                        if let data = try? await item.loadTransferable(type: Data.self), !data.isEmpty {
+                            await MainActor.run { viewModel.selectedMediaData = data }
+                        }
+                    }
                     selectedPhotoItem = nil
                 }
             }
             // Video picker — videos only
             .photosPicker(isPresented: $showVideoPicker, selection: $selectedVideoItem, matching: .videos)
             .onChange(of: selectedVideoItem) {
-                if selectedVideoItem != nil {
+                if let item = selectedVideoItem {
                     viewModel.selectedMediaType = .video
-                    viewModel.selectedMediaData = Data()
+                    Task {
+                        if let data = try? await item.loadTransferable(type: Data.self), !data.isEmpty {
+                            await MainActor.run { viewModel.selectedMediaData = data }
+                        }
+                    }
                     selectedVideoItem = nil
                 }
             }

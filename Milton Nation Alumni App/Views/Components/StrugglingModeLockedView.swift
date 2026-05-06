@@ -43,11 +43,12 @@ struct StrugglingModeLockedView: View {
                 .accessibilityHint("Double tap to open chat")
 
                 Button {
+                    // Crisis lines and care-team contacts live in ChatListScreen (Chat tab)
                     appViewModel.selectedTab = .chat
                 } label: {
                     HStack {
                         Image(systemName: "phone.fill")
-                        Text("View Care Team & Contacts")
+                        Text("View Crisis Lines & Contacts")
                     }
                     .font(.subheadline)
                     .frame(maxWidth: .infinity)
@@ -56,8 +57,8 @@ struct StrugglingModeLockedView: View {
                     .background(AppTheme.strugglingLight)
                     .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
                 }
-                .accessibilityLabel("View care team and contacts")
-                .accessibilityHint("Double tap to see your care team in the chat tab")
+                .accessibilityLabel("View crisis lines and contacts")
+                .accessibilityHint("Double tap to open chat and crisis phone numbers")
 
                 Button {
                     showExitConfirmation = true

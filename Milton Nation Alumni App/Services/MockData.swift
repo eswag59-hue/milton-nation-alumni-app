@@ -541,8 +541,8 @@ enum MockData {
 
     // MARK: - Company Contacts
     static let companyContacts: [CompanyContact] = [
-        CompanyContact(name: "Milton Team", phoneNumber: "(844) 975-4673", role: "General Inquiries"),
-        CompanyContact(name: "After-Hours Support", phoneNumber: "(844) 975-4673", role: "24/7 Support Line"),
+        CompanyContact(name: "Milton Team", phoneNumber: "(844) 406-4325", role: "General Inquiries"),
+        CompanyContact(name: "After-Hours Support", phoneNumber: "(844) 406-4325", role: "24/7 Support Line"),
     ]
 
     // MARK: - Announcements

@@ -23,20 +23,54 @@ struct MessageBubble: View {
 
                 case .image:
                     VStack(spacing: 6) {
-                        RoundedRectangle(cornerRadius: 14)
-                            .fill(isFromCurrentUser ? AppTheme.accent.opacity(0.3) : AppTheme.background)
-                            .frame(width: 200, height: 150)
-                            .overlay {
-                                VStack(spacing: 4) {
-                                    Image(systemName: "photo.fill")
-                                        .font(.title)
-                                        .foregroundStyle(isFromCurrentUser ? .white.opacity(0.7) : AppTheme.textSecondary.opacity(0.5))
-                                    Text("Photo")
-                                        .font(.caption)
-                                        .foregroundStyle(isFromCurrentUser ? .white.opacity(0.7) : AppTheme.textSecondary)
+                        if let urlString = message.mediaURL, let url = URL(string: urlString) {
+                            AsyncImage(url: url) { phase in
+                                switch phase {
+                                case .success(let image):
+                                    image
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 200, height: 200)
+                                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                                case .failure:
+                                    RoundedRectangle(cornerRadius: 14)
+                                        .fill(AppTheme.background)
+                                        .frame(width: 200, height: 150)
+                                        .overlay {
+                                            VStack(spacing: 4) {
+                                                Image(systemName: "exclamationmark.triangle")
+                                                    .foregroundStyle(AppTheme.textSecondary)
+                                                Text("Image unavailable")
+                                                    .font(.caption2)
+                                                    .foregroundStyle(AppTheme.textSecondary)
+                                            }
+                                        }
+                                case .empty:
+                                    RoundedRectangle(cornerRadius: 14)
+                                        .fill(AppTheme.background.opacity(0.5))
+                                        .frame(width: 200, height: 150)
+                                        .overlay { ProgressView() }
+                                @unknown default:
+                                    EmptyView()
                                 }
                             }
-                            .clipShape(RoundedRectangle(cornerRadius: 14))
+                        } else {
+                            // No URL yet (still uploading or no media stored)
+                            RoundedRectangle(cornerRadius: 14)
+                                .fill(isFromCurrentUser ? AppTheme.accent.opacity(0.3) : AppTheme.background)
+                                .frame(width: 200, height: 150)
+                                .overlay {
+                                    VStack(spacing: 4) {
+                                        Image(systemName: "photo.fill")
+                                            .font(.title)
+                                            .foregroundStyle(isFromCurrentUser ? .white.opacity(0.7) : AppTheme.textSecondary.opacity(0.5))
+                                        Text("Photo")
+                                            .font(.caption)
+                                            .foregroundStyle(isFromCurrentUser ? .white.opacity(0.7) : AppTheme.textSecondary)
+                                    }
+                                }
+                                .clipShape(RoundedRectangle(cornerRadius: 14))
+                        }
                     }
 
                 case .voice:

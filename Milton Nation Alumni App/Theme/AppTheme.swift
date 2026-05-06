@@ -78,7 +78,7 @@ enum AppTheme {
 // MARK: - Reusable Brand Logo View
 struct MiltonLogoView: View {
     enum LogoSize {
-        case small, medium, large, extraLarge
+        case small, medium, large, extraLarge, splash
     }
 
     var size: LogoSize = .large
@@ -89,6 +89,7 @@ struct MiltonLogoView: View {
         case .medium: return 70
         case .large: return 140
         case .extraLarge: return 180
+        case .splash: return 240
         }
     }
 

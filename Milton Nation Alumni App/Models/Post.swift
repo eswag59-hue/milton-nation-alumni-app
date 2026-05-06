@@ -45,6 +45,25 @@ struct CommunityPost: Identifiable, Codable {
     enum MediaType: String, Codable {
         case image, video
     }
+
+    // Explicit keys needed for any property whose name ends in "URL":
+    // .convertFromSnakeCase maps "user_photo_url" → "userPhotoUrl" (lowercase l),
+    // which doesn't match the Swift property "userPhotoURL" (uppercase L).
+    enum CodingKeys: String, CodingKey {
+        case id, category, content, status
+        case userId             // "user_id"          → "userId"
+        case userName           // "user_name"        → "userName"
+        case userPhotoURL = "userPhotoUrl"  // "user_photo_url"  → "userPhotoUrl"
+        case mediaURL = "mediaUrl"          // "media_url"       → "mediaUrl"
+        case mediaType          // "media_type"       → "mediaType"
+        case isPinned           // "is_pinned"        → "isPinned"
+        case likesCount         // "likes_count"      → "likesCount"
+        case commentsCount      // "comments_count"   → "commentsCount"
+        case isLikedByCurrentUser  // "is_liked_by_current_user" → "isLikedByCurrentUser"
+        case matchedKeywords    // "matched_keywords" → "matchedKeywords"
+        case createdAt          // "created_at"       → "createdAt"
+        case approvedAt         // "approved_at"      → "approvedAt"
+    }
 }
 
 struct Comment: Identifiable, Codable {
@@ -57,6 +76,16 @@ struct Comment: Identifiable, Codable {
     var matchedKeywords: [String] = []
     var status: PostStatus
     var createdAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case id, content, status
+        case postId             // "post_id"          → "postId"
+        case userId             // "user_id"          → "userId"
+        case userName           // "user_name"        → "userName"
+        case userPhotoURL = "userPhotoUrl"  // "user_photo_url"  → "userPhotoUrl"
+        case matchedKeywords    // "matched_keywords" → "matchedKeywords"
+        case createdAt          // "created_at"       → "createdAt"
+    }
 }
 
 struct Like: Identifiable, Codable {

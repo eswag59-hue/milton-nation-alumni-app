@@ -34,6 +34,10 @@ struct AdminDashboardScreen: View {
                     viewModel.adminFacilityFilter = appViewModel.currentUser?.adminFacility
                 }
                 viewModel.loadData()
+                viewModel.subscribeToAdminPostUpdates()
+            }
+            .onDisappear {
+                viewModel.unsubscribeFromAdminPostUpdates()
             }
             .onChange(of: appViewModel.activeFacility) { _, newFacility in
                 // Super admin switched facility — reload with new filter

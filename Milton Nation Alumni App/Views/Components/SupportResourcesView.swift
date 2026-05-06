@@ -208,7 +208,7 @@ struct SupportResource: Sendable {
         availability: "24/7 · Text Only · Free",
         description: "Text HOME to 741741 to connect with a crisis counselor.",
         actions: [
-            Action(label: "Text HOME to 741741", icon: "message.fill", url: "sms:741741&body=HOME"),
+            Action(label: "Text HOME to 741741", icon: "message.fill", url: "sms:741741?body=HOME"),
         ]
     )
 
