@@ -326,7 +326,7 @@ final class RealtimeService {
             InsertAction.self,
             schema: "public",
             table: "profiles",
-            filter: "status=eq.pending"
+            filter: .eq("status", value: "pending")
         )
 
         Task {
