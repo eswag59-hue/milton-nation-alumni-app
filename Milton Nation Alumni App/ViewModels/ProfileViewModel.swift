@@ -68,8 +68,14 @@ final class ProfileViewModel {
                 var photoURL: String
 
                 if SupabaseConfig.isConfigured {
-                    // Upload to Supabase Storage
-                    let storagePath = "profiles/\(user.id.uuidString)/avatar.jpg"
+                    // Upload to Supabase Storage.
+                    // CRITICAL: the storage RLS policy on `profile-photos` requires
+                    // `(storage.foldername(name))[1] = auth.uid()::text`, meaning
+                    // the FIRST folder in the path must be the user's UUID.
+                    // Prefixing with "profiles/" makes the first folder literally
+                    // "profiles" → policy fails → upload returns "Failed to upload
+                    // photo." Path must be `{user.id}/avatar.jpg` only.
+                    let storagePath = "\(user.id.uuidString)/avatar.jpg"
 
                     // Compress image for upload
                     let compressedData: Data

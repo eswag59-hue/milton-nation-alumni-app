@@ -7,19 +7,26 @@ struct SobrietyTrackerCard: View {
     var onUpdateRecoveryDate: (() -> Void)? = nil
 
     var body: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 6) {
             // Big day count
             Text("\(user.daysOfRecovery)")
                 .font(.system(size: 64, weight: .bold, design: .rounded))
                 .foregroundStyle(AppTheme.textPrimary)
                 .accessibilityLabel("\(user.daysOfRecovery) days of recovery")
 
-            // Tagline (replaces the previous "Your Journey" / "Days of Recovery" labels)
+            // "days" label directly below the number
+            Text(user.daysOfRecovery == 1 ? "day" : "days")
+                .font(.subheadline)
+                .foregroundStyle(AppTheme.textSecondary)
+                .accessibilityHidden(true)
+
+            // Tagline replaces the previous "Your Journey" / "Days of Recovery" labels
             Text("Living proof that recovery works")
                 .font(.footnote)
                 .italic()
                 .foregroundStyle(AppTheme.accent)
                 .multilineTextAlignment(.center)
+                .padding(.top, 4)
 
             // Weeks / months / years breakdown
             HStack(spacing: 0) {

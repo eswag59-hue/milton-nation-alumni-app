@@ -327,60 +327,56 @@ enum MockData {
         DailyQuote(id: UUID(), text: "Every day may not be good, but there is something good in every day.", attribution: "Alice Morse Earle", scheduledDate: nil),
     ]
 
-    // MARK: - Community Posts (using anonymous usernames)
+    // MARK: - Community Posts
     //
-    // 5 seeded posts for TestFlight. Two of them carry real image URLs
-    // (Lorem Picsum) so testers see images render correctly in the feed
-    // without needing a real Supabase upload. The other three are text-only.
-    // Several have likesCount/commentsCount so MockDataService.fetchComments
-    // can seed display comments on demand.
+    // Simple "test test test" content per user request — keeps the TestFlight
+    // feed obviously fake so testers don't confuse mock data with real posts.
+    // Two carry real Picsum placeholder images so image rendering can be tested.
     static let posts: [CommunityPost] = [
         CommunityPost(
-            id: UUID(), userId: currentUser.id, userName: "recovery_warrior",
+            id: UUID(), userId: currentUser.id, userName: "test_user_1",
             userPhotoURL: nil, category: .wins,
-            content: "Just celebrated another milestone in my recovery! The journey isn't always easy, but it's always worth it. Grateful for the Milton community.",
+            content: "test test test",
             mediaURL: nil, mediaType: nil, status: .approved, isPinned: true,
-            likesCount: 32, commentsCount: 3,
+            likesCount: 3, commentsCount: 3,
             createdAt: Calendar.current.date(byAdding: .hour, value: -1, to: Date())!,
             approvedAt: Calendar.current.date(byAdding: .minute, value: -30, to: Date())!
         ),
         CommunityPost(
-            id: UUID(), userId: UUID(), userName: "phoenix_rising",
+            id: UUID(), userId: UUID(), userName: "test_user_2",
             userPhotoURL: nil, category: .wins,
-            // Real placeholder image so testers see media render in the feed
-            content: "Just hit 6 months clean today! Never thought I'd make it this far. Thank you all for the support. This community has been my rock.",
-            mediaURL: "https://picsum.photos/seed/milton-6months/800/600",
+            content: "test test test",
+            mediaURL: "https://picsum.photos/seed/milton-test-1/800/600",
             mediaType: .image, status: .approved, isPinned: false,
-            likesCount: 24, commentsCount: 3, isLikedByCurrentUser: true,
+            likesCount: 5, commentsCount: 3,
             createdAt: Calendar.current.date(byAdding: .hour, value: -3, to: Date())!,
             approvedAt: Calendar.current.date(byAdding: .hour, value: -2, to: Date())!
         ),
         CommunityPost(
-            id: UUID(), userId: UUID(), userName: "grateful_heart",
+            id: UUID(), userId: UUID(), userName: "test_user_3",
             userPhotoURL: nil, category: .gratitude,
-            content: "Grateful for my sponsor and everyone at Milton who believed in me when I couldn't believe in myself. Recovery is possible.",
+            content: "test test test",
             mediaURL: nil, mediaType: nil, status: .approved, isPinned: false,
-            likesCount: 18, commentsCount: 3,
+            likesCount: 2, commentsCount: 3,
             createdAt: Calendar.current.date(byAdding: .hour, value: -8, to: Date())!,
             approvedAt: Calendar.current.date(byAdding: .hour, value: -7, to: Date())!
         ),
         CommunityPost(
-            id: UUID(), userId: UUID(), userName: "stronger_today",
+            id: UUID(), userId: UUID(), userName: "test_user_4",
             userPhotoURL: nil, category: .struggles,
-            content: "Having a tough day today. Cravings are strong but I'm reaching out instead of giving in. Any words of encouragement?",
-            // Real placeholder so the image actually renders in TestFlight
-            mediaURL: "https://picsum.photos/seed/milton-journal/800/600",
+            content: "test test test",
+            mediaURL: "https://picsum.photos/seed/milton-test-2/800/600",
             mediaType: .image, status: .approved, isPinned: false,
-            likesCount: 31, commentsCount: 3, isLikedByCurrentUser: true,
+            likesCount: 4, commentsCount: 3,
             createdAt: Calendar.current.date(byAdding: .hour, value: -12, to: Date())!,
             approvedAt: Calendar.current.date(byAdding: .hour, value: -11, to: Date())!
         ),
         CommunityPost(
-            id: UUID(), userId: UUID(), userName: "helping_hand",
+            id: UUID(), userId: UUID(), userName: "test_user_5",
             userPhotoURL: nil, category: .support,
-            content: "If anyone needs someone to talk to tonight, my DMs are open. We're all in this together. You don't have to do it alone.",
+            content: "test test test",
             mediaURL: nil, mediaType: nil, status: .approved, isPinned: false,
-            likesCount: 42, commentsCount: 3,
+            likesCount: 6, commentsCount: 3,
             createdAt: Calendar.current.date(byAdding: .day, value: -1, to: Date())!,
             approvedAt: Calendar.current.date(byAdding: .day, value: -1, to: Date())!
         ),

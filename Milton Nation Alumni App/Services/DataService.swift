@@ -196,24 +196,21 @@ final class MockDataService: DataServiceProtocol {
         return comment
     }
 
-    /// Generate a handful of seed comments so the UI isn't empty.
+    /// Seed a handful of mock comments so the UI isn't empty.
+    /// Per user request, all mock comments simply read "test test test"
+    /// so the TestFlight build clearly shows mock content vs. real content.
     private static func seedComments(for post: CommunityPost) -> [Comment] {
-        let names = ["phoenix_rising", "grateful_heart", "helping_hand", "stronger_today"]
-        let bodies = [
-            "So proud of you! Keep going!",
-            "This really resonated with me. Thank you for sharing.",
-            "You inspire me every day. Stay strong!",
-        ]
-        return bodies.enumerated().map { index, body in
+        let names = ["test_commenter_a", "test_commenter_b", "test_commenter_c"]
+        return names.enumerated().map { index, name in
             Comment(
                 id: UUID(),
                 postId: post.id,
                 userId: UUID(),
-                userName: names[index % names.count],
+                userName: name,
                 userPhotoURL: nil,
-                content: body,
+                content: "test test test",
                 status: .approved,
-                createdAt: Calendar.current.date(byAdding: .minute, value: -(30 * (bodies.count - index)), to: Date()) ?? Date()
+                createdAt: Calendar.current.date(byAdding: .minute, value: -(30 * (names.count - index)), to: Date()) ?? Date()
             )
         }
     }
