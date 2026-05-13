@@ -60,24 +60,31 @@ serve(async (req: Request) => {
       });
     }
 
-    // ── Demo bypass: App Store reviewer account ──────────────────────────────
+    // ── Demo bypass: App Store reviewer + TestFlight admin/super-admin demo accounts ──
     // Gated by DEMO_BYPASS_ENABLED env var — must be explicitly enabled per-deployment.
+    //
+    // Two recognition paths:
+    //  1. user_metadata.is_test_account == true  (preferred — works for any test account)
+    //  2. profile.phone matches DEMO_PHONE       (legacy — kept for the original reviewer account)
+    //
+    // Either path is sufficient. Path 1 lets us add more test accounts (admin, super_admin,
+    // alumni roles) without needing each to share a single demo phone number.
     if (DEMO_BYPASS_ENABLED && code === DEMO_OTP) {
-      // user.phone on the auth object may include a leading "+" or differ in
-      // format from the stored profiles.phone. Query the profiles table for the
-      // canonical phone so the comparison is format-independent.
+      const isTestAccount =
+        (user.user_metadata as Record<string, unknown> | null)?.is_test_account === true;
+
+      // Path 2 fallback — profile.phone match
       const { data: demoProfile } = await supabaseAdmin
         .from("profiles")
         .select("phone")
         .eq("id", user.id)
         .single();
-
-      // Normalise both sides to digits-only for a robust comparison.
       const normalise = (p: string | null | undefined) =>
         (p ?? "").replace(/\D/g, "");
+      const phoneMatch = normalise(demoProfile?.phone) === normalise(DEMO_PHONE);
 
-      if (normalise(demoProfile?.phone) === normalise(DEMO_PHONE)) {
-        console.log("[verify-sms-otp] Demo bypass used for reviewer account");
+      if (isTestAccount || phoneMatch) {
+        console.log("[verify-sms-otp] Demo bypass used", { isTestAccount, phoneMatch });
         return new Response(
           JSON.stringify({ verified: true }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }

@@ -16,8 +16,11 @@ struct CreatePostSheet: View {
         return trimmed.isEmpty || trimmed.count > 1000
     }
 
+    @FocusState private var contentFocused: Bool
+
     var body: some View {
         NavigationStack {
+            ScrollView {
             VStack(spacing: 20) {
                 // Category picker
                 VStack(alignment: .leading, spacing: 8) {
@@ -51,6 +54,7 @@ struct CreatePostSheet: View {
                         .foregroundStyle(AppTheme.accentLime)
 
                     TextEditor(text: $viewModel.newPostContent)
+                        .focused($contentFocused)
                         .foregroundStyle(AppTheme.textPrimary)
                         .scrollContentBackground(.hidden)
                         .frame(minHeight: 150)
@@ -170,9 +174,8 @@ struct CreatePostSheet: View {
                     }
                 }
 
-                Spacer()
-
                 Button {
+                    contentFocused = false        // dismiss keyboard before submit
                     viewModel.createPost()
                 } label: {
                     Text("Submit Post")
@@ -186,13 +189,26 @@ struct CreatePostSheet: View {
                         .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
                 }
                 .disabled(isSubmitDisabled)
+
+                // Extra breathing room so the Submit button stays comfortably
+                // above the home indicator + any keyboard inset.
+                Color.clear.frame(height: 60)
             }
             .padding()
+            }
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle("Create Post")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }
+                }
+                // Keyboard toolbar with "Done" so the user can dismiss the
+                // keyboard if they can't reach Submit Post.
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") { contentFocused = false }
+                        .fontWeight(.semibold)
                 }
             }
             // Photo picker — images only

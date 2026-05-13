@@ -3,7 +3,8 @@ import SwiftUI
 struct BadgeView: View {
     let badge: Badge
     let isEarned: Bool
-    @State private var showDetail = false
+
+    @State private var isPressed = false
 
     var body: some View {
         VStack(spacing: 6) {
@@ -22,55 +23,28 @@ struct BadgeView: View {
         .frame(width: 72, height: 90)
         .background(isEarned ? AppTheme.accent.opacity(0.08) : AppTheme.background)
         .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSmall))
-        .overlay(RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSmall).strokeBorder(isEarned ? AppTheme.accent.opacity(0.3) : Color.clear, lineWidth: 1))
-        .contentShape(Rectangle())
-        .onTapGesture {
-            showDetail = true
-        }
-        .sheet(isPresented: $showDetail) {
-            badgeDetailSheet
-                .presentationDetents([.fraction(0.45), .medium])
-                .presentationDragIndicator(.visible)
-        }
+        .overlay(
+            RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSmall)
+                .strokeBorder(isEarned ? AppTheme.accent.opacity(0.3) : Color.clear, lineWidth: 1)
+        )
+        // Press-and-hold to enlarge. Scales the badge up 1.6x in place
+        // (no sheet, no popover — the badge just grows so you can see the
+        // emoji + name clearly), then springs back to normal on release.
+        .scaleEffect(isPressed ? 1.6 : 1.0)
+        .shadow(color: isPressed ? AppTheme.accent.opacity(0.25) : .clear,
+                radius: isPressed ? 10 : 0, y: isPressed ? 4 : 0)
+        .zIndex(isPressed ? 1 : 0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isPressed)
+        .gesture(
+            LongPressGesture(minimumDuration: 0.0)
+                .onChanged { _ in isPressed = true }
+                .onEnded { _ in isPressed = false }
+                .simultaneously(with:
+                    DragGesture(minimumDistance: 0)
+                        .onEnded { _ in isPressed = false }
+                )
+        )
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(badge.name) badge, \(badge.pointsRequired) points required, \(isEarned ? "earned" : "not yet earned"). Tap for details.")
-        .accessibilityAddTraits(.isButton)
-    }
-
-    // MARK: - Detail Sheet
-
-    private var badgeDetailSheet: some View {
-        VStack(spacing: 20) {
-            // Large emoji
-            Text(badge.emoji)
-                .font(.system(size: 140))
-                .opacity(isEarned ? 1.0 : 0.35)
-                .padding(.top, 24)
-
-            // Badge name
-            Text(badge.name)
-                .font(.title.bold())
-                .foregroundStyle(AppTheme.textPrimary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
-
-            // Points required
-            Text("\(badge.pointsRequired) points")
-                .font(.headline)
-                .foregroundStyle(AppTheme.accent)
-
-            // Earned status
-            HStack(spacing: 8) {
-                Image(systemName: isEarned ? "checkmark.seal.fill" : "lock.fill")
-                    .foregroundStyle(isEarned ? AppTheme.accentSage : AppTheme.textSecondary)
-                Text(isEarned ? "Earned!" : "Keep going — you'll get there.")
-                    .font(.subheadline)
-                    .foregroundStyle(isEarned ? AppTheme.accentSage : AppTheme.textSecondary)
-            }
-
-            Spacer(minLength: 0)
-        }
-        .frame(maxWidth: .infinity)
-        .background(AppTheme.background)
+        .accessibilityLabel("\(badge.name) badge, \(badge.pointsRequired) points required, \(isEarned ? "earned" : "not yet earned"). Press and hold to enlarge.")
     }
 }

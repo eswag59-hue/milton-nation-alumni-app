@@ -7,29 +7,22 @@ struct CommunityScreen: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Header with logo
-                ZStack {
-                    MiltonLogoView(size: .small)
-                    HStack {
-                        Spacer()
-                        Button {
-                            viewModel.showCreatePost = true
-                        } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: "plus")
-                                Text("Post")
-                            }
-                            .font(.subheadline.bold())
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .foregroundStyle(.white)
-                            .background(AppTheme.accent)
-                            .clipShape(Capsule())
+                PageHeader(trailing: {
+                    Button {
+                        viewModel.showCreatePost = true
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "plus")
+                            Text("Post")
                         }
+                        .font(.subheadline.bold())
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .foregroundStyle(.white)
+                        .background(AppTheme.accent)
+                        .clipShape(Capsule())
                     }
-                }
-                .padding()
-                .background(AppTheme.cardBackground)
+                })
 
                 // Category filter
                 CategoryFilterBar(selectedCategory: $viewModel.selectedCategory)

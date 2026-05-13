@@ -328,22 +328,30 @@ enum MockData {
     ]
 
     // MARK: - Community Posts (using anonymous usernames)
+    //
+    // 5 seeded posts for TestFlight. Two of them carry real image URLs
+    // (Lorem Picsum) so testers see images render correctly in the feed
+    // without needing a real Supabase upload. The other three are text-only.
+    // Several have likesCount/commentsCount so MockDataService.fetchComments
+    // can seed display comments on demand.
     static let posts: [CommunityPost] = [
         CommunityPost(
             id: UUID(), userId: currentUser.id, userName: "recovery_warrior",
             userPhotoURL: nil, category: .wins,
             content: "Just celebrated another milestone in my recovery! The journey isn't always easy, but it's always worth it. Grateful for the Milton community.",
             mediaURL: nil, mediaType: nil, status: .approved, isPinned: true,
-            likesCount: 32, commentsCount: 12, isLikedByCurrentUser: false,
+            likesCount: 32, commentsCount: 3,
             createdAt: Calendar.current.date(byAdding: .hour, value: -1, to: Date())!,
             approvedAt: Calendar.current.date(byAdding: .minute, value: -30, to: Date())!
         ),
         CommunityPost(
             id: UUID(), userId: UUID(), userName: "phoenix_rising",
             userPhotoURL: nil, category: .wins,
+            // Real placeholder image so testers see media render in the feed
             content: "Just hit 6 months clean today! Never thought I'd make it this far. Thank you all for the support. This community has been my rock.",
-            mediaURL: "mock://media/celebration-photo.jpg", mediaType: .image, status: .approved, isPinned: false,
-            likesCount: 24, commentsCount: 8, isLikedByCurrentUser: true,
+            mediaURL: "https://picsum.photos/seed/milton-6months/800/600",
+            mediaType: .image, status: .approved, isPinned: false,
+            likesCount: 24, commentsCount: 3, isLikedByCurrentUser: true,
             createdAt: Calendar.current.date(byAdding: .hour, value: -3, to: Date())!,
             approvedAt: Calendar.current.date(byAdding: .hour, value: -2, to: Date())!
         ),
@@ -352,7 +360,7 @@ enum MockData {
             userPhotoURL: nil, category: .gratitude,
             content: "Grateful for my sponsor and everyone at Milton who believed in me when I couldn't believe in myself. Recovery is possible.",
             mediaURL: nil, mediaType: nil, status: .approved, isPinned: false,
-            likesCount: 18, commentsCount: 5, isLikedByCurrentUser: false,
+            likesCount: 18, commentsCount: 3,
             createdAt: Calendar.current.date(byAdding: .hour, value: -8, to: Date())!,
             approvedAt: Calendar.current.date(byAdding: .hour, value: -7, to: Date())!
         ),
@@ -360,97 +368,59 @@ enum MockData {
             id: UUID(), userId: UUID(), userName: "stronger_today",
             userPhotoURL: nil, category: .struggles,
             content: "Having a tough day today. Cravings are strong but I'm reaching out instead of giving in. Any words of encouragement?",
-            mediaURL: "mock://media/journal-entry.jpg", mediaType: .image, status: .pending, isPinned: false,
-            likesCount: 31, commentsCount: 15, isLikedByCurrentUser: true,
+            // Real placeholder so the image actually renders in TestFlight
+            mediaURL: "https://picsum.photos/seed/milton-journal/800/600",
+            mediaType: .image, status: .approved, isPinned: false,
+            likesCount: 31, commentsCount: 3, isLikedByCurrentUser: true,
             createdAt: Calendar.current.date(byAdding: .hour, value: -12, to: Date())!,
-            approvedAt: nil
+            approvedAt: Calendar.current.date(byAdding: .hour, value: -11, to: Date())!
         ),
         CommunityPost(
             id: UUID(), userId: UUID(), userName: "helping_hand",
             userPhotoURL: nil, category: .support,
             content: "If anyone needs someone to talk to tonight, my DMs are open. We're all in this together. You don't have to do it alone.",
             mediaURL: nil, mediaType: nil, status: .approved, isPinned: false,
-            likesCount: 42, commentsCount: 3, isLikedByCurrentUser: false,
+            likesCount: 42, commentsCount: 3,
             createdAt: Calendar.current.date(byAdding: .day, value: -1, to: Date())!,
             approvedAt: Calendar.current.date(byAdding: .day, value: -1, to: Date())!
         ),
     ]
 
     // MARK: - Meetings (with coordinates for MapKit)
+    //
+    // Exactly 2 mock meetings for TestFlight: one Zoom-only and one in-person.
+    // Per-request — testers shouldn't see a long fake meeting list.
     static let meetings: [Meeting] = [
+        // 1. Virtual / Zoom meeting
         Meeting(
-            id: UUID(), title: "Weekly Alumni Check-In",
-            description: "Our regular weekly meeting for all Milton alumni. Share your wins, struggles, and support each other.",
-            meetingType: .hybrid,
-            date: Calendar.current.date(byAdding: .day, value: 2, to: Date())!,
-            startTime: createTime(hour: 18, minute: 0),
-            endTime: createTime(hour: 19, minute: 30),
-            locationAddress: "Milton Recovery Center, 123 Recovery Lane, Suite 200",
-            locationLat: 25.7617,
-            locationLng: -80.1918,
-            virtualLink: "https://zoom.us/j/1234567890",
-            isRecurring: true, recurrencePattern: .weekly,
-            recurrenceEndDate: nil, parentMeetingId: nil,
-            createdBy: caseManager.id, createdAt: Date(),
-            rsvpUserIds: [alumniRoster[0].id, alumniRoster[1].id, alumniRoster[2].id, alumniRoster[4].id]
-        ),
-        Meeting(
-            id: UUID(), title: "Mindfulness & Meditation",
-            description: "Guided meditation session focused on managing cravings and stress.",
+            id: UUID(),
+            title: "Tuesday Alumni Zoom Check-In",
+            description: "Weekly virtual meeting for all Milton alumni. Drop in to share your wins, struggles, and support each other from anywhere.",
             meetingType: .virtual,
-            date: Calendar.current.date(byAdding: .day, value: 4, to: Date())!,
-            startTime: createTime(hour: 10, minute: 0),
-            endTime: createTime(hour: 11, minute: 0),
+            date: Calendar.current.date(byAdding: .day, value: 2, to: Date())!,
+            startTime: createTime(hour: 19, minute: 0),
+            endTime: createTime(hour: 20, minute: 0),
             locationAddress: nil,
             locationLat: nil,
             locationLng: nil,
-            virtualLink: "https://meet.google.com/abc-defg-hij",
+            virtualLink: "https://zoom.us/j/1234567890",
             isRecurring: true, recurrencePattern: .weekly,
             recurrenceEndDate: nil, parentMeetingId: nil,
-            createdBy: therapist.id, createdAt: Date()
+            createdBy: caseManager.id, createdAt: Date()
         ),
+        // 2. In-person meeting
         Meeting(
-            id: UUID(), title: "Family & Friends Support Group",
-            description: "Open meeting for alumni and their loved ones.",
+            id: UUID(),
+            title: "Saturday In-Person Recovery Meeting",
+            description: "Open meeting at the Milton Recovery Center. Coffee, conversation, and connection. New alumni welcome.",
             meetingType: .inPerson,
-            date: Calendar.current.date(byAdding: .day, value: 7, to: Date())!,
-            startTime: createTime(hour: 14, minute: 0),
-            endTime: createTime(hour: 15, minute: 30),
-            locationAddress: "Milton Community Hall, 456 Hope Street",
-            locationLat: 25.7839,
-            locationLng: -80.2102,
+            date: Calendar.current.date(byAdding: .day, value: 4, to: Date())!,
+            startTime: createTime(hour: 10, minute: 0),
+            endTime: createTime(hour: 11, minute: 30),
+            locationAddress: "Milton Recovery Center, 123 Recovery Lane, Suite 200, Miami, FL 33131",
+            locationLat: 25.7617,
+            locationLng: -80.1918,
             virtualLink: nil,
-            isRecurring: true, recurrencePattern: .monthly,
-            recurrenceEndDate: nil, parentMeetingId: nil,
-            createdBy: caseManager.id, createdAt: Date(),
-            rsvpUserIds: [alumniRoster[0].id, alumniRoster[3].id, alumniRoster[5].id]
-        ),
-        Meeting(
-            id: UUID(), title: "Relapse Prevention Workshop",
-            description: "Interactive workshop on identifying triggers and building coping strategies.",
-            meetingType: .inPerson,
-            date: Calendar.current.date(byAdding: .day, value: 3, to: Date())!,
-            startTime: createTime(hour: 15, minute: 0),
-            endTime: createTime(hour: 16, minute: 30),
-            locationAddress: "Milton Recovery Center, 123 Recovery Lane, Room 105",
-            locationLat: 25.7620,
-            locationLng: -80.1922,
-            virtualLink: nil,
-            isRecurring: true, recurrencePattern: .biweekly,
-            recurrenceEndDate: nil, parentMeetingId: nil,
-            createdBy: counselor.id, createdAt: Date()
-        ),
-        Meeting(
-            id: UUID(), title: "Young Adults Recovery Group",
-            description: "A safe space for young adults (18-30) in recovery to share experiences.",
-            meetingType: .hybrid,
-            date: Calendar.current.date(byAdding: .day, value: 5, to: Date())!,
-            startTime: createTime(hour: 19, minute: 0),
-            endTime: createTime(hour: 20, minute: 30),
-            locationAddress: "Coral Gables Community Center, 2700 Salzedo St",
-            locationLat: 25.7497,
-            locationLng: -80.2564,
-            virtualLink: "https://zoom.us/j/9876543210",
             isRecurring: true, recurrencePattern: .weekly,
             recurrenceEndDate: nil, parentMeetingId: nil,
             createdBy: caseManager.id, createdAt: Date()

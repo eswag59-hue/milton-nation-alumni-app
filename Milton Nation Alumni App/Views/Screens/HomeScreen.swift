@@ -5,39 +5,32 @@ struct HomeScreen: View {
     @State private var viewModel = HomeViewModel()
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 16) {
-                    // Logo header
-                    VStack(spacing: 0) {
-                        MiltonLogoView(size: .small)
-                            .padding()
+        @Bindable var appViewModel = appViewModel
+        return NavigationStack {
+            VStack(spacing: 0) {
+                PageHeader()
 
-                        // Brand gradient bar
-                        HStack(spacing: 0) {
-                            ForEach(0..<AppTheme.brandPalette.count, id: \.self) { i in
-                                AppTheme.brandPalette[i]
-                                    .frame(height: 3)
+                ScrollView {
+                    VStack(spacing: 16) {
+                        // Welcome
+                        if let user = appViewModel.currentUser {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Welcome back, \(user.firstName.lowercased())")
+                                    .font(.title2.bold())
+                                    .foregroundStyle(AppTheme.textPrimary)
+                                Text("Your recovery journey continues today")
+                                    .font(.subheadline)
+                                    .foregroundStyle(AppTheme.accent)
                             }
-                        }
-                    }
-
-                    // Welcome
-                    if let user = appViewModel.currentUser {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Welcome back, \(user.firstName.lowercased())")
-                                .font(.title2.bold())
-                                .foregroundStyle(AppTheme.textPrimary)
-                            Text("Your recovery journey continues today")
-                                .font(.subheadline)
-                                .foregroundStyle(AppTheme.accent)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal)
-
-                        SobrietyTrackerCard(user: user)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal)
-                    }
+                            .padding(.top, 12)
+
+                            SobrietyTrackerCard(user: user, onUpdateRecoveryDate: {
+                                appViewModel.showSobrietyCheck = true
+                            })
+                                .padding(.horizontal)
+                        }
 
                     DailyReflectionCard(quote: viewModel.dailyQuote)
                         .padding(.horizontal)
@@ -71,6 +64,7 @@ struct HomeScreen: View {
                     StrugglingButton(showModal: $viewModel.showStrugglingModal)
                         .padding(.horizontal)
                         .padding(.bottom, 8)
+                    }
                 }
             }
             .background(AppTheme.background)

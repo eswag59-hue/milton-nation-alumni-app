@@ -2,26 +2,26 @@ import SwiftUI
 
 struct SobrietyTrackerCard: View {
     let user: User
+    /// Action invoked when the user taps "Update recovery date".
+    /// HomeScreen wires this to opening the SobrietyCheckModal.
+    var onUpdateRecoveryDate: (() -> Void)? = nil
 
     var body: some View {
-        VStack(spacing: 16) {
-            HStack {
-                Text("Your Journey")
-                    .font(.headline)
-                    .foregroundStyle(AppTheme.textPrimary)
-                Spacer()
-            }
-
+        VStack(spacing: 14) {
+            // Big day count
             Text("\(user.daysOfRecovery)")
-                .font(.system(size: 56, weight: .bold, design: .rounded))
+                .font(.system(size: 64, weight: .bold, design: .rounded))
                 .foregroundStyle(AppTheme.textPrimary)
                 .accessibilityLabel("\(user.daysOfRecovery) days of recovery")
 
-            Text("Days of Recovery")
-                .font(.subheadline)
-                .foregroundStyle(AppTheme.textSecondary)
-                .accessibilityHidden(true)
+            // Tagline (replaces the previous "Your Journey" / "Days of Recovery" labels)
+            Text("Living proof that recovery works")
+                .font(.footnote)
+                .italic()
+                .foregroundStyle(AppTheme.accent)
+                .multilineTextAlignment(.center)
 
+            // Weeks / months / years breakdown
             HStack(spacing: 0) {
                 metricBox(value: "\(user.weeksOfRecovery)", label: "weeks")
                 Divider().frame(height: 40)
@@ -33,10 +33,24 @@ struct SobrietyTrackerCard: View {
             .background(AppTheme.background.opacity(0.5))
             .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSmall))
 
-            Text("Living proof that recovery works")
-                .font(.footnote)
-                .italic()
+            // Update recovery date — opens the SobrietyCheckModal so the user
+            // can pick a new sobriety date if they relapsed or want to correct it.
+            Button {
+                onUpdateRecoveryDate?()
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.counterclockwise")
+                        .font(.footnote)
+                    Text("Update recovery date")
+                        .font(.subheadline.bold())
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
                 .foregroundStyle(AppTheme.accent)
+                .background(AppTheme.accent.opacity(0.12))
+                .clipShape(Capsule())
+            }
+            .accessibilityHint("Opens a screen where you can pick a new sobriety date.")
         }
         .padding()
         .background(AppTheme.sobrietyGradient)

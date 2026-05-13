@@ -114,8 +114,15 @@ serve(async (req: Request) => {
     const normalisePhone = (p: string | null | undefined) =>
       (p ?? "").replace(/\D/g, "");
 
-    if (DEMO_BYPASS_ENABLED && normalisePhone(profile.phone) === normalisePhone(DEMO_PHONE)) {
-      console.log("[send-sms-otp] Demo bypass — skipping Twilio for reviewer account");
+    // Two recognition paths (mirror verify-sms-otp):
+    //  1. user_metadata.is_test_account == true  (new — any test account)
+    //  2. profile.phone matches DEMO_PHONE       (legacy reviewer account)
+    const isTestAccount =
+      (user.user_metadata as Record<string, unknown> | null)?.is_test_account === true;
+    const phoneMatch = normalisePhone(profile.phone) === normalisePhone(DEMO_PHONE);
+
+    if (DEMO_BYPASS_ENABLED && (isTestAccount || phoneMatch)) {
+      console.log("[send-sms-otp] Demo bypass — skipping Twilio", { isTestAccount, phoneMatch });
       let toPhoneDemo = profile.phone.replace(/[\s\-\(\)]/g, "");
       if (!toPhoneDemo.startsWith("+")) toPhoneDemo = "+" + normalisePhone(toPhoneDemo);
       const maskedPhoneDemo =

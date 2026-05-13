@@ -19,13 +19,7 @@ struct ChatListScreen: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Logo header (consistent across all post-login screens)
-                ZStack {
-                    MiltonLogoView(size: .small)
-                }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(AppTheme.cardBackground)
+                PageHeader()
 
                 Divider()
 

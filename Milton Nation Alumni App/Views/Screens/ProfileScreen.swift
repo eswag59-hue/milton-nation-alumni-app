@@ -26,18 +26,11 @@ struct ProfileScreen: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Logo header (consistent across all post-login screens)
-            ZStack {
-                MiltonLogoView(size: .small)
-            }
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(AppTheme.cardBackground)
-
-            Divider()
+            PageHeader()
 
             ScrollView {
                 VStack(spacing: 20) {
+                    Color.clear.frame(height: 12)  // Lower the profile-photo area slightly
 
                 // Profile header
                 VStack(spacing: 12) {
