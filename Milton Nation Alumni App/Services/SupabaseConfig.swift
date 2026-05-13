@@ -41,6 +41,54 @@ enum SupabaseConfig {
         return productionAnonKey
     }()
 
+    // MARK: - JSON Decoder / Encoder
+    //
+    // PostgREST's default decoder does NOT enable `.convertFromSnakeCase` — and our
+    // Models (User, Post, Message, etc.) rely on Swift converting database columns
+    // like `full_name` → `fullName`. Without this, decoding fails silently inside
+    // `client.from(...).execute().value` and the LoginViewModel mislabels the error
+    // as "Invalid email or password" because its catch block treats ALL throws as
+    // a credential failure.
+    //
+    // We mirror PostgREST's built-in date-decoding strategy (handles both
+    // `YYYY-MM-DD` dates and full ISO 8601 timestamps) and add the snake_case key
+    // conversion on top. The encoder mirrors the inverse for writes.
+
+    private static func makeDecoder() -> JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let string = try container.decode(String.self)
+            // Try full ISO8601 with fractional seconds first
+            let isoFractional = ISO8601DateFormatter()
+            isoFractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let date = isoFractional.date(from: string) { return date }
+            // Fall back to ISO8601 without fractional seconds
+            let iso = ISO8601DateFormatter()
+            iso.formatOptions = [.withInternetDateTime]
+            if let date = iso.date(from: string) { return date }
+            // Fall back to date-only "YYYY-MM-DD" (PostgreSQL DATE column)
+            let dateOnly = DateFormatter()
+            dateOnly.dateFormat = "yyyy-MM-dd"
+            dateOnly.timeZone = TimeZone(secondsFromGMT: 0)
+            dateOnly.locale = Locale(identifier: "en_US_POSIX")
+            if let date = dateOnly.date(from: string) { return date }
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "Invalid date format: \(string)"
+            )
+        }
+        return decoder
+    }
+
+    private static func makeEncoder() -> JSONEncoder {
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        encoder.dateEncodingStrategy = .iso8601
+        return encoder
+    }
+
     // MARK: - Shared Client
 
     /// Shared Supabase client instance used throughout the app.
@@ -50,6 +98,10 @@ enum SupabaseConfig {
         supabaseURL: url,
         supabaseKey: anonKey,
         options: .init(
+            db: .init(
+                encoder: makeEncoder(),
+                decoder: makeDecoder()
+            ),
             auth: .init(
                 emitLocalSessionAsInitialSession: true
             )
