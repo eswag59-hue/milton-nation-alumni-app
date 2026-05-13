@@ -12,6 +12,11 @@ protocol DataServiceProtocol {
     // Comments
     func fetchComments(postId: UUID) async throws -> [Comment]
     func addComment(postId: UUID, content: String, status: PostStatus, matchedKeywords: [String]) async throws -> Comment
+    /// Toggle like state on a comment. Returns the new isLiked state.
+    func toggleCommentLike(commentId: UUID) async throws -> Bool
+    /// Update an existing post's content (and optionally media). Resets the
+    /// post back to `pendingReview` so an admin can re-approve.
+    func updatePostContent(postId: UUID, newContent: String, newMediaURL: String?, newMediaType: CommunityPost.MediaType?) async throws -> CommunityPost
 
     // Post Moderation (Admin)
     func fetchPendingPosts() async throws -> [CommunityPost]
@@ -203,6 +208,47 @@ final class MockDataService: DataServiceProtocol {
         )
         mockComments[postId, default: []].append(comment)
         return comment
+    }
+
+    /// Toggle the like state of a comment in mock mode. We mutate the comment
+    /// in-place inside `mockComments` so subsequent fetches reflect the change.
+    func toggleCommentLike(commentId: UUID) async throws -> Bool {
+        try await Task.sleep(for: .milliseconds(100))
+        for (postId, comments) in mockComments {
+            if let idx = comments.firstIndex(where: { $0.id == commentId }) {
+                var updated = comments
+                let nowLiked = !updated[idx].isLikedByCurrentUser
+                updated[idx].isLikedByCurrentUser = nowLiked
+                updated[idx].likesCount = max(0, updated[idx].likesCount + (nowLiked ? 1 : -1))
+                mockComments[postId] = updated
+                return nowLiked
+            }
+        }
+        // Comment not in our in-memory store yet (e.g. seeded just-in-time);
+        // pretend it succeeded and return liked=true so the UI updates.
+        return true
+    }
+
+    /// Update an existing in-session post's content. Real backend pushes the
+    /// post back to `pendingReview`; mock keeps it visible and approved so the
+    /// user sees their edit immediately.
+    func updatePostContent(postId: UUID, newContent: String, newMediaURL: String?, newMediaType: CommunityPost.MediaType?) async throws -> CommunityPost {
+        try await Task.sleep(for: .milliseconds(200))
+        if let idx = mockPostsAppended.firstIndex(where: { $0.id == postId }) {
+            mockPostsAppended[idx].content = newContent
+            if let url = newMediaURL { mockPostsAppended[idx].mediaURL = url }
+            if let type = newMediaType { mockPostsAppended[idx].mediaType = type }
+            return mockPostsAppended[idx]
+        }
+        // If it wasn't in the in-session store, return a fabricated copy of the
+        // seed post with new content so the UI updates.
+        guard var post = MockData.posts.first(where: { $0.id == postId }) else {
+            throw NSError(domain: "data", code: 404, userInfo: [NSLocalizedDescriptionKey: "Post not found"])
+        }
+        post.content = newContent
+        if let url = newMediaURL { post.mediaURL = url }
+        if let type = newMediaType { post.mediaType = type }
+        return post
     }
 
     /// Seed a handful of mock comments so the UI isn't empty.

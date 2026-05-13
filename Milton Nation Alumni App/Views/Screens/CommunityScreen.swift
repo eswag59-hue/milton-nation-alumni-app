@@ -75,6 +75,9 @@ struct CommunityScreen: View {
                                         onLike: { viewModel.toggleLike(post: post) },
                                         onToggleComments: { viewModel.toggleComments(for: post.id) },
                                         onSubmitComment: { viewModel.submitComment(for: post.id) },
+                                        onLikeComment: { commentId in
+                                            viewModel.toggleCommentLike(postId: post.id, commentId: commentId)
+                                        },
                                         comments: viewModel.commentsByPost[post.id] ?? [],
                                         isLoadingComments: viewModel.loadingCommentPostIds.contains(post.id),
                                         isCommentsExpanded: viewModel.expandedCommentPostIds.contains(post.id),

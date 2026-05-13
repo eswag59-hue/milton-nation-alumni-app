@@ -188,6 +188,39 @@ final class CommunityViewModel {
 
     // MARK: - Comments
 
+    /// Optimistically toggle a comment's like state in `commentsByPost`, then
+    /// reconcile against the server via `toggleCommentLike` RPC. Rolls back if
+    /// the server call fails (e.g. network).
+    func toggleCommentLike(postId: UUID, commentId: UUID) {
+        guard
+            var list = commentsByPost[postId],
+            let idx = list.firstIndex(where: { $0.id == commentId })
+        else { return }
+
+        let wasLiked = list[idx].isLikedByCurrentUser
+        let originalCount = list[idx].likesCount
+        list[idx].isLikedByCurrentUser.toggle()
+        list[idx].likesCount = max(0, originalCount + (list[idx].isLikedByCurrentUser ? 1 : -1))
+        commentsByPost[postId] = list
+
+        Task {
+            do {
+                _ = try await dataService.toggleCommentLike(commentId: commentId)
+            } catch {
+                // Roll back optimistic update if the server rejected the change
+                await MainActor.run {
+                    if var rb = commentsByPost[postId],
+                       let i = rb.firstIndex(where: { $0.id == commentId }) {
+                        rb[i].isLikedByCurrentUser = wasLiked
+                        rb[i].likesCount = originalCount
+                        commentsByPost[postId] = rb
+                    }
+                }
+                CrashReportingService.shared.recordError(error, context: "CommunityViewModel.toggleCommentLike")
+            }
+        }
+    }
+
     /// Toggles the comment section for a given post. Fetches comments on first expand.
     func toggleComments(for postId: UUID) {
         if expandedCommentPostIds.contains(postId) {
@@ -360,6 +393,44 @@ final class CommunityViewModel {
                     self.posts.insert(removed, at: min(index, self.posts.count))
                     self.errorMessage = "Couldn't delete that post. Please try again."
                     completion?()
+                }
+            }
+        }
+    }
+
+    /// Edit a post the current user owns. Pushes content (and optionally
+    /// media) back through admin review by setting status to pendingReview.
+    /// Updates the local list immediately so the UI reflects the edit.
+    func updatePost(
+        postId: UUID,
+        newContent: String,
+        newMediaURL: String? = nil,
+        newMediaType: CommunityPost.MediaType? = nil,
+        completion: ((Bool) -> Void)? = nil
+    ) {
+        Task {
+            do {
+                let updated = try await dataService.updatePostContent(
+                    postId: postId,
+                    newContent: newContent,
+                    newMediaURL: newMediaURL,
+                    newMediaType: newMediaType
+                )
+                await MainActor.run {
+                    if let i = posts.firstIndex(where: { $0.id == postId }) {
+                        posts[i] = updated
+                    }
+                    postSubmissionMessage = updated.status == .approved
+                        ? "Edit published"
+                        : "Edit submitted for review"
+                    showPostSubmitted = true
+                    completion?(true)
+                }
+            } catch {
+                CrashReportingService.shared.recordError(error, context: "CommunityViewModel.updatePost")
+                await MainActor.run {
+                    errorMessage = "Couldn't update that post. Please try again."
+                    completion?(false)
                 }
             }
         }

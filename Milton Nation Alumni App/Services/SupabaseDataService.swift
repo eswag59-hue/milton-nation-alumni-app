@@ -21,6 +21,33 @@ nonisolated private struct IncrementCommentRPCParams: Encodable, Sendable {
     }
 }
 
+/// Params for `toggle_comment_like(p_comment_id uuid, p_user_id uuid)` RPC.
+/// Returns the new like state (true if just-liked, false if just-unliked).
+nonisolated private struct ToggleCommentLikeRPCParams: Encodable, Sendable {
+    let pCommentId: UUID
+    let pUserId: UUID
+    enum CodingKeys: String, CodingKey {
+        case pCommentId = "p_comment_id"
+        case pUserId = "p_user_id"
+    }
+}
+
+/// Update params for editing an existing post — content + media. Sending the
+/// post back to `pending_review` is done explicitly here so an admin must
+/// re-approve user edits before they're visible to the rest of the community.
+nonisolated private struct PostUpdateParams: Encodable, Sendable {
+    let content: String
+    let mediaUrl: String?
+    let mediaType: String?
+    let status: String
+    enum CodingKeys: String, CodingKey {
+        case content
+        case mediaUrl = "media_url"
+        case mediaType = "media_type"
+        case status
+    }
+}
+
 nonisolated private struct AwardPointsRPCParams: Encodable, Sendable {
     let pUserId: UUID
     let pPoints: Int
@@ -184,6 +211,13 @@ nonisolated private struct LikeRow: Decodable, Sendable {
     }
 }
 
+nonisolated private struct CommentLikeRow: Decodable, Sendable {
+    let commentId: UUID
+    enum CodingKeys: String, CodingKey {
+        case commentId = "comment_id"
+    }
+}
+
 nonisolated private struct UserApprovalNotifParams: Encodable, Sendable {
     let target: String
     let userId: String
@@ -333,13 +367,24 @@ final class SupabaseDataService: DataServiceProtocol {
     // MARK: - Comments
 
     func fetchComments(postId: UUID) async throws -> [Comment] {
-        let comments: [Comment] = try await client.from("comments")
+        var comments: [Comment] = try await client.from("comments")
             .select()
             .eq("post_id", value: postId.uuidString)
             .order("created_at", ascending: true)
             .limit(100)
             .execute()
             .value
+
+        // Merge the current user's like state from `comment_likes`. We do this
+        // client-side (rather than a join) so the Comment Codable shape stays
+        // simple — `isLikedByCurrentUser` is excluded from CodingKeys and is
+        // explicitly NOT a database column.
+        let userId = try await currentUserId
+        let likedIds = try await fetchLikedCommentIds(userId: userId, postId: postId)
+        let likedSet = Set(likedIds)
+        for i in comments.indices {
+            comments[i].isLikedByCurrentUser = likedSet.contains(comments[i].id)
+        }
 
         return comments
     }
@@ -384,6 +429,53 @@ final class SupabaseDataService: DataServiceProtocol {
         ).execute()
 
         return comment
+    }
+
+    /// Toggle the like state on a comment.
+    /// Delegates to `toggle_comment_like(p_comment_id, p_user_id)` RPC which
+    /// inserts/deletes the comment_likes row AND maintains likes_count via
+    /// trigger. Returns the new isLiked state.
+    func toggleCommentLike(commentId: UUID) async throws -> Bool {
+        let userId = try await currentUserId
+
+        let result: Bool = try await client.rpc(
+            "toggle_comment_like",
+            params: ToggleCommentLikeRPCParams(pCommentId: commentId, pUserId: userId)
+        )
+        .execute()
+        .value
+
+        return result
+    }
+
+    /// Edit the content (and optionally media) of a post the current user owns.
+    /// Sends the post back to `pending_review` so an admin must re-approve it
+    /// before the rest of the community sees the edit. RLS enforces ownership.
+    func updatePostContent(
+        postId: UUID,
+        newContent: String,
+        newMediaURL: String?,
+        newMediaType: CommunityPost.MediaType?
+    ) async throws -> CommunityPost {
+        let userId = try await currentUserId
+
+        let params = PostUpdateParams(
+            content: newContent,
+            mediaUrl: newMediaURL,
+            mediaType: newMediaType?.rawValue,
+            status: PostStatus.pendingReview.rawValue
+        )
+
+        let post: CommunityPost = try await client.from("posts")
+            .update(params)
+            .eq("id", value: postId.uuidString)
+            .eq("user_id", value: userId.uuidString)
+            .select()
+            .single()
+            .execute()
+            .value
+
+        return post
     }
 
     // MARK: - Post Moderation (Admin)
@@ -1044,5 +1136,18 @@ final class SupabaseDataService: DataServiceProtocol {
             .value
 
         return rows.map(\.postId)
+    }
+
+    /// Fetch the set of comment IDs (under the given post) the user has liked.
+    /// We scope by post_id so we only read what's needed for the current view.
+    private func fetchLikedCommentIds(userId: UUID, postId: UUID) async throws -> [UUID] {
+        let rows: [CommentLikeRow] = try await client.from("comment_likes")
+            .select("comment_id, comments!inner(post_id)")
+            .eq("user_id", value: userId.uuidString)
+            .eq("comments.post_id", value: postId.uuidString)
+            .execute()
+            .value
+
+        return rows.map(\.commentId)
     }
 }

@@ -81,6 +81,13 @@ struct Comment: Identifiable, Codable {
     var matchedKeywords: [String] = []
     var status: PostStatus
     var createdAt: Date
+    /// Number of likes on this comment. Server-tracked via the `comment_likes`
+    /// table + a trigger on the comments table. Default 0 for backwards-compat.
+    var likesCount: Int = 0
+    /// Client-side flag set by SupabaseDataService.fetchComments after merging
+    /// with the user's row from comment_likes. Always excluded from CodingKeys
+    /// (same pattern as CommunityPost.isLikedByCurrentUser).
+    var isLikedByCurrentUser: Bool = false
 
     enum CodingKeys: String, CodingKey {
         case id, content, status
@@ -90,6 +97,7 @@ struct Comment: Identifiable, Codable {
         case userPhotoURL = "userPhotoUrl"  // "user_photo_url"  → "userPhotoUrl"
         case matchedKeywords    // "matched_keywords" → "matchedKeywords"
         case createdAt          // "created_at"       → "createdAt"
+        case likesCount         // "likes_count"      → "likesCount"
     }
 }
 

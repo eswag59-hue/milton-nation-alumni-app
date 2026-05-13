@@ -8,6 +8,11 @@ struct ProfileScreen: View {
     let user: User
     @Environment(AppViewModel.self) private var appViewModel
     @State private var viewModel: ProfileViewModel
+    /// Dedicated CommunityViewModel for the MyPostsList navigation chain.
+    /// We don't reuse CommunityScreen's VM because that lives inside its own
+    /// NavigationStack — making one here keeps post mutations (edit / delete /
+    /// like-comment) self-contained to this navigation hierarchy.
+    @State private var communityVMForList = CommunityViewModel()
     @State private var showDeleteConfirmation = false
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var profileImage: Image?
@@ -233,22 +238,31 @@ struct ProfileScreen: View {
                 .cardStyle()
                 .padding(.horizontal)
 
-                // My Posts
+                // My Posts → tap to navigate to a dedicated list. Per user
+                // feedback in TestFlight, showing all posts inline on the
+                // profile screen pushed everything else off the bottom; this
+                // collapses the section to a single row + count.
                 if !viewModel.userPosts.isEmpty {
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack {
+                    NavigationLink {
+                        MyPostsListScreen(communityVM: communityVMForList)
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "square.text.square.fill")
+                                .foregroundStyle(AppTheme.accent)
+                                .frame(width: 28)
                             Text("My Posts")
-                                .font(.headline)
                                 .foregroundStyle(AppTheme.textPrimary)
                             Spacer()
                             Text("\(viewModel.userPosts.count)")
                                 .font(.subheadline.bold())
                                 .foregroundStyle(AppTheme.accent)
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundStyle(AppTheme.textSecondary)
                         }
-                        ForEach(viewModel.userPosts) { post in
-                            PostCard(post: post)
-                        }
+                        .padding()
                     }
+                    .cardStyle()
                     .padding(.horizontal)
                 }
 

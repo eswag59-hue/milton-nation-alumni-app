@@ -5,6 +5,9 @@ struct PostCard: View {
     var onLike: () -> Void = {}
     var onToggleComments: () -> Void = {}
     var onSubmitComment: () -> Void = {}
+    /// Called when the user taps the heart on a specific comment.
+    /// The comment's UUID is passed so callers can route to the right row.
+    var onLikeComment: (UUID) -> Void = { _ in }
 
     /// Comments to display beneath the post.
     var comments: [Comment] = []
@@ -21,6 +24,7 @@ struct PostCard: View {
         onLike: @escaping () -> Void = {},
         onToggleComments: @escaping () -> Void = {},
         onSubmitComment: @escaping () -> Void = {},
+        onLikeComment: @escaping (UUID) -> Void = { _ in },
         comments: [Comment] = [],
         isLoadingComments: Bool = false,
         isCommentsExpanded: Bool = false,
@@ -30,6 +34,7 @@ struct PostCard: View {
         self.onLike = onLike
         self.onToggleComments = onToggleComments
         self.onSubmitComment = onSubmitComment
+        self.onLikeComment = onLikeComment
         self.comments = comments
         self.isLoadingComments = isLoadingComments
         self.isCommentsExpanded = isCommentsExpanded
@@ -253,6 +258,30 @@ struct PostCard: View {
                     .font(.subheadline)
                     .foregroundStyle(AppTheme.textPrimary)
             }
+
+            Spacer(minLength: 0)
+
+            // Heart button — filled red when the user has liked this comment.
+            // Lives inline so the tap target is large enough but doesn't shift
+            // the comment text. Count is hidden when 0 to keep the row clean.
+            Button {
+                onLikeComment(comment.id)
+            } label: {
+                HStack(spacing: 3) {
+                    Image(systemName: comment.isLikedByCurrentUser ? "heart.fill" : "heart")
+                        .font(.caption)
+                        .foregroundStyle(comment.isLikedByCurrentUser ? .red : AppTheme.textSecondary)
+                    if comment.likesCount > 0 {
+                        Text("\(comment.likesCount)")
+                            .font(.caption2)
+                            .foregroundStyle(AppTheme.textSecondary)
+                    }
+                }
+                .padding(.horizontal, 4)
+                .padding(.vertical, 2)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
         }
     }
 

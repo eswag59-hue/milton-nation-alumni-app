@@ -15,6 +15,12 @@ struct PostDetailScreen: View {
     @State private var isLoading = false
     @FocusState private var commentFocused: Bool
 
+    // Edit-post state — opens a small sheet pre-filled with the post's
+    // current content. Submitting calls updatePost on the VM which sets
+    // the post back to pendingReview so an admin re-approves the edit.
+    @State private var showEditSheet = false
+    @State private var editDraft = ""
+
     // Pull the post live from the VM so it updates as likes/comments come in
     private var post: CommunityPost? {
         communityVM.posts.first(where: { $0.id == postId })
@@ -134,14 +140,63 @@ struct PostDetailScreen: View {
         .toolbar {
             if isOwnPost {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(role: .destructive) {
-                        showDeleteConfirm = true
+                    Menu {
+                        Button {
+                            // Pre-fill the editor with the current content
+                            editDraft = post?.content ?? ""
+                            showEditSheet = true
+                        } label: {
+                            Label("Edit", systemImage: "pencil")
+                        }
+                        Button(role: .destructive) {
+                            showDeleteConfirm = true
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
                     } label: {
-                        Image(systemName: "trash")
+                        Image(systemName: "ellipsis.circle")
                     }
-                    .accessibilityLabel("Delete this post")
+                    .accessibilityLabel("Post options")
                 }
             }
+        }
+        .sheet(isPresented: $showEditSheet) {
+            // Lightweight editor sheet. We can't reuse CreatePostSheet here
+            // because it constructs a brand-new post — we want to mutate the
+            // existing post and push it back to pending_review.
+            NavigationStack {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Edits go back through review")
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.textSecondary)
+                    TextEditor(text: $editDraft)
+                        .scrollContentBackground(.hidden)
+                        .padding(8)
+                        .background(AppTheme.background)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .frame(minHeight: 200)
+                }
+                .padding()
+                .background(AppTheme.cardBackground)
+                .navigationTitle("Edit Post")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("Cancel") { showEditSheet = false }
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Save") {
+                            let trimmed = editDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+                            guard !trimmed.isEmpty else { return }
+                            communityVM.updatePost(postId: postId, newContent: trimmed) { _ in }
+                            showEditSheet = false
+                        }
+                        .disabled(editDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .bold()
+                    }
+                }
+            }
+            .presentationDetents([.medium, .large])
         }
         .alert("Delete this post?", isPresented: $showDeleteConfirm) {
             Button("Cancel", role: .cancel) {}
@@ -207,6 +262,28 @@ struct PostDetailScreen: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
+
+            // Heart button on each comment — filled red when liked.
+            // Tap routes to CommunityViewModel.toggleCommentLike, which does
+            // an optimistic mutate + RPC reconciliation.
+            Button {
+                communityVM.toggleCommentLike(postId: postId, commentId: comment.id)
+            } label: {
+                VStack(spacing: 2) {
+                    Image(systemName: comment.isLikedByCurrentUser ? "heart.fill" : "heart")
+                        .font(.subheadline)
+                        .foregroundStyle(comment.isLikedByCurrentUser ? .red : AppTheme.textSecondary)
+                    if comment.likesCount > 0 {
+                        Text("\(comment.likesCount)")
+                            .font(.caption2)
+                            .foregroundStyle(AppTheme.textSecondary)
+                    }
+                }
+                .padding(.horizontal, 4)
+                .padding(.vertical, 2)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
         }
         .padding(.vertical, 6)
     }
