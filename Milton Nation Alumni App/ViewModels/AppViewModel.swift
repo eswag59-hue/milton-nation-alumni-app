@@ -23,8 +23,8 @@ final class AppViewModel {
     let dataService: DataServiceProtocol
     private var reconnectObserver: (any NSObjectProtocol)?
 
-    init(authService: AuthServiceProtocol = MockAuthService(),
-         dataService: DataServiceProtocol = MockDataService()) {
+    init(authService: AuthServiceProtocol = DefaultServices.authService,
+         dataService: DataServiceProtocol = DefaultServices.dataService) {
         self.authService = authService
         self.dataService = dataService
         setupReconnectObserver()
@@ -158,6 +158,7 @@ final class AppViewModel {
             await MainActor.run {
                 AuditLogger.shared.log(.logout, userId: userId)
                 KeychainService.delete(key: .authToken)
+                KeychainService.delete(key: .mfaCompleted)
 
                 // Disconnect all Realtime subscriptions
                 RealtimeService.shared.disconnectAll()
@@ -167,6 +168,15 @@ final class AppViewModel {
 
                 // Remove user context from crash reports
                 CrashReportingService.shared.clearUser()
+
+                // HIPAA: clear all on-disk caches so the next user on this device
+                // can't read the previous user's chats / conversations / profile
+                // from the OfflineCache directory before the network repopulates.
+                OfflineCacheService.shared.clearAll()
+
+                // Reset analytics queue so buffered events from user A aren't
+                // attributed to user B after re-login.
+                AnalyticsService.shared.reset()
 
                 currentUser = nil
                 isAuthenticated = false

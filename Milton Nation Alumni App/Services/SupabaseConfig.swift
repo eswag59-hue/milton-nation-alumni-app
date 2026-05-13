@@ -60,26 +60,65 @@ enum SupabaseConfig {
         decoder.dateDecodingStrategy = .custom { decoder in
             let container = try decoder.singleValueContainer()
             let string = try container.decode(String.self)
-            // Try full ISO8601 with fractional seconds first
+            // 1) ISO8601 with fractional seconds (most common from PostgREST):
+            //    "2026-05-13T14:08:56.774807+00:00"
             let isoFractional = ISO8601DateFormatter()
             isoFractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
             if let date = isoFractional.date(from: string) { return date }
-            // Fall back to ISO8601 without fractional seconds
+            // 2) ISO8601 without fractional seconds:
+            //    "2026-05-13T14:08:56+00:00"
             let iso = ISO8601DateFormatter()
             iso.formatOptions = [.withInternetDateTime]
             if let date = iso.date(from: string) { return date }
-            // Fall back to date-only "YYYY-MM-DD" (PostgreSQL DATE column)
+            // 3) PostgreSQL sometimes emits short timezone "+00" (no colon, no minutes):
+            //    "2026-05-13T14:08:56+00" — Apple's ISO8601DateFormatter rejects these.
+            //    Normalise by appending ":00" then retry both ISO formats.
+            if let normalised = Self.normaliseShortTimezone(string) {
+                if let date = isoFractional.date(from: normalised) { return date }
+                if let date = iso.date(from: normalised) { return date }
+            }
+            // 4) Date-only "YYYY-MM-DD" (PostgreSQL DATE column):
+            //    sobriety_date, discharge_date, etc.
             let dateOnly = DateFormatter()
             dateOnly.dateFormat = "yyyy-MM-dd"
             dateOnly.timeZone = TimeZone(secondsFromGMT: 0)
             dateOnly.locale = Locale(identifier: "en_US_POSIX")
             if let date = dateOnly.date(from: string) { return date }
+            // 5) Space-separated timestamp (some PG configurations):
+            //    "2026-05-13 14:08:56+00"
+            let spaceFmt = DateFormatter()
+            spaceFmt.dateFormat = "yyyy-MM-dd HH:mm:ssZZZZZ"
+            spaceFmt.timeZone = TimeZone(secondsFromGMT: 0)
+            spaceFmt.locale = Locale(identifier: "en_US_POSIX")
+            if let date = spaceFmt.date(from: string) { return date }
+            if let normalised = Self.normaliseShortTimezone(string),
+               let date = spaceFmt.date(from: normalised) { return date }
             throw DecodingError.dataCorruptedError(
                 in: container,
                 debugDescription: "Invalid date format: \(string)"
             )
         }
         return decoder
+    }
+
+    /// Convert PostgreSQL's short "+00" or "-05" timezone suffix into the
+    /// fully-qualified "+00:00" / "-05:00" form that Apple's date formatters
+    /// require. Returns nil if no conversion is needed.
+    private static func normaliseShortTimezone(_ s: String) -> String? {
+        // Match a trailing [+|-]HH that is NOT already followed by ":MM"
+        // Examples that should normalise:
+        //   "...+00"  →  "...+00:00"
+        //   "...-05"  →  "...-05:00"
+        // Examples that should NOT touch:
+        //   "...+00:00", "...+0000", "...Z"
+        guard let last3 = s.suffix(3).first.map({ _ in s.suffix(3) }) else { return nil }
+        let chars = Array(last3)
+        if chars.count == 3,
+           (chars[0] == "+" || chars[0] == "-"),
+           chars[1].isNumber, chars[2].isNumber {
+            return s + ":00"
+        }
+        return nil
     }
 
     private static func makeEncoder() -> JSONEncoder {

@@ -17,7 +17,7 @@ final class ProfileViewModel {
 
     private let dataService: DataServiceProtocol
 
-    init(user: User, dataService: DataServiceProtocol = MockDataService()) {
+    init(user: User, dataService: DataServiceProtocol = DefaultServices.dataService) {
         self.user = user
         self.dataService = dataService
     }

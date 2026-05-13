@@ -51,7 +51,7 @@ final class CommunityViewModel {
 
     private let dataService: DataServiceProtocol
 
-    init(dataService: DataServiceProtocol = MockDataService()) {
+    init(dataService: DataServiceProtocol = DefaultServices.dataService) {
         self.dataService = dataService
         setupReconnectObserver()
     }

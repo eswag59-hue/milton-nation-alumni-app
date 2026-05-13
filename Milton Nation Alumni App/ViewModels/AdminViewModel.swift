@@ -342,7 +342,7 @@ final class AdminViewModel {
     private let dataService: DataServiceProtocol
     private var reconnectObserver: (any NSObjectProtocol)?
 
-    init(dataService: DataServiceProtocol = MockDataService()) {
+    init(dataService: DataServiceProtocol = DefaultServices.dataService) {
         self.dataService = dataService
         setupReconnectObserver()
     }

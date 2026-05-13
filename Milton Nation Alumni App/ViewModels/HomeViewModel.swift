@@ -14,7 +14,7 @@ final class HomeViewModel {
     private let dataService: DataServiceProtocol
     private let cache = OfflineCacheService.shared
 
-    init(dataService: DataServiceProtocol = MockDataService()) {
+    init(dataService: DataServiceProtocol = DefaultServices.dataService) {
         self.dataService = dataService
     }
 

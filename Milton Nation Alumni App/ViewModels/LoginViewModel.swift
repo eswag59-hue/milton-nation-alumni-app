@@ -1,4 +1,5 @@
 import SwiftUI
+import CryptoKit
 
 enum RecoveryProgram: String, CaseIterable, Identifiable {
     case iop = "IOP"
@@ -67,7 +68,7 @@ final class LoginViewModel {
 
     private let authService: AuthServiceProtocol
 
-    init(authService: AuthServiceProtocol = MockAuthService()) {
+    init(authService: AuthServiceProtocol = DefaultServices.authService) {
         self.authService = authService
         // Restore persisted lockout state so force-quit doesn't bypass it
         failedAttempts = UserDefaults.standard.integer(forKey: failedAttemptsKey)
@@ -83,7 +84,7 @@ final class LoginViewModel {
         if isLockedOut {
             let seconds = Int(lockoutRemaining)
             errorMessage = "Too many failed attempts. Try again in \(seconds)s."
-            AuditLogger.shared.log(.loginLockout, detail: "Email: \(email)")
+            AuditLogger.shared.log(.loginLockout, detail: "Email-hash: \(Self.hashEmail(email))")
             return nil
         }
 
@@ -139,14 +140,14 @@ final class LoginViewModel {
         } catch {
             await MainActor.run {
                 failedAttempts += 1
-                AuditLogger.shared.log(.loginFailed, detail: "Email: \(email), attempt: \(failedAttempts)")
+                AuditLogger.shared.log(.loginFailed, detail: "Email-hash: \(Self.hashEmail(email)), attempt: \(failedAttempts)")
                 if failedAttempts >= maxAttempts {
                     lockoutEndDate = Date().addingTimeInterval(lockoutDuration)
                     // Persist lockout so force-quit can't bypass it
                     UserDefaults.standard.set(lockoutEndDate?.timeIntervalSince1970, forKey: lockoutEndKey)
                     UserDefaults.standard.set(failedAttempts, forKey: failedAttemptsKey)
                     errorMessage = "Too many failed attempts. Try again in 15 minutes."
-                    AuditLogger.shared.log(.loginLockout, detail: "Email: \(email)")
+                    AuditLogger.shared.log(.loginLockout, detail: "Email-hash: \(Self.hashEmail(email))")
                 } else {
                     UserDefaults.standard.set(failedAttempts, forKey: failedAttemptsKey)
                     errorMessage = "Invalid email or password. Please try again."
@@ -307,6 +308,19 @@ final class LoginViewModel {
                 errorMessage = "Failed to resend code. Please try again."
             }
         }
+    }
+
+    /// SHA-256 hash of email (lowercased + trimmed) for audit logging without
+    /// exposing the email plaintext. Per HIPAA's minimum necessary rule we don't
+    /// need the literal email in audit_logs to identify a lockout — a stable
+    /// hash plus user_id (filled in by AuditLogger) is enough to correlate.
+    static func hashEmail(_ email: String) -> String {
+        let normalised = email.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        let data = Data(normalised.utf8)
+        let digest = SHA256.hash(data: data)
+        // First 12 hex chars are enough to uniquely identify within Milton's user base;
+        // keeps the audit row compact and harder to brute-force back to email.
+        return digest.compactMap { String(format: "%02x", $0) }.prefix(12).joined()
     }
 
     func resetForm() {

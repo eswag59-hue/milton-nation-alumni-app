@@ -4,7 +4,7 @@
 <dict>
 	<!-- Bundle identity -->
 	<key>CFBundleDisplayName</key>
-	<string>Milton Alumni</string>
+	<string>Milton</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -64,8 +64,6 @@
 	<true/>
 	<key>UILaunchScreen</key>
 	<dict/>
-	<key>NSContactsUsageDescription</key>
-	<string>Milton Alumni accesses your contacts so you can quickly invite people to join the recovery community.</string>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
 		<string>arm64</string>

@@ -28,25 +28,6 @@ serve(async (req: Request) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  // Debug-only client for logging
-  const _debugClient = createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  );
-  const debugLog = async (step: string, detail: Record<string, unknown>) => {
-    try {
-      await _debugClient.from("_debug_send_sms_otp_log").insert({ step, detail });
-    } catch (_e) { /* swallow */ }
-  };
-
-  await debugLog("request_received", {
-    method: req.method,
-    user_agent: req.headers.get("user-agent"),
-    has_auth: !!req.headers.get("Authorization"),
-    has_apikey: !!req.headers.get("apikey"),
-  });
-
   try {
     // Get Supabase client with service_role for DB access
     const supabaseAdmin = createClient(
@@ -58,7 +39,6 @@ serve(async (req: Request) => {
     // Verify the user's JWT
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      await debugLog("error_no_auth_header", {});
       return new Response(JSON.stringify({ error: "Missing authorization header" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -69,14 +49,11 @@ serve(async (req: Request) => {
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
 
     if (authError || !user) {
-      await debugLog("error_invalid_token", { error: authError?.message });
       return new Response(JSON.stringify({ error: "Invalid token" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    await debugLog("user_authenticated", { user_id: user.id, email: user.email });
 
     // ── Rate limiting ──────────────────────────────────────────────────────
     // Count how many OTP challenges this user has requested in the last hour.
@@ -137,21 +114,12 @@ serve(async (req: Request) => {
     const normalisePhone = (p: string | null | undefined) =>
       (p ?? "").replace(/\D/g, "");
 
-    await debugLog("checking_demo_bypass", {
-      bypass_enabled: DEMO_BYPASS_ENABLED,
-      profile_phone: profile.phone,
-      demo_phone: DEMO_PHONE,
-      normalised_profile: normalisePhone(profile.phone),
-      normalised_demo: normalisePhone(DEMO_PHONE),
-      match: DEMO_BYPASS_ENABLED && normalisePhone(profile.phone) === normalisePhone(DEMO_PHONE),
-    });
     if (DEMO_BYPASS_ENABLED && normalisePhone(profile.phone) === normalisePhone(DEMO_PHONE)) {
       console.log("[send-sms-otp] Demo bypass — skipping Twilio for reviewer account");
       let toPhoneDemo = profile.phone.replace(/[\s\-\(\)]/g, "");
       if (!toPhoneDemo.startsWith("+")) toPhoneDemo = "+" + normalisePhone(toPhoneDemo);
       const maskedPhoneDemo =
         toPhoneDemo.slice(0, -4).replace(/./g, "*") + toPhoneDemo.slice(-4);
-      await debugLog("demo_bypass_returning_success", { masked_phone: maskedPhoneDemo });
       return new Response(
         JSON.stringify({ success: true, phone: maskedPhoneDemo, demo: true }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }

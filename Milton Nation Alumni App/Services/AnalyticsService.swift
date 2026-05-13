@@ -57,11 +57,16 @@ final class AnalyticsService: @unchecked Sendable {
         }
     }
 
-    /// Clear user identity on logout.
+    /// Clear user identity and ALL pending analytics on logout. Prevents user A's
+    /// buffered events from being flushed against user B's identity if user A's
+    /// flush failed (offline) before user B signs in on the same device.
     func reset() {
         queue.async { [self] in
             userProperties = [:]
             eventBuffer = []
+            // Also clear the persisted offline queue — without this, user A's
+            // unsent events would be attributed to user B on the next flush.
+            UserDefaults.standard.removeObject(forKey: Self.queueKey)
         }
     }
 
