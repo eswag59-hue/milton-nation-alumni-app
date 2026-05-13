@@ -13,6 +13,15 @@ const corsHeaders = {
 const RATE_LIMIT_MAX = 5;
 const RATE_LIMIT_WINDOW_MINUTES = 60;
 
+// ── App Store reviewer demo account ───────────────────────────────────────────
+// Only active when DEMO_BYPASS_ENABLED=true is set as an Edge Function secret.
+// Set this in Supabase Dashboard → Edge Functions → Secrets for review builds only.
+// NEVER enable in production — disable after Apple review is complete.
+// Matches the demo bypass in verify-sms-otp.
+const DEMO_BYPASS_ENABLED = Deno.env.get("DEMO_BYPASS_ENABLED") === "true";
+const DEMO_PHONE = "15550001234"; // Supabase stores without leading +
+// ─────────────────────────────────────────────────────────────────────────────
+
 serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -97,6 +106,26 @@ serve(async (req: Request) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // ── Demo bypass: App Store reviewer account ──────────────────────────────
+    // If the user's phone matches the demo phone AND DEMO_BYPASS_ENABLED is on,
+    // skip Twilio entirely. The reviewer enters OTP "000000" which is bypassed
+    // server-side in verify-sms-otp. No real SMS is sent.
+    const normalisePhone = (p: string | null | undefined) =>
+      (p ?? "").replace(/\D/g, "");
+
+    if (DEMO_BYPASS_ENABLED && normalisePhone(profile.phone) === normalisePhone(DEMO_PHONE)) {
+      console.log("[send-sms-otp] Demo bypass — skipping Twilio for reviewer account");
+      let toPhoneDemo = profile.phone.replace(/[\s\-\(\)]/g, "");
+      if (!toPhoneDemo.startsWith("+")) toPhoneDemo = "+" + normalisePhone(toPhoneDemo);
+      const maskedPhoneDemo =
+        toPhoneDemo.slice(0, -4).replace(/./g, "*") + toPhoneDemo.slice(-4);
+      return new Response(
+        JSON.stringify({ success: true, phone: maskedPhoneDemo, demo: true }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    // ────────────────────────────────────────────────────────────────────────
 
     // Generate 6-digit OTP
     const otp = String(Math.floor(100000 + Math.random() * 900000));
