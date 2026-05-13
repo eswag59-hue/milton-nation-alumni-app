@@ -409,19 +409,50 @@ final class CommunityViewModel {
         completion: ((Bool) -> Void)? = nil
     ) {
         Task {
+            // CRITICAL: edits MUST run through the same moderation pipeline
+            // that createPost/submitComment use. Without this, a user could
+            // post clean content, get it approved, then edit it to contain
+            // crisis phrases — and the edit would only sit in pending_review
+            // instead of flaggedForCrisis. That's a safety-critical hole on
+            // a recovery app. We match the exact pattern from createPost():
+            // analyze locally + server-escalate, then map risk → status.
+            let safetyResult = await ContentFilterService.shared.analyzeAndEscalate(
+                newContent,
+                userId: currentUser?.id,
+                feature: .communityPost
+            )
+            let mappedStatus: PostStatus
+            switch safetyResult.riskLevel {
+            case .highRisk:                  mappedStatus = .flaggedForCrisis
+            case .mediumRisk, .lowRisk:      mappedStatus = .pendingReview
+            case .safe:                      mappedStatus = .pendingReview
+                // ^ Even "safe" content goes back to pending_review after an
+                //   edit — an admin re-approves before community sees it.
+            }
+
             do {
-                let updated = try await dataService.updatePostContent(
+                var updated = try await dataService.updatePostContent(
                     postId: postId,
                     newContent: newContent,
                     newMediaURL: newMediaURL,
                     newMediaType: newMediaType
                 )
+                // SupabaseDataService.updatePostContent sets status to
+                // pendingReview unconditionally. If our local moderation
+                // returned highRisk, escalate the in-memory copy now and
+                // moderate-out: the server-side flag-content function (called
+                // by analyzeAndEscalate above) already pushed the alert to
+                // admins, so the post object just needs to reflect that.
+                if mappedStatus == .flaggedForCrisis {
+                    updated.status = .flaggedForCrisis
+                    updated.matchedKeywords = safetyResult.matches.map(\.keyword)
+                }
                 await MainActor.run {
                     if let i = posts.firstIndex(where: { $0.id == postId }) {
                         posts[i] = updated
                     }
-                    postSubmissionMessage = updated.status == .approved
-                        ? "Edit published"
+                    postSubmissionMessage = updated.status == .flaggedForCrisis
+                        ? "Edit submitted. Our team will reach out shortly."
                         : "Edit submitted for review"
                     showPostSubmitted = true
                     completion?(true)

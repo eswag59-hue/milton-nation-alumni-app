@@ -223,14 +223,18 @@ struct SupportResource: Sendable {
         ]
     )
 
-    /// Milton Recovery Centers support line
+    /// Milton Recovery Centers support line — two facilities (FL + OH).
+    /// Both numbers are answered 24/7. The card surfaces them side-by-side so
+    /// alumni who relocated can reach the team they know without having to
+    /// look up which facility they came from.
     static let miltonSupportLine = SupportResource(
         name: "Milton Recovery Centers",
         icon: "person.2.fill",
         availability: "24/7 · Alumni Support",
         description: "Reach your care team directly.",
         actions: [
-            Action(label: "Call (844) 406-4325", icon: "phone.fill", url: "tel:18444064325"),
+            Action(label: "Florida · (844) 406-4325", icon: "phone.fill", url: "tel:18444064325"),
+            Action(label: "Ohio · (740) 715-4673",    icon: "phone.fill", url: "tel:17407154673"),
         ]
     )
 
