@@ -226,20 +226,42 @@ final class AppViewModel {
     // MARK: - Sobriety
 
     func resetSobrietyDate(to date: Date = Date()) {
-        guard let user = currentUser else { return }
+        guard var user = currentUser else { return }
         let previousDate = user.sobrietyDate
-        currentUser?.sobrietyDate = date  // Optimistic update
+        // Optimistic update via explicit assignment so @Observable detects the change.
+        // (Optional-chain mutation `currentUser?.sobrietyDate = date` is sometimes
+        // missed by the macro's change-tracking.)
+        user.sobrietyDate = date
+        currentUser = user
+
         Task {
             do {
-                if let updatedUser = currentUser {
-                    _ = try await dataService.updateProfile(user: updatedUser)
+                let saved = try await dataService.updateProfile(user: user)
+                await MainActor.run {
+                    // Use the server's canonical row so we stay in sync with any
+                    // server-side mutation (e.g. updated_at, triggers).
+                    currentUser = saved
                 }
             } catch {
                 // Roll back optimistic update if save failed
-                await MainActor.run { currentUser?.sobrietyDate = previousDate }
+                await MainActor.run {
+                    var rolledBack = user
+                    rolledBack.sobrietyDate = previousDate
+                    currentUser = rolledBack
+                }
                 CrashReportingService.shared.recordError(error, context: "AppViewModel.resetSobrietyDate")
             }
         }
+    }
+
+    /// Replace the cached `currentUser` with a freshly-saved User instance.
+    /// Call this from any ViewModel that mutates the profile (e.g. ProfileViewModel
+    /// after uploading a new photo) so the rest of the app — Home's sobriety
+    /// counter, chat sender info, the avatar in the header — sees the change
+    /// immediately without waiting for the next full session restore.
+    func refreshCurrentUser(_ user: User) {
+        guard let existing = currentUser, existing.id == user.id else { return }
+        currentUser = user
     }
 
     // MARK: - Struggle Mode

@@ -11,6 +11,12 @@ final class ProfileViewModel {
     var isUploadingPhoto = false
     var photoUploadError: String?
 
+    /// Called whenever this VM mutates the profile (photo upload, future edits).
+    /// ProfileScreen wires this to `AppViewModel.refreshCurrentUser` so the
+    /// rest of the app (Home counter, header avatar, chat sender info) sees
+    /// the change immediately and the change survives navigating away + back.
+    var onProfileUpdate: ((User) -> Void)?
+
     // MARK: - Task Cancellation
     private var badgeTask: Task<Void, Never>?
     private var postsTask: Task<Void, Never>?
@@ -97,6 +103,10 @@ final class ProfileViewModel {
                     user = saved
                     isUploadingPhoto = false
                     photoUploadError = nil   // clear any previous error on success
+                    // Sync the new profile back to AppViewModel so other screens
+                    // (Home avatar, chat sender info, struggling modal) pick up
+                    // the change and so the change SURVIVES navigating away + back.
+                    onProfileUpdate?(saved)
                 }
             } catch {
                 CrashReportingService.shared.recordError(error, context: "ProfileViewModel.uploadProfilePhoto")

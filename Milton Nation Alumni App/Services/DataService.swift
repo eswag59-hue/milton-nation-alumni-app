@@ -96,30 +96,69 @@ final class MockDataService: DataServiceProtocol {
     /// In-memory store for mock comments, keyed by post ID.
     private var mockComments: [UUID: [Comment]] = [:]
 
+    /// In-memory persistence for the session — so TestFlight/Dev users actually
+    /// see their changes survive within a single app run. Without this, every
+    /// "create post", "send message", "update profile" call returned its input
+    /// but never appended anywhere, so the screens would refetch the static
+    /// MockData and the change "disappeared".
+    private var mockUserOverride: User?
+    private var mockPostsAppended: [CommunityPost] = []
+    private var mockMessagesAppended: [UUID: [ChatMessage]] = [:]
+    private var mockProfilePhotoURLByUserId: [UUID: String] = [:]
+
+    /// The current user state, with any in-session profile mutations applied.
+    private var currentMockUser: User {
+        var u = mockUserOverride ?? MockData.currentUser
+        if let photoURL = mockProfilePhotoURLByUserId[u.id] {
+            u.profilePhotoURL = photoURL
+        }
+        return u
+    }
+
     func fetchPosts(category: PostCategory?) async throws -> [CommunityPost] {
         try await Task.sleep(for: .milliseconds(300))
+        // Combine the static seed posts with any posts created in this session,
+        // so a post the user just created shows up in the feed without needing
+        // a real backend.
+        let all = mockPostsAppended + MockData.posts
         let filtered: [CommunityPost]
         if let category {
-            filtered = MockData.posts.filter { $0.category == category }
+            filtered = all.filter { $0.category == category }
         } else {
-            filtered = MockData.posts
+            filtered = all
         }
-        return filtered.sorted { ($0.isPinned ? 0 : 1) < ($1.isPinned ? 0 : 1) }
+        return filtered.sorted { lhs, rhs in
+            if lhs.isPinned != rhs.isPinned { return lhs.isPinned && !rhs.isPinned }
+            return lhs.createdAt > rhs.createdAt
+        }
     }
 
     func createPost(content: String, category: PostCategory, mediaData: Data? = nil, mediaType: CommunityPost.MediaType? = nil, status: PostStatus = .pending, matchedKeywords: [String] = []) async throws -> CommunityPost {
         try await Task.sleep(for: .milliseconds(300))
-        return CommunityPost(
-            id: UUID(), userId: MockData.currentUser.id,
-            userName: MockData.currentUser.username,
-            userPhotoURL: nil, category: category,
+        let me = currentMockUser
+        // In mock mode, posts skip moderation — show them in the feed immediately
+        // so the user sees their post appear. Real backend respects `status`.
+        let effectiveStatus: PostStatus = status == .pending ? .approved : status
+        let post = CommunityPost(
+            id: UUID(),
+            userId: me.id,
+            userName: me.username,
+            userPhotoURL: me.profilePhotoURL,
+            category: category,
             content: content,
             mediaURL: mediaData != nil ? "mock://media/\(UUID().uuidString)" : nil,
             mediaType: mediaType,
-            status: status, isPinned: false, likesCount: 0, commentsCount: 0,
-            isLikedByCurrentUser: false, matchedKeywords: matchedKeywords,
-            createdAt: Date(), approvedAt: status == .approved ? Date() : nil
+            status: effectiveStatus,
+            isPinned: false,
+            likesCount: 0,
+            commentsCount: 0,
+            matchedKeywords: matchedKeywords,
+            createdAt: Date(),
+            approvedAt: effectiveStatus == .approved ? Date() : nil
         )
+        // Prepend so it appears at the top of the feed immediately
+        mockPostsAppended.insert(post, at: 0)
+        return post
     }
 
     func toggleLike(postId: UUID) async throws -> Bool {
@@ -233,20 +272,32 @@ final class MockDataService: DataServiceProtocol {
 
     func fetchMessages(conversationId: UUID) async throws -> [ChatMessage] {
         try await Task.sleep(for: .milliseconds(300))
-        return MockData.sampleMessages.filter { $0.conversationId == conversationId }
+        // Combine seed messages with any messages sent in this session so the
+        // user's just-typed message survives navigating away + back.
+        let seeded = MockData.sampleMessages.filter { $0.conversationId == conversationId }
+        let appended = mockMessagesAppended[conversationId] ?? []
+        return (seeded + appended).sorted { $0.createdAt < $1.createdAt }
     }
 
     func sendMessage(conversationId: UUID, content: String, type: MessageType, status: MessageModerationStatus = .clean, matchedKeywords: [String] = []) async throws -> ChatMessage {
         try await Task.sleep(for: .milliseconds(200))
-        return ChatMessage(
-            id: UUID(), conversationId: conversationId,
-            senderId: MockData.currentUser.id, messageType: type,
+        let me = currentMockUser
+        let message = ChatMessage(
+            id: UUID(),
+            conversationId: conversationId,
+            senderId: me.id,
+            messageType: type,
             content: content,
             mediaURL: type != .text ? "mock://media/\(UUID().uuidString)" : nil,
             fileName: type == .file ? "attachment" : nil,
-            status: status, matchedKeywords: matchedKeywords,
-            createdAt: Date(), isFromCurrentUser: true
+            status: status,
+            matchedKeywords: matchedKeywords,
+            createdAt: Date(),
+            isFromCurrentUser: true
         )
+        // Persist in-session so the message survives navigating away + back
+        mockMessagesAppended[conversationId, default: []].append(message)
+        return message
     }
 
     func fetchAssignedStaff() async throws -> [User] {
@@ -256,6 +307,12 @@ final class MockDataService: DataServiceProtocol {
 
     func updateProfile(user: User) async throws -> User {
         try await Task.sleep(for: .milliseconds(300))
+        // Persist in-session so sobriety date, profile photo, etc. survive
+        // navigating away + back in dev/TestFlight (mock) mode.
+        mockUserOverride = user
+        if let url = user.profilePhotoURL, !url.isEmpty {
+            mockProfilePhotoURLByUserId[user.id] = url
+        }
         return user
     }
 

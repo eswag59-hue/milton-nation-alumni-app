@@ -25,11 +25,19 @@ struct ProfileScreen: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                // Logo header
+        VStack(spacing: 0) {
+            // Logo header (consistent across all post-login screens)
+            ZStack {
                 MiltonLogoView(size: .small)
-                    .padding(.top, 8)
+            }
+            .frame(maxWidth: .infinity)
+            .padding()
+            .background(AppTheme.cardBackground)
+
+            Divider()
+
+            ScrollView {
+                VStack(spacing: 20) {
 
                 // Profile header
                 VStack(spacing: 12) {
@@ -308,11 +316,10 @@ struct ProfileScreen: View {
                 }
                 .padding(.horizontal)
                 .padding(.bottom)
+                }
             }
         }
         .background(AppTheme.background)
-        .navigationTitle("Profile")
-        .navigationBarTitleDisplayMode(.inline)
         .alert("Delete Account?", isPresented: $showDeleteConfirmation) {
             Button("Cancel", role: .cancel) {}
             Button("Delete", role: .destructive) {
@@ -324,6 +331,12 @@ struct ProfileScreen: View {
         .onAppear {
             viewModel.loadBadges()
             viewModel.loadUserPosts()
+            // Wire the ProfileViewModel's update hook to the shared AppViewModel
+            // so the new photo URL (and any future profile edits) propagates to
+            // the Home counter, header avatar, etc. — and survives navigation.
+            viewModel.onProfileUpdate = { updatedUser in
+                appViewModel.refreshCurrentUser(updatedUser)
+            }
         }
     }
 

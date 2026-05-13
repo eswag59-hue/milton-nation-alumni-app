@@ -19,16 +19,11 @@ struct ChatListScreen: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Logo header
+                // Logo header (consistent across all post-login screens)
                 ZStack {
                     MiltonLogoView(size: .small)
-                    HStack {
-                        Spacer()
-                        Text("Chat")
-                            .font(.title2.bold())
-                            .foregroundStyle(AppTheme.textPrimary)
-                    }
                 }
+                .frame(maxWidth: .infinity)
                 .padding()
                 .background(AppTheme.cardBackground)
 
@@ -124,7 +119,6 @@ struct ChatListScreen: View {
                 }
             }
             .background(AppTheme.background)
-            .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search care team")
             .onAppear {
                 viewModel.loadConversations()
             }

@@ -33,16 +33,11 @@ struct MeetingsScreen: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Header with logo
+                // Header with logo (consistent across all post-login screens)
                 ZStack {
                     MiltonLogoView(size: .small)
-                    HStack {
-                        Spacer()
-                        Text("Meetings")
-                            .font(.title2.bold())
-                            .foregroundStyle(AppTheme.textPrimary)
-                    }
                 }
+                .frame(maxWidth: .infinity)
                 .padding()
                 .background(AppTheme.cardBackground)
 

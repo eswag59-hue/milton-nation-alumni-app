@@ -17,52 +17,68 @@ struct LoginScreen: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 24) {
-                    // Logo & Branding
-                    VStack(spacing: 0) {
-                        MiltonLogoView(size: .splash)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(spacing: 24) {
+                        // Logo & Branding
+                        VStack(spacing: 0) {
+                            MiltonLogoView(size: .splash)
 
-                        Text("Driven by purpose. Committed to care.")
-                            .font(.system(size: 14, weight: .regular))
-                            .foregroundStyle(AppTheme.textSecondary)
-                            .tracking(0.4)
-                            .multilineTextAlignment(.center)
-                            .padding(.top, 20)
+                            Text("Driven by purpose. Committed to care.")
+                                .font(.system(size: 14, weight: .regular))
+                                .foregroundStyle(AppTheme.textSecondary)
+                                .tracking(0.4)
+                                .multilineTextAlignment(.center)
+                                .padding(.top, 20)
 
-                        Rectangle()
-                            .fill(AppTheme.textSecondary.opacity(0.15))
-                            .frame(width: 48, height: 1)
-                            .padding(.top, 24)
+                            Rectangle()
+                                .fill(AppTheme.textSecondary.opacity(0.15))
+                                .frame(width: 48, height: 1)
+                                .padding(.top, 24)
+                        }
+                        .padding(.top, 48)
+                        .padding(.bottom, 16)
+
+                        if viewModel.showTwoFactor {
+                            twoFactorView
+                                .id(LoginField.twoFactor)
+                        } else if viewModel.isRegistering {
+                            registrationForm
+                        } else {
+                            loginForm
+                                .id(LoginField.email)
+                        }
+
+                        // Bottom spacer ensures focused field can scroll above keyboard
+                        Color.clear.frame(height: 200)
                     }
-                    .padding(.top, 48)
-                    .padding(.bottom, 16)
-
-                    if viewModel.showTwoFactor {
-                        twoFactorView
-                    } else if viewModel.isRegistering {
-                        registrationForm
-                    } else {
-                        loginForm
+                    .padding()
+                }
+                .scrollDismissesKeyboard(.interactively)
+                .background(AppTheme.background)
+                .onChange(of: focusedField) { _, newField in
+                    // Auto-scroll the focused field above the keyboard so the user
+                    // can always see what they're typing. iOS does this poorly when
+                    // the form is short and the keyboard takes 50%+ of the screen.
+                    guard let newField else { return }
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        proxy.scrollTo(newField, anchor: .center)
                     }
                 }
-                .padding()
-            }
-            .scrollDismissesKeyboard(.interactively)
-            .background(AppTheme.background)
-            .onAppear {
-                // Auto-focus email field so users can type immediately on the simulator
-                // without needing to tap the field first.
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    focusedField = .email
+                .onAppear {
+                    // Auto-focus email field so users can type immediately on the simulator
+                    // without needing to tap the field first.
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        focusedField = .email
+                    }
                 }
-            }
-            .onChange(of: viewModel.showTwoFactor) {
-                if viewModel.showTwoFactor { focusedField = .twoFactor }
-                else { focusedField = .email }
-            }
-            .onChange(of: viewModel.isRegistering) {
-                if viewModel.isRegistering { focusedField = .email }
+                .onChange(of: viewModel.showTwoFactor) {
+                    if viewModel.showTwoFactor { focusedField = .twoFactor }
+                    else { focusedField = .email }
+                }
+                .onChange(of: viewModel.isRegistering) {
+                    if viewModel.isRegistering { focusedField = .email }
+                }
             }
             .alert("Registration Submitted", isPresented: $viewModel.showRegistrationSuccess) {
                 Button("OK") {
