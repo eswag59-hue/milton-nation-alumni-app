@@ -5,6 +5,9 @@ protocol DataServiceProtocol {
     func fetchPosts(category: PostCategory?) async throws -> [CommunityPost]
     func createPost(content: String, category: PostCategory, mediaData: Data?, mediaType: CommunityPost.MediaType?, status: PostStatus, matchedKeywords: [String]) async throws -> CommunityPost
     func toggleLike(postId: UUID) async throws -> Bool
+    /// Permanently remove a post the current user owns.
+    /// The backend should enforce ownership via RLS.
+    func deletePost(postId: UUID) async throws
 
     // Comments
     func fetchComments(postId: UUID) async throws -> [Comment]
@@ -164,6 +167,12 @@ final class MockDataService: DataServiceProtocol {
     func toggleLike(postId: UUID) async throws -> Bool {
         try await Task.sleep(for: .milliseconds(100))
         return true
+    }
+
+    func deletePost(postId: UUID) async throws {
+        try await Task.sleep(for: .milliseconds(150))
+        // Remove from any in-session appended posts (mock mode)
+        mockPostsAppended.removeAll { $0.id == postId }
     }
 
     // MARK: - Comments

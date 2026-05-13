@@ -67,22 +67,30 @@ struct CommunityScreen: View {
                     ScrollView {
                         LazyVStack(spacing: 12) {
                             ForEach(viewModel.posts) { post in
-                                PostCard(
-                                    post: post,
-                                    onLike: { viewModel.toggleLike(post: post) },
-                                    onToggleComments: { viewModel.toggleComments(for: post.id) },
-                                    onSubmitComment: { viewModel.submitComment(for: post.id) },
-                                    comments: viewModel.commentsByPost[post.id] ?? [],
-                                    isLoadingComments: viewModel.loadingCommentPostIds.contains(post.id),
-                                    isCommentsExpanded: viewModel.expandedCommentPostIds.contains(post.id),
-                                    commentDraft: Binding(
-                                        get: { viewModel.commentDrafts[post.id] ?? "" },
-                                        set: { viewModel.commentDrafts[post.id] = $0 }
+                                // Tap the card to open the post's detail screen
+                                // (full content, all comments, delete-if-owned, etc.)
+                                NavigationLink(value: post.id) {
+                                    PostCard(
+                                        post: post,
+                                        onLike: { viewModel.toggleLike(post: post) },
+                                        onToggleComments: { viewModel.toggleComments(for: post.id) },
+                                        onSubmitComment: { viewModel.submitComment(for: post.id) },
+                                        comments: viewModel.commentsByPost[post.id] ?? [],
+                                        isLoadingComments: viewModel.loadingCommentPostIds.contains(post.id),
+                                        isCommentsExpanded: viewModel.expandedCommentPostIds.contains(post.id),
+                                        commentDraft: Binding(
+                                            get: { viewModel.commentDrafts[post.id] ?? "" },
+                                            set: { viewModel.commentDrafts[post.id] = $0 }
+                                        )
                                     )
-                                )
+                                }
+                                .buttonStyle(.plain)
                             }
                         }
                         .padding()
+                    }
+                    .navigationDestination(for: UUID.self) { postId in
+                        PostDetailScreen(postId: postId, communityVM: viewModel)
                     }
                     // Pull-to-refresh: kicks off loadPosts() and resolves on completion
                     .refreshable {

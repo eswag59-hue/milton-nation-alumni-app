@@ -12,6 +12,9 @@ final class CommunityViewModel {
     var showPostSubmitted = false
     var postSubmissionMessage = ""
     var searchText = ""
+    /// Surfaced to the user via .alert when a community action fails
+    /// (e.g. delete-post network error).
+    var errorMessage: String?
 
     /// Reference to the current user for auto-approve threshold checks.
     var currentUser: User?
@@ -333,6 +336,33 @@ final class CommunityViewModel {
     func stopRealtimeUpdates() {
         RealtimeService.shared.unsubscribeFromPosts()
         isSubscribedToRealtime = false
+    }
+
+    // MARK: - Delete post (own)
+
+    /// Remove a post the current user owns. Removes optimistically from the
+    /// local list, then sends the DELETE to the backend. On failure, restores.
+    func deletePost(_ post: CommunityPost, completion: (() -> Void)? = nil) {
+        guard let index = posts.firstIndex(where: { $0.id == post.id }) else {
+            completion?()
+            return
+        }
+        let removed = posts[index]
+        posts.remove(at: index)
+        Task {
+            do {
+                try await dataService.deletePost(postId: post.id)
+                await MainActor.run { completion?() }
+            } catch {
+                CrashReportingService.shared.recordError(error, context: "CommunityViewModel.deletePost")
+                await MainActor.run {
+                    // Reinsert at the original index on failure
+                    self.posts.insert(removed, at: min(index, self.posts.count))
+                    self.errorMessage = "Couldn't delete that post. Please try again."
+                    completion?()
+                }
+            }
+        }
     }
 
     // MARK: - Cleanup

@@ -176,12 +176,15 @@ struct ProfileScreen: View {
                         .padding(.vertical, 4)
                     }
 
-                    // Badges grid
+                    // Badges grid — 4 columns so each badge gets enough room.
+                    // Previous 6-column grid caused emoji/text to clip on
+                    // narrow iPhones because each cell was ~60pt wide.
                     LazyVGrid(columns: [
-                        GridItem(.flexible()), GridItem(.flexible()),
-                        GridItem(.flexible()), GridItem(.flexible()),
-                        GridItem(.flexible()), GridItem(.flexible())
-                    ], spacing: 12) {
+                        GridItem(.flexible(), spacing: 10),
+                        GridItem(.flexible(), spacing: 10),
+                        GridItem(.flexible(), spacing: 10),
+                        GridItem(.flexible(), spacing: 10),
+                    ], spacing: 14) {
                         ForEach(viewModel.badges) { badge in
                             BadgeView(
                                 badge: badge,

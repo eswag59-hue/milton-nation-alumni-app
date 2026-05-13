@@ -318,6 +318,18 @@ final class SupabaseDataService: DataServiceProtocol {
         return result
     }
 
+    func deletePost(postId: UUID) async throws {
+        let userId = try await currentUserId
+        // RLS policy on posts enforces user_id == auth.uid() so we explicitly
+        // scope the DELETE by user_id too — defense in depth, fails fast if
+        // someone tries to call this with another user's post id.
+        try await client.from("posts")
+            .delete()
+            .eq("id", value: postId.uuidString)
+            .eq("user_id", value: userId.uuidString)
+            .execute()
+    }
+
     // MARK: - Comments
 
     func fetchComments(postId: UUID) async throws -> [Comment] {
