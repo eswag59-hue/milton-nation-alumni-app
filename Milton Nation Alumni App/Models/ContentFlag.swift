@@ -48,20 +48,12 @@ struct ContentFlag: Identifiable, Codable, Sendable {
     }
 
     // MARK: - Coding Keys
-
-    enum CodingKeys: String, CodingKey {
-        case id
-        case userId          = "user_id"
-        case riskLevel       = "risk_level"
-        case categories
-        case feature
-        case redactedSummary = "redacted_summary"
-        case isEmergency     = "is_emergency"
-        case timestamp
-        case reviewStatus    = "review_status"
-        case reviewedBy      = "reviewed_by"
-        case reviewNote      = "review_note"
-    }
+    //
+    // Explicit CodingKeys removed: SupabaseConfig now configures the PostgREST
+    // client with `keyDecodingStrategy = .convertFromSnakeCase`. The auto-
+    // synthesized CodingKeys (one case per property, camelCase) work correctly
+    // with that strategy. Adding explicit snake_case raw values here would
+    // CONFLICT with the strategy and break decoding.
 
     // MARK: - Display Helpers
 
