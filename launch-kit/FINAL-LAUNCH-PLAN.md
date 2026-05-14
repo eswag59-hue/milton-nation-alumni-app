@@ -245,7 +245,7 @@ Key checkpoints:
 - ☑ Sign-In Required
 - Demo phone: `+15550001234`, OTP: `000000`
 - Reviewer notes pasted verbatim from `SUBMIT-BUILD-10.md`
-- Contact: ezra@miltonrecoverycenters.com + your real phone
+- Contact: ezra@miltonrecovery.com + your real phone
 - ☑ Manually release this version
 - Sweep left sidebar for red dots
 

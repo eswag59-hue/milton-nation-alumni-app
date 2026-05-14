@@ -20,7 +20,7 @@ I'm writing to request a Business Associate Agreement (BAA) for our Twilio accou
 - **Twilio Account SID**: `<paste your Account SID here — find it at https://console.twilio.com/>`
 - **Business name**: Milton Health Group LLC
 - **Business address**: `<your registered LLC address>`
-- **Primary contact**: Ezra Barishansky, ezra@miltonrecoverycenters.com, `<your phone>`
+- **Primary contact**: Ezra Barishansky, ezra@miltonrecovery.com, `<your phone>`
 
 ### Use case
 We operate **Milton Nation Alumni**, a private, invite-only iOS app for verified alumni of Milton Recovery Centers (substance use disorder treatment). Twilio is used **only** for:
@@ -44,7 +44,7 @@ Please let me know what additional information you need to process this BAA. We'
 Thanks,
 **Ezra Barishansky**
 Milton Health Group LLC
-ezra@miltonrecoverycenters.com
+ezra@miltonrecovery.com
 
 ---
 

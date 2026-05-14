@@ -175,7 +175,7 @@ Crisis content disclosure: The app includes a "I'm Struggling" feature that conn
 | First name | `Ezra` |
 | Last name | `Barishansky` |
 | Phone | `<your real phone>` |
-| Email | `ezra@miltonrecoverycenters.com` |
+| Email | `ezra@miltonrecovery.com` |
 
 ### Notes for Reviewer (additional, beyond demo)
 ```
@@ -190,7 +190,7 @@ Compliance posture:
 
 Vendor BAAs: Supabase (signed), Twilio (in process). Resend handles welcome emails only — body contains no PHI.
 
-If you have questions during review, please email ezra@miltonrecoverycenters.com or call +1-844-406-4325 (Milton Recovery Centers main line).
+If you have questions during review, please email ezra@miltonrecovery.com or call +1-844-406-4325 (Milton Recovery Centers main line).
 ```
 
 ---

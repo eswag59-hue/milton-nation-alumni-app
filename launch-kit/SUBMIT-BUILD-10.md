@@ -122,7 +122,7 @@ Vendor BAAs: Supabase (signed), Twilio (in process). Resend handles
 welcome emails only — body contains no PHI.
 
 If you have questions during review:
-- Email: ezra@miltonrecoverycenters.com
+- Email: ezra@miltonrecovery.com
 - Phone: (844) 406-4325 (Milton Recovery Centers main line)
 ```
 
@@ -132,7 +132,7 @@ If you have questions during review:
 | First name | `Ezra` |
 | Last name | `Barishansky` |
 | Phone | *(your real phone)* |
-| Email | `ezra@miltonrecoverycenters.com` |
+| Email | `ezra@miltonrecovery.com` |
 
 ### Step 6: Version Release
 - ☑ **Manually release this version**
