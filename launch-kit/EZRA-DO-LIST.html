@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Milton Nation — Ezra's Click-by-Click Do List</title>
+<style>
+  @page { size: 8.5in 11in; margin: 0.5in; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: 0; color: #101820; }
+
+  /* Cover */
+  .cover {
+    background: linear-gradient(135deg, #101820 0%, #165C7D 35%, #007396 70%, #369DA0 100%);
+    color: white;
+    height: 10in;
+    padding: 1.5in 0.75in;
+    page-break-after: always;
+    position: relative;
+  }
+  .cover .swatches { display:flex; height:8px; margin-bottom: 40px; }
+  .cover .swatches div { flex:1; }
+  .cover h1 { font-family: Georgia, serif; font-size: 72px; font-weight: 300; margin: 0; letter-spacing: -2px; }
+  .cover .subtitle { font-size: 22px; opacity: 0.9; margin: 8px 0 0; font-weight: 500; }
+  .cover .tag { font-size: 13px; opacity: 0.6; margin-top: 32px; font-style: italic; }
+  .cover .summary { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 14px; padding: 24px; margin-top: 60px; }
+  .cover .summary h2 { color: #D4EB8E; font-size: 16px; margin: 0 0 14px; text-transform: uppercase; letter-spacing: 1px; }
+  .cover .summary p { font-size: 15px; line-height: 1.6; margin: 0 0 12px; opacity: 0.95; }
+  .cover .summary p:last-child { margin: 0; }
+  .cover .footer { position: absolute; bottom: 1in; left: 0.75in; right: 0.75in; font-size: 12px; opacity: 0.5; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 12px; }
+
+  /* Page */
+  .page { padding: 0 0.25in 0.5in; page-break-after: always; }
+  .page:last-child { page-break-after: avoid; }
+
+  /* Phase header */
+  .phase-header { background: #101820; color: white; padding: 18px 24px; border-radius: 12px; margin-bottom: 24px; display:flex; align-items:center; gap:16px; }
+  .phase-header .num { font-size: 32px; font-weight: 700; color: #D4EB8E; line-height: 1; }
+  .phase-header .title { font-size: 22px; font-weight: 700; margin: 0; }
+  .phase-header .subtitle { font-size: 13px; opacity: 0.75; margin: 4px 0 0; }
+  .phase-header .duration { margin-left: auto; background: rgba(212,235,142,0.15); color: #D4EB8E; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+
+  /* Step */
+  .step { border: 1px solid #e5e7eb; border-radius: 12px; padding: 18px 22px; margin-bottom: 14px; background: white; page-break-inside: avoid; }
+  .step .head { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+  .step .checkbox { width: 24px; height: 24px; border: 2px solid #007396; border-radius: 6px; flex-shrink: 0; }
+  .step .step-num { color: #007396; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+  .step .step-title { font-size: 16px; font-weight: 700; margin: 0; color: #101820; }
+  .step .time { margin-left: auto; font-size: 12px; color: #6B7280; background: #f0f4f5; padding: 3px 10px; border-radius: 10px; white-space: nowrap; }
+  .step ol { margin: 8px 0 0; padding-left: 22px; line-height: 1.7; }
+  .step ol li { margin-bottom: 6px; font-size: 14px; color: #2a2a2a; }
+  .step ol li code, .step p code { background: #f4f6f8; padding: 1px 6px; border-radius: 4px; font-family: "SF Mono", Monaco, monospace; font-size: 12.5px; color: #007396; }
+  .step .note { background: #fff8e6; border-left: 4px solid #f0a020; padding: 10px 14px; margin: 12px 0 0; border-radius: 6px; font-size: 13px; color: #5a4500; }
+  .step .warn { background: #fff0f0; border-left: 4px solid #d33; padding: 10px 14px; margin: 12px 0 0; border-radius: 6px; font-size: 13px; color: #6a1717; }
+  .step .ok { background: #f0f8f1; border-left: 4px solid #56B093; padding: 10px 14px; margin: 12px 0 0; border-radius: 6px; font-size: 13px; color: #1a4a2c; }
+  .step .ping { background: linear-gradient(135deg,#f0f8f8 0%,#e8f4f5 100%); border-left: 4px solid #007396; padding: 10px 14px; margin: 12px 0 0; border-radius: 6px; font-size: 13px; color: #003040; }
+  .step .copy-block { background: #101820; color: #D4EB8E; padding: 14px 16px; border-radius: 8px; font-family: "SF Mono", Monaco, monospace; font-size: 11.5px; line-height: 1.55; margin: 12px 0 0; white-space: pre-wrap; }
+
+  /* Inline */
+  strong { color: #101820; }
+  a { color: #007396; }
+  h3.sub { color: #007396; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; margin: 24px 0 12px; }
+
+  /* Master overview table */
+  .overview { border-collapse: collapse; width: 100%; margin-bottom: 20px; font-size: 13px; }
+  .overview th { background: #101820; color: white; padding: 10px 12px; text-align: left; font-size: 12px; }
+  .overview td { padding: 10px 12px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+  .overview tr:last-child td { border-bottom: none; }
+  .overview .phase-num { color: #007396; font-weight: 700; }
+  .overview .duration { color: #56B093; font-weight: 600; font-size: 12px; }
+
+  /* Footer on each page */
+  .pg-footer { font-size: 10px; color: #888; text-align: center; margin-top: 24px; border-top: 1px solid #eee; padding-top: 8px; }
+</style>
+</head>
+<body>
+
+<!-- ========== COVER PAGE ========== -->
+<div class="cover">
+  <div class="swatches">
+    <div style="background:#101820"></div>
+    <div style="background:#165C7D"></div>
+    <div style="background:#007396"></div>
+    <div style="background:#0093B2"></div>
+    <div style="background:#369DA0"></div>
+    <div style="background:#56B093"></div>
+    <div style="background:#D4EB8E"></div>
+  </div>
+
+  <h1>milton</h1>
+  <p class="subtitle">Launch Roadmap — Click by Click</p>
+  <p class="tag">From this moment until consumers download Milton Nation from the App Store.</p>
+
+  <div class="summary">
+    <h2>Current State</h2>
+    <p>✓ Build 10 on TestFlight, installed on your iPhone</p>
+    <p>✓ Production Supabase cleaned: zero mock posts, zero test users</p>
+    <p>✓ All 8 production accounts have password <code style="background:rgba(255,255,255,0.1);padding:1px 6px;border-radius:3px;color:#D4EB8E">Milton2026!</code></p>
+    <p>✓ Your account: <code style="background:rgba(255,255,255,0.1);padding:1px 6px;border-radius:3px;color:#D4EB8E">ezra@miltonrecovery.com</code> · phone +1 (201) 747-7727 · role <strong>alumni</strong> (for dress rehearsal)</p>
+    <p>✓ 247 / 247 tests passing</p>
+    <p style="margin-top:16px;color:#D4EB8E"><strong>Estimated time to public launch: 10–14 days.</strong></p>
+  </div>
+
+  <div class="footer">
+    Generated 2026-05-17 &nbsp;·&nbsp; Companion doc to launch-kit/LAUNCH-CHECKLIST.md
+  </div>
+</div>
+
+<!-- ========== OVERVIEW PAGE ========== -->
+<div class="page">
+  <div class="phase-header">
+    <span class="num">»</span>
+    <div>
+      <h2 class="title">Phase Overview</h2>
+      <p class="subtitle">What's left, in order</p>
+    </div>
+  </div>
+
+  <table class="overview">
+    <thead>
+      <tr><th style="width:50px">Phase</th><th>What you do</th><th style="width:120px">Duration</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="phase-num">0</td><td>Approve email design, send Twilio BAA, log into Twilio, retry SMS</td><td class="duration">~60 min today</td></tr>
+      <tr><td class="phase-num">1</td><td>Register A2P 10DLC Brand + Campaign (Twilio)</td><td class="duration">10 min you + 1–3 day Twilio wait</td></tr>
+      <tr><td class="phase-num">2</td><td>Dress rehearsal: sign up second phone as real alumni, approve, use for 24–48h</td><td class="duration">~20 min active + 2 days passive</td></tr>
+      <tr><td class="phase-num">3</td><td>Code updates from rehearsal findings (Claude handles)</td><td class="duration">depends on findings</td></tr>
+      <tr><td class="phase-num">4</td><td>Archive Build 10 in Xcode → upload to ASC → fill review form → Submit</td><td class="duration">~30 min you + 24–48h Apple</td></tr>
+      <tr><td class="phase-num">5</td><td>Apple approves → confirm BAA signed → flip bypass off → smoke test → click Release</td><td class="duration">~15 min</td></tr>
+      <tr><td class="phase-num">6</td><td>Day-1 monitoring (Supabase Auth, Edge logs, App Store reviews, crisis pushes)</td><td class="duration">passive 48h</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="sub">Critical path bottleneck</h3>
+  <p style="font-size:14px;line-height:1.7;color:#2a2a2a;">
+    Two slow items run in parallel:
+  </p>
+  <ul style="font-size:14px;line-height:1.7;color:#2a2a2a;">
+    <li><strong>Twilio BAA</strong> — 1–2 weeks from when you send the request email</li>
+    <li><strong>Apple Review</strong> — 24–48h from submission (with possible 1–2 day rejection-fix-resubmit)</li>
+  </ul>
+  <p style="font-size:14px;line-height:1.7;color:#2a2a2a;">
+    You'll likely be waiting on Twilio AFTER Apple already approves. That's why we choose <strong>Manually release</strong> in App Store Connect — so the approved build can sit in "Pending Developer Release" until BAA is signed.
+  </p>
+
+  <div class="pg-footer">Milton Nation Launch Roadmap · Page 2</div>
+</div>
+
+<!-- ========== PHASE 0 ========== -->
+<div class="page">
+  <div class="phase-header">
+    <span class="num">0</span>
+    <div>
+      <h2 class="title">Today (~60 min)</h2>
+      <p class="subtitle">All 4 steps run in parallel. Don't wait between them.</p>
+    </div>
+    <span class="duration">~60 min</span>
+  </div>
+
+  <div class="step">
+    <div class="head">
+      <div class="checkbox"></div>
+      <span class="step-num">0.1</span>
+      <h3 class="step-title">Decide on the branded welcome email</h3>
+      <span class="time">1 min</span>
+    </div>
+    <ol>
+      <li>Open <code>launch-kit/email-previews/01-CURRENT.pdf</code> (current off-brand version)</li>
+      <li>Open <code>launch-kit/email-previews/02-PROPOSED.pdf</code> (new branded version with milton wordmark + brand-color band)</li>
+      <li>Reply to Claude: <strong>"approve email"</strong> OR <strong>"keep current"</strong></li>
+    </ol>
+    <div class="ok"><strong>If you approve:</strong> Claude renames <code>send-welcome-email/index.ts.proposed</code> → <code>index.ts</code> and runs <code>supabase functions deploy send-welcome-email</code>. Takes ~30 seconds. No app rebuild required.</div>
+  </div>
+
+  <div class="step">
+    <div class="head">
+      <div class="checkbox"></div>
+      <span class="step-num">0.2</span>
+      <h3 class="step-title">Send the Twilio BAA email</h3>
+      <span class="time">2 min</span>
+    </div>
+    <ol>
+      <li>Open a new browser tab → <code>console.twilio.com</code></li>
+      <li>Sign in</li>
+      <li>Top-right corner → click your account name dropdown → <strong>Account info</strong></li>
+      <li>Copy the <strong>Account SID</strong> (32 chars, starts with <code>AC</code>)</li>
+      <li>Open <code>launch-kit/TWILIO-BAA-SEND-NOW.md</code></li>
+      <li>Copy the email body</li>
+      <li>Open your mail client (Gmail / Outlook / Apple Mail)</li>
+      <li>New message → To: <code>privacy@twilio.com</code> → Subject: <code>BAA Request — Milton Recovery Centers — Account [your SID]</code></li>
+      <li>Paste body, fill in the <code>[PASTE YOUR ACCOUNT SID HERE]</code> placeholder + business address</li>
+      <li>Send</li>
+      <li>Reply to Claude: <strong>"BAA email sent"</strong></li>
+    </ol>
+    <div class="warn"><strong>Why this is urgent:</strong> BAA takes 1–2 weeks. Every day you delay sending = 1 day delayed launch. This runs in parallel with everything else. <strong>Send today.</strong></div>
+  </div>
+
+  <div class="step">
+    <div class="head">
+      <div class="checkbox"></div>
+      <span class="step-num">0.3</span>
+      <h3 class="step-title">Log into Twilio so Claude can audit your account</h3>
+      <span class="time">2 min you + 5 min Claude drives</span>
+    </div>
+    <ol>
+      <li>In the Chrome browser tab from Step 0.2 (still on console.twilio.com), confirm you're signed in</li>
+      <li>Reply to Claude: <strong>"logged into Twilio"</strong></li>
+      <li>Claude will then drive Chrome and check:
+        <ul style="margin:6px 0 0;padding-left:18px;font-size:13px;color:#444">
+          <li>Account tier (Trial vs Paid)</li>
+          <li>A2P 10DLC Brand registration status</li>
+          <li>A2P 10DLC Campaign registration status</li>
+          <li>Recent Messaging Logs (did yesterday's OTP attempt reach Twilio at all?)</li>
+          <li>HIPAA eligibility flag</li>
+        </ul>
+      </li>
+      <li>Claude reports back what's configured and what's missing</li>
+    </ol>
+    <div class="ping"><strong>Why Claude can't do this alone:</strong> Security rule prevents entering passwords on your behalf. Once you're past the login screen, Claude takes over.</div>
+  </div>
+
+  <div class="step">
+    <div class="head">
+      <div class="checkbox"></div>
+      <span class="step-num">0.4</span>
+      <h3 class="step-title">Retry SMS smoke test in TestFlight</h3>
+      <span class="time">3 min</span>
+    </div>
+    <ol>
+      <li>Open TestFlight Milton on your iPhone</li>
+      <li>If logged in, Profile tab → scroll down → <strong>Logout</strong></li>
+      <li>On the login screen:
+        <ul style="margin:6px 0 0;padding-left:18px;font-size:13px;color:#444">
+          <li>Email: <code>ezra@miltonrecovery.com</code></li>
+          <li>Password: <code>Milton2026!</code></li>
+          <li>Tap <strong>Login</strong></li>
+        </ul>
+      </li>
+      <li>Wait 30 seconds for the 2FA code screen</li>
+      <li>Watch your phone for a real Twilio SMS to +1 (201) 747-7727</li>
+      <li>Reply to Claude with one of:
+        <ul style="margin:6px 0 0;padding-left:18px;font-size:13px;color:#444">
+          <li><strong>"SMS arrived"</strong> → Twilio is delivering, we can proceed to dress rehearsal</li>
+          <li><strong>"No SMS"</strong> → A2P 10DLC is the issue, we register it in Phase 1</li>
+        </ul>
+      </li>
+    </ol>
+    <div class="note"><strong>What changed since last test:</strong> The Edge Function was reading the phone from the wrong column (<code>profile.phone</code> instead of <code>auth.users.phone</code>). Claude fixed it. So even if you didn't get an SMS yesterday, today might work — OR it might still not work because of A2P 10DLC registration (separate issue handled in Phase 1).</div>
+  </div>
+
+  <div class="pg-footer">Milton Nation Launch Roadmap · Phase 0 · Page 3</div>
+</div>
+
+<!-- ========== PHASE 1 ========== -->
+<div class="page">
+  <div class="phase-header">
+    <span class="num">1</span>
+    <div>
+      <h2 class="title">Fix SMS Delivery</h2>
+      <p class="subtitle">Likely: A2P 10DLC registration (US carrier requirement)</p>
+    </div>
+    <span class="duration">10 min + 1–3 day wait</span>
+  </div>
+
+  <p style="font-size:14px;line-height:1.7;color:#2a2a2a;">
+    Skip this phase if Step 0.4 returned <strong>"SMS arrived"</strong> — you're already good. Otherwise:
+  </p>
+
+  <h3 class="sub">Background: Why SMS might be silently dropped</h3>
+  <p style="font-size:13px;line-height:1.6;color:#444;">
+    US carriers (AT&T, Verizon, T-Mobile) require app-to-person SMS senders to register their "brand" and "campaign" under A2P 10DLC rules. Without registration, carriers <strong>silently drop messages</strong> — no error returned to you, no failed-delivery log. The Edge Function thinks it succeeded; the user just never receives anything. Fix: register the brand + campaign with Twilio, who relays it to the carriers.
+  </p>
+
+  <div class="step">
+    <div class="head">
+      <div class="checkbox"></div>
+      <span class="step-num">1.1</span>
+      <h3 class="step-title">Upgrade Twilio to Paid if on Trial</h3>
+      <span class="time">2 min</span>
+    </div>
+    <ol>
+      <li>Twilio Console → left sidebar → <strong>Billing</strong></li>
+      <li>If banner says "Trial Account" → click <strong>Upgrade</strong></li>
+      <li>Add payment method (credit card)</li>
+      <li>Confirm upgrade (costs ~$1, then per-SMS billing at ~$0.0083 each)</li>
+    </ol>
+    <div class="ok"><strong>If already paid:</strong> Skip this step.</div>
+  </div>
+
+  <div class="step">
+    <div class="head">
+      <div class="checkbox"></div>
+      <span class="step-num">1.2</span>
+      <h3 class="step-title">Register A2P 10DLC Brand</h3>
+      <span class="time">5 min submit · 1–3 days approval</span>
+    </div>
+    <ol>
+      <li>Console → <strong>Messaging</strong> (left sidebar) → <strong>Regulatory Compliance</strong> → <strong>A2P 10DLC</strong></li>
+      <li>Click <strong>Brand Registration</strong> → <strong>Register a new Brand</strong></li>
+      <li>Brand Type: <strong>Standard Brand</strong> ($4 one-time)</li>
+      <li>Fill in form (have these ready):
+        <ul style="margin:6px 0 0;padding-left:18px;font-size:13px;color:#444">
+          <li>Legal company name: <em>Milton Recovery Centers</em> (or registered entity name)</li>
+          <li>DBA / Brand name: <em>Milton Nation</em></li>
+          <li>Country of registration: United States</li>
+          <li>Tax ID type: EIN</li>
+          <li>Tax ID number: <em>[your federal EIN]</em></li>
+          <li>Business address: <em>[your registered business address]</em></li>
+          <li>Business website: <code>https://miltonrecovery.com</code></li>
+          <li>Vertical: <strong>Healthcare</strong></li>
+          <li>Stock symbol: leave blank (private company)</li>
+          <li>Stock exchange: leave blank</li>
+          <li>Brand contact: <em>Ezra Barishansky</em></li>
+          <li>Email: <code>ezra@miltonrecovery.com</code></li>
+          <li>Phone: <code>+1 (201) 747-7727</code></li>
+        </ul>
+      </li>
+      <li>Submit → wait for "Verified" status (auto-check returns in 1–3 days)</li>
+      <li>Reply to Claude: <strong>"brand submitted"</strong></li>
+    </ol>
+    <div class="warn"><strong>If brand is rejected:</strong> Twilio emails you the rejection reason. Usually it's a typo in EIN or business name not matching IRS records. Fix and resubmit (no fee for resubmission).</div>
+  </div>
+
+  <div class="step">
+    <div class="head">
+      <div class="checkbox"></div>
+      <span class="step-num">1.3</span>
+      <h3 class="step-title">Register A2P 10DLC Campaign</h3>
+      <span class="time">5 min submit · instant approval</span>
+    </div>
+    <ol>
+      <li>Same page → <strong>Campaign Registration</strong> → <strong>Register a new Campaign</strong></li>
+      <li>Use Case: <strong>Account Notifications</strong> (or <strong>2FA / OTP</strong>) — these are "low risk", lowest fee</li>
+      <li>Brand: select the Brand you registered in Step 1.2 (must be Verified)</li>
+      <li>Description: <em>"One-time SMS verification codes for Milton Nation alumni app phone authentication"</em></li>
+      <li>Sample messages (paste both):</li>
+    </ol>
+    <div class="copy-block">Your Milton Alumni verification code is: 123456. It expires in 5 minutes. Do not share this code.
+
+Your Milton Alumni verification code is: 987654. It expires in 5 minutes. Do not share this code.</div>
+    <ol start="6">
+      <li>Opt-in workflow description:</li>
+    </ol>
+    <div class="copy-block">Users enter their phone number during account signup in the Milton Nation iOS app, agree to terms of service, and request a verification code as part of two-factor authentication.</div>
+    <ol start="7">
+      <li>Opt-out:</li>
+    </ol>
+    <div class="copy-block">Users can delete their account at any time via the in-app Settings → Delete Account flow, which removes their phone number from the system.</div>
+    <ol start="8">
+      <li>Help message: <em>"Reply HELP for assistance, STOP to unsubscribe."</em></li>
+      <li>Submit → instant approval (assuming brand verified)</li>
+      <li>Cost: ~$15/month for this campaign type</li>
+    </ol>
+  </div>
+
+  <div class="step">
+    <div class="head">
+      <div class="checkbox"></div>
+      <span class="step-num">1.4</span>
+      <h3 class="step-title">Attach campaign to your sending phone number</h3>
+      <span class="time">1 min</span>
+    </div>
+    <ol>
+      <li>Console → <strong>Phone Numbers</strong> → <strong>Manage</strong> → <strong>Active Numbers</strong></li>
+      <li>Click your sending number</li>
+      <li>Scroll to <strong>Messaging</strong> section → <strong>Messaging Service / Campaign</strong></li>
+      <li>Select the campaign you just registered</li>
+      <li>Save</li>
+    </ol>
+  </div>
+
+  <div class="step">
+    <div class="head">
+      <div class="checkbox"></div>
+      <span class="step-num">1.5</span>
+      <h3 class="step-title">Retry SMS smoke test</h3>
+      <span class="time">3 min</span>
+    </div>
+    <ol>
+      <li>Repeat Step 0.4 (login to TestFlight with your phone)</li>
+      <li>SMS should now arrive within 30 seconds</li>
+      <li>Reply to Claude: <strong>"SMS works"</strong></li>
+    </ol>
+  </div>
+
+  <div class="pg-footer">Milton Nation Launch Roadmap · Phase 1 · Page 4</div>
+</div>
+
+<!-- ========== PHASE 2 ========== -->
+<div class="page">
+  <div class="phase-header">
+    <span class="num">2</span>
+    <div>
+      <h2 class="title">Dress Rehearsal</h2>
+      <p class="subtitle">Real consumer flow on TestFlight — second phone signs up as new alumni</p>
+    </div>
+    <span class="duration">20 min active + 2–3 days passive</span>
+  </div>
+
+  <div class="step">
+    <div class="head">
+      <div class="checkbox"></div>
+      <span class="step-num">2.1</span>
+      <h3 class="step-title">Install Build 10 on second phone</h3>
+      <span class="time">5 min</span>
+    </div>
+    <ol>
+      <li>Decide which device will be the "real new alumni": partner's phone, spouse's, colleague's, or a separate device you own</li>
+      <li>From your primary device, App Store Connect → Users and Access → TestFlight → <strong>+ Add Tester</strong></li>
+      <li>Add the second phone's owner by Apple ID email → assign to your testing group</li>
+      <li>That person receives an email + push notification with a TestFlight invite</li>
+      <li>On the second phone: install <strong>TestFlight</strong> app from the App Store if not present</li>
+      <li>Open the invite email → tap <strong>View in TestFlight</strong> → tap <strong>Accept</strong> → <strong>Install</strong></li>
+    </ol>
+  </div>
+
+  <div class="step">
+    <div class="head">
+      <div class="checkbox"></div>
+      <span class="step-num">2.2</span>
+      <h3 class="step-title">Sign up as a new alumni from the second phone</h3>
+      <span class="time">5 min</span>
+    </div>
+    <ol>
+      <li>Open Milton Nation on the second phone</li>
+      <li>On the login screen, tap <strong>"Don't have an account? Register"</strong> (at the bottom)</li>
+      <li>Fill in the registration form:
+        <ul style="margin:6px 0 0;padding-left:18px;font-size:13px;color:#444">
+          <li>Full name (real or test name)</li>
+          <li>Username (lowercase, no spaces, unique)</li>
+          <li>Email (any address that can receive mail)</li>
+          <li>Phone (the second phone's real US number)</li>
+          <li>Password (set something strong, you'll need it on every login)</li>
+          <li>Sobriety date (any past date)</li>
+          <li>Discharge date (any past date)</li>
+          <li>Recovery program (pick one)</li>
+        </ul>
+      </li>
+      <li>Tap <strong>Submit</strong></li>
+      <li>Confirmation alert: "Application submitted, awaiting admin approval"</li>
+      <li>Welcome email arrives at the email you entered — <strong>open it and verify branding looks right</strong></li>
+    </ol>
+  </div>
+
+  <div class="step">
+    <div class="head">
+      <div class="checkbox"></div>
+      <span class="step-num">2.3</span>
+      <h3 class="step-title">Approve from admin on your primary phone</h3>
+      <span class="time">3 min</span>
+    </div>
+    <ol>
+      <li>On your iPhone, open TestFlight Milton</li>
+      <li>If logged in as alumni-ezra, logout first</li>
+      <li>Login as Florida Admin:
+        <ul style="margin:6px 0 0;padding-left:18px;font-size:13px;color:#444">
+          <li>Email: <code>admin@miltonrecovery.com</code></li>
+          <li>Password: <code>Milton2026!</code></li>
+        </ul>
+      </li>
+      <li>Real SMS OTP arrives at +1 (929) 617-2795 (the admin's attached number)</li>
+      <li>Enter code → Verify → land on admin dashboard</li>
+      <li>You should also have a push notification: <strong>"New Member Request"</strong></li>
+      <li>Tap Pending Users tab → tap the new signup → review → <strong>Approve</strong> → assign Florida facility</li>
+      <li>Second phone receives push: <strong>"You're Approved!"</strong></li>
+    </ol>
+    <div class="ping"><strong>What this proves:</strong> Real Twilio SMS for admin login. Real push notification fan-out from new signup. Real Resend welcome email. End-to-end production stack working as a real customer would experience it.</div>
+  </div>
+
+  <div class="step">
+    <div class="head">
+      <div class="checkbox"></div>
+      <span class="step-num">2.4</span>
+      <h3 class="step-title">Use the app as a real consumer for 24–48 hours</h3>
+      <span class="time">passive</span>
+    </div>
+    <ol>
+      <li>On the second phone, login with the new account (real email+password+OTP)</li>
+      <li>Walk through every section of <code>launch-kit/TESTFLIGHT-QA-BUILD-10.md</code> as the new alumni</li>
+      <li>Create a post in each category</li>
+      <li>Comment + like</li>
+      <li>Open "I'm Struggling Today" → verify the FL/OH numbers dial</li>
+      <li>Open Meetings tab → verify real Milton meetings + nearby BMLT NA meetings show</li>
+      <li>Backgound the app overnight → reopen the next morning → confirm still logged in</li>
+      <li>Photo upload from Photos library</li>
+      <li>Push notifications wake the app from cold-close</li>
+    </ol>
+  </div>
+
+  <div class="step">
+    <div class="head">
+      <div class="checkbox"></div>
+      <span class="step-num">2.5</span>
+      <h3 class="step-title">Document anything broken</h3>
+      <span class="time">passive</span>
+    </div>
+    <ol>
+      <li>Keep a note (Apple Notes, sticky note, whatever) of anything that:
+        <ul style="margin:6px 0 0;padding-left:18px;font-size:13px;color:#444">
+          <li>Crashes</li>
+          <li>Looks wrong / off-brand</li>
+          <li>Doesn't work as expected</li>
+          <li>Feels slow</li>
+          <li>Has typos or weird text</li>
+        </ul>
+      </li>
+      <li>When the soak period ends, send the list to Claude</li>
+      <li>Claude cuts Build 11 with fixes if needed</li>
+    </ol>
+  </div>
+
+  <div class="pg-footer">Milton Nation Launch Roadmap · Phase 2 · Page 5</div>
+</div>
+
+<!-- ========== PHASE 3 ========== -->
+<div class="page">
+  <div class="phase-header">
+    <span class="num">3</span>
+    <div>
+      <h2 class="title">Pre-Submission Code Updates</h2>
+      <p class="subtitle">Claude handles all of this — your time: zero</p>
+    </div>
+    <span class="duration">handled by Claude</span>
+  </div>
+
+  <div class="step">
+    <div class="head">
+      <div class="checkbox"></div>
+      <span class="step-num">3.1</span>
+      <h3 class="step-title">Apply any rehearsal-driven fixes</h3>
+      <span class="time">varies</span>
+    </div>
+    <p style="font-size:13.5px;line-height:1.6;color:#444;margin:6px 0 0;">
+      Claude reviews your Phase 2.5 list, fixes each item in code, runs tests, commits. If anything significant changed, the build is bumped (10 → 11).
+    </p>
+  </div>
+
+  <div class="step">
+    <div class="head">
+      <div class="checkbox"></div>
+      <span class="step-num">3.2</span>
+      <h3 class="step-title">Deploy branded welcome email (if you approved it in Phase 0.1)</h3>
+      <span class="time">30 sec</span>
+    </div>
+    <p style="font-size:13.5px;line-height:1.6;color:#444;margin:6px 0 0;">
+      <code>mv send-welcome-email/index.ts.proposed → index.ts</code> → <code>supabase functions deploy send-welcome-email</code>.
+    </p>
+  </div>
+
+  <div class="step">
+    <div class="head">
+      <div class="checkbox"></div>
+      <span class="step-num">3.3</span>
+      <h3 class="step-title">Verify build compiles</h3>
+      <span class="time">2 min</span>
+    </div>
+    <p style="font-size:13.5px;line-height:1.6;color:#444;margin:6px 0 0;">
+      Claude runs <code>xcodebuild test</code> against iPhone 16e simulator. All 247 tests must pass. Currently they do.
+    </p>
+  </div>
+
+  <div class="pg-footer">Milton Nation Launch Roadmap · Phase 3 · Page 6</div>
+</div>
+
+<!-- ========== PHASE 4 ========== -->
+<div class="page">
+  <div class="phase-header">
+    <span class="num">4</span>
+    <div>
+      <h2 class="title">Apple Submission</h2>
+      <p class="subtitle">Archive → upload → fill review form → submit</p>
+    </div>
+    <span class="duration">~30 min + 24–48h Apple wait</span>
+  </div>
+
+  <div class="step">
+    <div class="head">
+      <div class="checkbox"></div>
+      <span class="step-num">4.1</span>
+      <h3 class="step-title">Tell Claude "ready to submit"</h3>
+      <span class="time">1 sec</span>
+    </div>
+    <p style="font-size:13.5px;line-height:1.6;color:#444;margin:6px 0 0;">
+      Claude then flips <code>DEMO_BYPASS_ENABLED → true</code> on Supabase + runs <code>PHASE-4-RESEED-DEMO-CONTENT.sql</code> to populate alexdemo's account with 3 sample posts + 1 comment + care team + 1 badge (for the App Reviewer to see a populated experience).
+    </p>
+  </div>
+
+  <div class="step">
+    <div class="head">
+      <div class="checkbox"></div>
+      <span class="step-num">4.2</span>
+      <h3 class="step-title">Archive in Xcode</h3>
+      <span class="time">10 min</span>
+    </div>
+    <ol>
+      <li>Open Xcode → open the Milton Nation Alumni App project</li>
+      <li>Top toolbar device selector → change to <strong>"Any iOS Device (arm64)"</strong>
+        <br><em style="font-size:12px;color:#888;">If Archive is greyed out, this is why</em></li>
+      <li>Menu: <strong>Product → Clean Build Folder</strong> (⇧⌘K)</li>
+      <li>Menu: <strong>Product → Archive</strong></li>
+      <li>Wait 3–5 minutes for the build to complete</li>
+      <li>Organizer window opens automatically when done</li>
+    </ol>
+  </div>
+
+  <div class="step">
+    <div class="head">
+      <div class="checkbox"></div>
+      <span class="step-num">4.3</span>
+      <h3 class="step-title">Upload to App Store Connect</h3>
+      <span class="time">5 min</span>
+    </div>
+    <ol>
+      <li>In Organizer, select the new archive (top of list, dated today, version <strong>1.0 (10)</strong>)</li>
+      <li>Click <strong>Distribute App</strong> (right side)</li>
+      <li>Choose <strong>App Store Connect</strong> → Next</li>
+      <li>Choose <strong>Upload</strong> → Next</li>
+      <li>Keep distribution defaults → Next</li>
+      <li>Signing: <strong>Automatically manage signing</strong> → Next</li>
+      <li>Review summary → <strong>Upload</strong></li>
+      <li>Wait for "Upload Successful" toast (~2 min)</li>
+      <li>Close Organizer</li>
+    </ol>
+  </div>
+
+  <div class="step">
+    <div class="head">
+      <div class="checkbox"></div>
+      <span class="step-num">4.4</span>
+      <h3 class="step-title">Wait for Apple to process the build</h3>
+      <span class="time">15–30 min</span>
+    </div>
+    <ol>
+      <li>Email arrives titled <strong>"Your build has completed processing"</strong></li>
+      <li>If no email after 30 min: App Store Connect → My Apps → Milton → TestFlight tab → look for Build 10 yellow "Processing" badge</li>
+      <li>If stuck "Processing" > 1 hour, check email for export compliance question (answer "No, does not use encryption other than what's exempt" — Supabase TLS is exempt)</li>
+    </ol>
+  </div>
+
+  <div class="step">
+    <div class="head">
+      <div class="checkbox"></div>
+      <span class="step-num">4.5</span>
+      <h3 class="step-title">Fill the App Review form</h3>
+      <span class="time">15 min</span>
+    </div>
+    <ol>
+      <li>Open <code>https://appstoreconnect.apple.com</code> → My Apps → Milton → <strong>App Store</strong> tab → <strong>Prepare for Submission</strong></li>
+      <li>Click <strong>+ Build</strong> → select Build 10</li>
+      <li><strong>Sign-In Required:</strong> ☑ Yes</li>
+      <li><strong>Demo Account:</strong>
+        <ul style="margin:6px 0 0;padding-left:18px;font-size:13px;color:#444">
+          <li>User name: <code>appreviewer@miltonrecovery.com</code></li>
+          <li>Password: <code>Milton2026!</code></li>
+        </ul>
+      </li>
+      <li><strong>Notes for Reviewer:</strong> open <code>launch-kit/SUBMIT-BUILD-10.md</code> Step 4 → copy the entire ```code block``` → paste verbatim</li>
+      <li><strong>Contact Information:</strong>
+        <ul style="margin:6px 0 0;padding-left:18px;font-size:13px;color:#444">
+          <li>First name: <code>Ezra</code></li>
+          <li>Last name: <code>Barishansky</code></li>
+          <li>Phone: <code>+1 (201) 747-7727</code></li>
+          <li>Email: <code>ezra@miltonrecovery.com</code></li>
+        </ul>
+      </li>
+      <li><strong>Version Release:</strong> ☑ Manually release this version
+        <br><em style="font-size:12px;color:#d33;">CRITICAL: do NOT pick automatic release. This lets you flip DEMO_BYPASS off and smoke-test BEFORE going public.</em></li>
+      <li>Scroll left sidebar — check for red dots; fix anything required (App Privacy questionnaire, Age Rating, Pricing)</li>
+    </ol>
+  </div>
+
+  <div class="step">
+    <div class="head">
+      <div class="checkbox"></div>
+      <span class="step-num">4.6</span>
+      <h3 class="step-title">Submit for Review</h3>
+      <span class="time">1 click</span>
+    </div>
+    <ol>
+      <li>Click <strong>Add for Review</strong></li>
+      <li>Click <strong>Submit for Review</strong></li>
+      <li>Status changes to <strong>"Waiting for Review"</strong></li>
+      <li>Reply to Claude: <strong>"submitted"</strong></li>
+    </ol>
+    <div class="ok"><strong>Expected timeline:</strong> 24–48 hours. You'll get an email when Apple decides.</div>
+  </div>
+
+  <div class="pg-footer">Milton Nation Launch Roadmap · Phase 4 · Page 7</div>
+</div>
+
+<!-- ========== PHASE 5 ========== -->
+<div class="page">
+  <div class="phase-header">
+    <span class="num">5</span>
+    <div>
+      <h2 class="title">Apple Approves → Release Day</h2>
+      <p class="subtitle">Don't click Release until BAA is signed</p>
+    </div>
+    <span class="duration">~15 min</span>
+  </div>
+
+  <div class="step">
+    <div class="head">
+      <div class="checkbox"></div>
+      <span class="step-num">5.1</span>
+      <h3 class="step-title">Confirm Twilio BAA is signed</h3>
+      <span class="time">1 min</span>
+    </div>
+    <ol>
+      <li>Check your email for the signed BAA (Twilio General Counsel countersignature)</li>
+      <li>If you have it: continue to Step 5.2</li>
+      <li>If you don't have it: STOP. Approved app sits in "Pending Developer Release" — you can leave it as long as needed.</li>
+    </ol>
+    <div class="warn"><strong>Why this matters:</strong> Without BAA, every real user signup that sends SMS through Twilio is technically a HIPAA violation. Don't expose strangers to that. Wait for BAA.</div>
+  </div>
+
+  <div class="step">
+    <div class="head">
+      <div class="checkbox"></div>
+      <span class="step-num">5.2</span>
+      <h3 class="step-title">Tell Claude "BAA signed, ready to release"</h3>
+      <span class="time">1 sec</span>
+    </div>
+    <p style="font-size:13.5px;line-height:1.6;color:#444;margin:6px 0 0;">
+      Claude flips <code>DEMO_BYPASS_ENABLED → false</code> on Supabase. This kills the demo bypass so it can't be used by anyone who finds the credentials in your launch-kit docs.
+    </p>
+  </div>
+
+  <div class="step">
+    <div class="head">
+      <div class="checkbox"></div>
+      <span class="step-num">5.3</span>
+      <h3 class="step-title">Final real-phone production smoke test</h3>
+      <span class="time">10 min</span>
+    </div>
+    <ol>
+      <li>Use the second phone (or a brand-new phone that hasn't signed up before)</li>
+      <li>Open TestFlight Milton (still on Build 10, now production-mode since bypass is off)</li>
+      <li>Try the demo phone: <code>+15550001234</code> → confirm it FAILS (proves bypass is off)</li>
+      <li>Sign up as a real new alumni with the second phone's real number</li>
+      <li>Real Twilio SMS arrives</li>
+      <li>Welcome email arrives</li>
+      <li>Admin approves (login on your phone as admin)</li>
+      <li>Second phone logs in with email+password+real OTP</li>
+      <li>Everything works → ready to release</li>
+    </ol>
+  </div>
+
+  <div class="step">
+    <div class="head">
+      <div class="checkbox"></div>
+      <span class="step-num">5.4</span>
+      <h3 class="step-title">Click Release in App Store Connect</h3>
+      <span class="time">1 click</span>
+    </div>
+    <ol>
+      <li>App Store Connect → My Apps → Milton → your version row</li>
+      <li>Click <strong>Release This Version</strong></li>
+      <li>Confirm in the dialog</li>
+      <li>App goes live on the public App Store within 2 hours (sometimes 24h)</li>
+    </ol>
+    <div class="ok"><strong>You did it.</strong> Milton Nation is now downloadable by anyone with an iPhone.</div>
+  </div>
+
+  <div class="pg-footer">Milton Nation Launch Roadmap · Phase 5 · Page 8</div>
+</div>
+
+<!-- ========== PHASE 6 ========== -->
+<div class="page">
+  <div class="phase-header">
+    <span class="num">6</span>
+    <div>
+      <h2 class="title">Day 1 of Public — Watch Carefully</h2>
+      <p class="subtitle">First 48 hours matter most</p>
+    </div>
+    <span class="duration">passive 48h</span>
+  </div>
+
+  <div class="step">
+    <div class="head">
+      <div class="checkbox"></div>
+      <span class="step-num">6.1</span>
+      <h3 class="step-title">Watch new signups in Supabase Auth</h3>
+      <span class="time">check every few hours</span>
+    </div>
+    <ol>
+      <li>Open Supabase → Authentication → <strong>Users</strong> tab</li>
+      <li>Each new signup appears as a new row</li>
+      <li>Switch to your admin account on TestFlight → Pending Users → review + approve</li>
+      <li>SLA target: every new signup approved within 1 hour during business hours</li>
+    </ol>
+  </div>
+
+  <div class="step">
+    <div class="head">
+      <div class="checkbox"></div>
+      <span class="step-num">6.2</span>
+      <h3 class="step-title">Watch Supabase Edge Function logs</h3>
+      <span class="time">check every few hours</span>
+    </div>
+    <ol>
+      <li>Supabase → Edge Functions → click each function → Logs tab</li>
+      <li>Especially: <code>send-sms-otp</code>, <code>verify-sms-otp</code>, <code>flag-content</code></li>
+      <li>Filter on errors (red entries)</li>
+      <li>If errors appear, send Claude the error message</li>
+    </ol>
+  </div>
+
+  <div class="step">
+    <div class="head">
+      <div class="checkbox"></div>
+      <span class="step-num">6.3</span>
+      <h3 class="step-title">Watch Twilio Messaging logs</h3>
+      <span class="time">check every few hours</span>
+    </div>
+    <ol>
+      <li>Twilio Console → Monitor → Logs → <strong>Messaging</strong></li>
+      <li>Filter on status = <strong>undelivered</strong> or <strong>failed</strong></li>
+      <li>If carriers reject, investigate (usually opt-outs or invalid numbers)</li>
+    </ol>
+  </div>
+
+  <div class="step">
+    <div class="head">
+      <div class="checkbox"></div>
+      <span class="step-num">6.4</span>
+      <h3 class="step-title">Watch the inbox for support requests</h3>
+      <span class="time">whenever email arrives</span>
+    </div>
+    <ol>
+      <li>Monitor <code>ezra@miltonrecovery.com</code> for "I can't log in" / "What's my password" type emails</li>
+      <li>App Store reviews — Apple emails you new ones</li>
+    </ol>
+  </div>
+
+  <div class="step">
+    <div class="head">
+      <div class="checkbox"></div>
+      <span class="step-num">6.5</span>
+      <h3 class="step-title">Be on-call for crisis content alerts</h3>
+      <span class="time">always</span>
+    </div>
+    <ol>
+      <li>Push notifications fire to your admin device when content is flagged as crisis</li>
+      <li><strong>Have your phone within reach</strong> the first week, especially evenings</li>
+      <li>When a flag fires, open the admin dashboard, find the post/comment, decide whether to reach out to the user directly via care team chat</li>
+    </ol>
+    <div class="warn"><strong>This is the most important monitoring task.</strong> Real recovery alumni may post real crisis content. A timely response can matter materially.</div>
+  </div>
+
+  <div class="pg-footer">Milton Nation Launch Roadmap · Phase 6 · Page 9</div>
+</div>
+
+<!-- ========== APPENDIX ========== -->
+<div class="page">
+  <div class="phase-header">
+    <span class="num">★</span>
+    <div>
+      <h2 class="title">Quick Reference</h2>
+      <p class="subtitle">Credentials, links, contacts</p>
+    </div>
+  </div>
+
+  <h3 class="sub">All 8 production accounts</h3>
+  <table class="overview">
+    <thead>
+      <tr><th>Email</th><th>Password</th><th>Phone</th><th>Role</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>ezra@miltonrecovery.com</code></td><td><code>Milton2026!</code></td><td>+1 (201) 747-7727</td><td>alumni (your acct)</td></tr>
+      <tr><td><code>admin@miltonrecovery.com</code></td><td><code>Milton2026!</code></td><td>+1 (929) 617-2795</td><td>admin (FL)</td></tr>
+      <tr><td><code>super-demo@miltonrecovery.com</code></td><td><code>Milton2026!</code></td><td>+15550009999 (fake)</td><td>super_admin</td></tr>
+      <tr><td><code>appreviewer@miltonrecovery.com</code></td><td><code>Milton2026!</code></td><td>+15550001234</td><td>alumni (Apple Reviewer)</td></tr>
+      <tr><td><code>admin@miltonjefferson.com</code></td><td><code>Milton2026!</code></td><td>— none —</td><td>admin (OH)</td></tr>
+      <tr><td><code>admin-demo@miltonrecovery.com</code></td><td><code>Milton2026!</code></td><td>— none —</td><td>admin</td></tr>
+      <tr><td><code>case-manager-demo@miltonrecovery.com</code></td><td><code>Milton2026!</code></td><td>— none —</td><td>case_manager</td></tr>
+      <tr><td><code>therapist-demo@miltonrecovery.com</code></td><td><code>Milton2026!</code></td><td>— none —</td><td>therapist</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="sub">Key links</h3>
+  <table class="overview">
+    <tbody>
+      <tr><td><strong>Supabase Dashboard</strong></td><td><code>supabase.com/dashboard/project/hksxzuytcmqqwxmfjzdp</code></td></tr>
+      <tr><td><strong>Twilio Console</strong></td><td><code>console.twilio.com</code></td></tr>
+      <tr><td><strong>Resend Dashboard</strong></td><td><code>resend.com/dashboard</code></td></tr>
+      <tr><td><strong>App Store Connect</strong></td><td><code>appstoreconnect.apple.com</code></td></tr>
+      <tr><td><strong>Production app URL</strong></td><td>(TBD when released — App Store search "Milton Nation")</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="sub">Critical Milton phone numbers</h3>
+  <table class="overview">
+    <tbody>
+      <tr><td>Florida Recovery Centers — 24/7</td><td><strong>(844) 406-4325</strong></td></tr>
+      <tr><td>Ohio Recovery Centers — 24/7</td><td><strong>(740) 715-4673</strong></td></tr>
+      <tr><td>988 Suicide & Crisis Lifeline</td><td><strong>988</strong> (call or text)</td></tr>
+      <tr><td>Crisis Text Line</td><td>Text <strong>HOME</strong> to <strong>741741</strong></td></tr>
+      <tr><td>SAMHSA National Helpline</td><td><strong>1-800-662-4357</strong></td></tr>
+      <tr><td>Emergency</td><td><strong>911</strong></td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="sub">Vendor compliance status</h3>
+  <table class="overview">
+    <tbody>
+      <tr><td>Supabase BAA</td><td>✅ Signed (per launch-kit/01)</td></tr>
+      <tr><td>Twilio BAA</td><td>❌ Not signed — Phase 0.2 is to send the request</td></tr>
+      <tr><td>Resend</td><td>N/A — no PHI in welcome email body, BAA not required</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="sub">If you need to reach Claude mid-flow</h3>
+  <p style="font-size:13px;line-height:1.7;color:#444;">
+    Open the Claude conversation associated with this project and message at any phase boundary. The most useful messages are:
+  </p>
+  <ul style="font-size:13px;line-height:1.7;color:#444;">
+    <li>"approve email" / "keep current"</li>
+    <li>"BAA email sent"</li>
+    <li>"logged into Twilio"</li>
+    <li>"SMS arrived" / "no SMS"</li>
+    <li>"brand submitted" / "campaign live"</li>
+    <li>"ready to submit"</li>
+    <li>"submitted"</li>
+    <li>"Apple approved"</li>
+    <li>"BAA signed, ready to release"</li>
+    <li>"released"</li>
+    <li>"first user signed up"</li>
+  </ul>
+
+  <div class="pg-footer">Milton Nation Launch Roadmap · Appendix · Page 10</div>
+</div>
+
+</body>
+</html>
