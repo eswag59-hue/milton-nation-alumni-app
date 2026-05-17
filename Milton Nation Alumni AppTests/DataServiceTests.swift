@@ -121,11 +121,14 @@ struct DataServiceTests {
         }
     }
 
-    @Test("createPost returns a new post with pending status")
+    @Test("createPost surfaces the post immediately in mock mode")
     func createPostPending() async throws {
+        // Build 7+: MockDataService auto-approves posts created with status=.pending
+        // so TestFlight/DEBUG users see their post appear in the feed immediately.
+        // Real backend (SupabaseDataService) still respects the requested status.
         let service = MockDataService()
         let post = try await service.createPost(content: "Test", category: .general, mediaData: nil, mediaType: nil)
-        #expect(post.status == .pending)
+        #expect(post.status == .approved)
         #expect(post.content == "Test")
         #expect(post.category == .general)
     }

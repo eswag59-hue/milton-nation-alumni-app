@@ -69,57 +69,64 @@ URL: https://appstoreconnect.apple.com → My Apps → Milton
 ### Step 2: Sign-In Required
 - ☑ Yes
 
-### Step 3: Demo account
+### Step 3: Demo account (paste exactly)
 | Field | Value |
 |---|---|
-| User name | `+15550001234` |
-| Password | (leave blank) |
+| User name | `appreviewer@miltonrecovery.com` |
+| Password | `Milton2026!` |
 
 ### Step 4: Notes for Reviewer — paste this verbatim
 
 ```
-DEMO BYPASS — App Store Reviewer Instructions
+APP STORE REVIEWER — Sign-In Instructions
 
-To sign in:
-1. Tap "Sign In" on the home screen.
-2. Enter phone number: +1 (555) 000-1234
-3. Tap "Send Code".
-4. Enter 6-digit code: 000000
-5. Tap "Verify".
+The Milton Nation app uses TWO-FACTOR authentication:
+  Step 1: Email + password
+  Step 2: SMS one-time code (OTP)
 
-This bypass is gated behind an environment variable (DEMO_BYPASS_ENABLED=true)
-on our backend, active only during App Review. It will be disabled within
-minutes of approval.
+To sign in as the demo alumni account:
 
-The demo account is pre-loaded with:
-- Sample sobriety date (90 days ago)
-- Approved alumni status (Florida facility)
-- Assigned care team (Case Manager + Therapist)
-- Sample posts in the community feed
-- Sample badges + milestones
+1. Tap the email field. Enter: appreviewer@miltonrecovery.com
+2. Tap the password field. Enter: Milton2026!
+3. Tap "Login".
+4. The app will display the 2FA verification screen.
+5. Enter the 6-digit code: 000000
+6. Tap "Verify".
+
+You will land on the home screen as "Alex Demo" — a Florida-facility
+alumni account with 90 days of sobriety, an assigned care team, and
+sample badges.
+
+The SMS OTP step is bypassed server-side for this demo account only.
+This bypass is gated behind an environment variable
+(DEMO_BYPASS_ENABLED=true) on our backend, active only during App
+Review. It will be disabled within minutes of approval.
 
 To exercise the safety/crisis features:
-1. Tap the "+" button to create a post.
-2. Type a phrase that includes "I want to end it all" or "I'm thinking about
-   relapsing tonight" and tap Post.
-3. The app will surface the Support Resources sheet with 988, Crisis Text
-   Line, SAMHSA, Milton Recovery Centers (FL + OH), and 911.
-4. The post itself routes to admin review (flaggedForCrisis status).
+1. After login, tap "+" or the Community tab to create a post.
+2. Type a phrase that includes "I want to end it all" or "I'm thinking
+   about relapsing tonight" and tap Post.
+3. The app will surface the Support Resources sheet with 988 Suicide &
+   Crisis Lifeline, Crisis Text Line, SAMHSA, Milton Recovery Centers
+   (FL + OH lines), and 911.
+4. The post is routed to admin moderation (flaggedForCrisis status).
 
-The app is intended for verified alumni of Milton Recovery Centers (a
-substance use disorder treatment provider). All real users go through phone
-verification + admin approval. The demo bypass exists solely to allow App
-Review without involving a real recovery alumni's PHI.
+The app is intended for verified alumni of Milton Recovery Centers, a
+substance use disorder treatment provider. All real users go through
+phone verification + admin approval before gaining access. The demo
+bypass exists solely to allow App Review without involving a real
+recovery alumni's PHI.
 
 Compliance posture:
 - HIPAA-aware: PHI encrypted at rest (Supabase) and in transit (TLS 1.2+).
-- Authentication via phone OTP (Twilio) + Supabase Auth + Keychain JWT.
+- Authentication via email/password + SMS OTP 2FA (Twilio).
 - Server-side content moderation with crisis escalation.
 - Audit logging for every privileged action.
 - 30-day account deletion grace period (Settings → Delete Account).
 
-Vendor BAAs: Supabase (signed), Twilio (in process). Resend handles
-welcome emails only — body contains no PHI.
+Vendor BAAs: Supabase (signed), Twilio (in process; expected before
+public release). Resend handles welcome emails only — body contains
+no PHI.
 
 If you have questions during review:
 - Email: ezra@miltonrecovery.com

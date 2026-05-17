@@ -148,23 +148,33 @@ I'll write a `DRESS-REHEARSAL-CREDENTIALS.md` (private, gitignored) with:
 
 **Steps (Path A — using a second phone):**
 
-2.2.1 — On the second phone, open Milton → tap "Sign Up" (not Sign In)
+2.2.1 — On the second phone, open Milton → on the login screen tap "Don't have an account? Register"
 
-2.2.2 — Enter the second phone's real number → tap Send Code
+2.2.2 — Fill in the registration form (single screen — all fields):
+- Full name, username (lowercase, no spaces)
+- Real email address you can receive at
+- Real phone number for the second phone (this is where the OTP will be sent on future logins)
+- Password (strong; you'll need to remember it)
+- Sobriety date, discharge date, recovery program
 
-2.2.3 — Real SMS arrives on the second phone within 30s → enter the code → Verify
+2.2.3 — Tap Submit → "Application submitted, awaiting admin approval"
 
-2.2.4 — Fill in signup form: full name, sobriety date, etc.
+2.2.4 — Welcome email arrives at the email address you provided (verify it looks branded correctly)
 
-2.2.5 — Submit → "Application submitted, awaiting admin approval"
+2.2.5 — *On your real-admin phone (TestFlight, same app):* push notification arrives: "New Member Request"
 
-2.2.6 — *On your real-admin phone (TestFlight, same app):* push notification arrives: "New Member Request"
+2.2.6 — Open the admin dashboard → Pending Users → review the new signup → Approve → assign to a facility (FL or OH)
 
-2.2.7 — Open the admin dashboard → Pending Users → review the new signup → Approve → assign to a facility (FL or OH)
+2.2.7 — *Back on the second phone:* push notification arrives: "You're Approved!"
 
-2.2.8 — *Back on the second phone:* push notification arrives: "You're Approved!"
+2.2.8 — Second phone logs in:
+- Enter email + password from registration
+- Tap Login
+- Real SMS OTP arrives at the second phone's number within ~30s
+- Enter 6-digit code → Verify
+- Lands on home screen as a real alumni
 
-2.2.9 — Second phone logs into the app fully → sees the empty community feed (because mock data was wiped), can post, comment, etc.
+2.2.9 — Empty community feed (because mock data was wiped). User can create their first real post, comment, etc.
 
 ## 2.3 — Exercise every feature as a real consumer
 
