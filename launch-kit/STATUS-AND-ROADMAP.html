@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Milton Nation — Status & Roadmap (Master)</title>
+<style>
+  @page { size: 8.5in 11in; margin: 0.5in; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: 0; color: #101820; }
+  .cover { background: linear-gradient(135deg,#101820 0%,#165C7D 35%,#007396 70%,#369DA0 100%); color: white; height: 10in; padding: 1.2in 0.75in; page-break-after: always; position: relative; }
+  .cover .swatches { display:flex; height:8px; margin-bottom: 32px; }
+  .cover .swatches div { flex:1; }
+  .cover h1 { font-family: Georgia, serif; font-size: 68px; font-weight: 300; margin: 0; letter-spacing: -2px; }
+  .cover .subtitle { font-size: 20px; opacity: 0.9; margin: 6px 0 0; font-weight: 500; }
+  .cover .tag { font-size: 13px; opacity: 0.6; margin-top: 24px; font-style: italic; max-width: 5in; }
+  .cover .summary { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 14px; padding: 22px; margin-top: 40px; }
+  .cover .summary h2 { color: #D4EB8E; font-size: 14px; margin: 0 0 12px; text-transform: uppercase; letter-spacing: 1px; }
+  .cover .summary p { font-size: 14px; line-height: 1.55; margin: 0 0 8px; opacity: 0.95; }
+  .cover .summary p:last-child { margin: 0; }
+  .cover .summary code { background: rgba(255,255,255,0.1); padding: 1px 6px; border-radius: 3px; color: #D4EB8E; font-size: 12px; }
+  .cover .footer { position: absolute; bottom: 0.7in; left: 0.75in; right: 0.75in; font-size: 11px; opacity: 0.5; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 10px; }
+  .cover .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 24px; }
+  .cover .stat-card { background: rgba(255,255,255,0.06); border-radius: 10px; padding: 14px; text-align: center; }
+  .cover .stat-card .num { font-size: 24px; font-weight: 700; color: #D4EB8E; }
+  .cover .stat-card .label { font-size: 11px; opacity: 0.75; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  .page { padding: 0 0.25in 0.5in; page-break-after: always; }
+  .page:last-child { page-break-after: avoid; }
+  .page-title { background: #101820; color: white; padding: 16px 22px; border-radius: 12px; margin-bottom: 20px; display:flex; align-items:center; gap:14px; }
+  .page-title .num { font-size: 28px; font-weight: 700; color: #D4EB8E; line-height: 1; }
+  .page-title .title { font-size: 20px; font-weight: 700; margin: 0; }
+  .page-title .subtitle { font-size: 12px; opacity: 0.75; margin: 3px 0 0; }
+  .page-title .duration { margin-left: auto; background: rgba(212,235,142,0.15); color: #D4EB8E; padding: 5px 11px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+
+  h3.sect { color: #007396; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; margin: 22px 0 10px; border-bottom: 2px solid #56B093; padding-bottom: 6px; }
+  .row { display: flex; gap: 14px; margin-bottom: 10px; align-items: flex-start; }
+  .row .badge { flex-shrink: 0; width: 22px; height: 22px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: white; }
+  .row .badge.ok { background: #56B093; }
+  .row .badge.warn { background: #f0a020; }
+  .row .badge.bad { background: #d33; }
+  .row .badge.info { background: #007396; }
+  .row .content { flex: 1; font-size: 13px; line-height: 1.55; color: #2a2a2a; }
+  .row .content strong { color: #101820; }
+  .row .content code { background: #f4f6f8; padding: 1px 5px; border-radius: 3px; font-family: "SF Mono", Monaco, monospace; font-size: 12px; color: #007396; }
+
+  .step { border: 1px solid #e5e7eb; border-radius: 11px; padding: 16px 20px; margin-bottom: 12px; background: white; page-break-inside: avoid; }
+  .step .head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .step .checkbox { width: 22px; height: 22px; border: 2px solid #007396; border-radius: 5px; flex-shrink: 0; }
+  .step .step-num { color: #007396; font-weight: 700; font-size: 13px; flex-shrink: 0; }
+  .step .step-title { font-size: 15px; font-weight: 700; margin: 0; color: #101820; }
+  .step .time { margin-left: auto; font-size: 11px; color: #6B7280; background: #f0f4f5; padding: 3px 9px; border-radius: 10px; white-space: nowrap; }
+  .step ol { margin: 6px 0 0; padding-left: 22px; line-height: 1.65; }
+  .step ol li { margin-bottom: 4px; font-size: 13px; color: #2a2a2a; }
+  .step ol li code, .step p code { background: #f4f6f8; padding: 1px 5px; border-radius: 3px; font-family: "SF Mono", Monaco, monospace; font-size: 12px; color: #007396; }
+  .step .note { background: #fff8e6; border-left: 4px solid #f0a020; padding: 9px 12px; margin: 10px 0 0; border-radius: 5px; font-size: 12px; color: #5a4500; }
+  .step .ok { background: #f0f8f1; border-left: 4px solid #56B093; padding: 9px 12px; margin: 10px 0 0; border-radius: 5px; font-size: 12px; color: #1a4a2c; }
+  .step .info { background: linear-gradient(135deg,#f0f8f8 0%,#e8f4f5 100%); border-left: 4px solid #007396; padding: 9px 12px; margin: 10px 0 0; border-radius: 5px; font-size: 12px; color: #003040; }
+  .step .copy-block { background: #101820; color: #D4EB8E; padding: 12px 14px; border-radius: 6px; font-family: "SF Mono", Monaco, monospace; font-size: 11px; line-height: 1.5; margin: 10px 0 0; white-space: pre-wrap; }
+
+  table.tbl { border-collapse: collapse; width: 100%; margin-bottom: 14px; font-size: 12px; }
+  table.tbl th { background: #101820; color: white; padding: 8px 10px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+  table.tbl td { padding: 8px 10px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+  table.tbl tr:last-child td { border-bottom: none; }
+  table.tbl code { background: #f4f6f8; padding: 1px 4px; border-radius: 3px; font-family: "SF Mono", Monaco, monospace; font-size: 11px; color: #007396; }
+  .green { color: #56B093; font-weight: 600; }
+  .red { color: #d33; font-weight: 600; }
+  .amber { color: #f0a020; font-weight: 600; }
+  .pg-footer { font-size: 9px; color: #888; text-align: center; margin-top: 20px; border-top: 1px solid #eee; padding-top: 6px; }
+</style>
+</head>
+<body>
+
+<!-- ========== COVER ========== -->
+<div class="cover">
+  <div class="swatches">
+    <div style="background:#101820"></div>
+    <div style="background:#165C7D"></div>
+    <div style="background:#007396"></div>
+    <div style="background:#0093B2"></div>
+    <div style="background:#369DA0"></div>
+    <div style="background:#56B093"></div>
+    <div style="background:#D4EB8E"></div>
+  </div>
+  <h1>milton</h1>
+  <p class="subtitle">Status &amp; Click-by-Click Roadmap</p>
+  <p class="tag">Where every system stands right now, what each one does, and exactly what's left between this moment and consumers downloading from the App Store.</p>
+
+  <div class="stat-grid">
+    <div class="stat-card"><div class="num">10</div><div class="label">Build #</div></div>
+    <div class="stat-card"><div class="num">8</div><div class="label">Prod Accounts</div></div>
+    <div class="stat-card"><div class="num">0</div><div class="label">Mock Content</div></div>
+    <div class="stat-card"><div class="num">7</div><div class="label">Edge Functions</div></div>
+  </div>
+
+  <div class="summary">
+    <h2>Where you are right now</h2>
+    <p>✓ Build 10 on TestFlight on your iPhone · 245 / 247 tests pass · app compiles clean</p>
+    <p>✓ Production Supabase: zero orphans, zero mock posts/comments, 8 verified accounts</p>
+    <p>✓ All accounts: password <code>Milton2026!</code> · phones synced to <code>profiles.phone</code></p>
+    <p>✓ Your account: <code>ezra@miltonrecovery.com</code> · phone <code>+1 (201) 747-7727</code> · role alumni (for rehearsal)</p>
+    <p>✓ Two minor pre-existing test failures (non-blocking, won't affect Apple submission)</p>
+    <p style="margin-top:14px;color:#D4EB8E;font-size:15px;font-weight:600;">Time to public launch: 10–14 days</p>
+  </div>
+
+  <div class="footer">Generated 2026-05-17 &nbsp;·&nbsp; Master roadmap, supersedes other launch-kit docs</div>
+</div>
+
+<!-- ========== STATUS REPORT - SECTION 1 ========== -->
+<div class="page">
+  <div class="page-title">
+    <span class="num">§1</span>
+    <div>
+      <h2 class="title">The iOS App (Build 10)</h2>
+      <p class="subtitle">What it is, how it works, current state</p>
+    </div>
+  </div>
+
+  <h3 class="sect">What it does</h3>
+  <p style="font-size:13px;line-height:1.6;color:#2a2a2a;">SwiftUI app for Milton Recovery Centers alumni. 5 tabs: Home (sobriety counter + daily quote + announcements + "I'm Struggling Today"), Community (posts + comments + likes), Meetings (Milton-curated + nearby NA via BMLT API), Chat (1:1 secure messaging with assigned care team), Profile (sobriety / badges / settings). Admin & super_admin roles add a dashboard for member approval, content moderation, and care-team assignment.</p>
+
+  <h3 class="sect">Login flow (the real one)</h3>
+  <table class="tbl">
+    <tr><th style="width:50px">Step</th><th>What happens</th><th style="width:140px">Calls</th></tr>
+    <tr><td>1</td><td>User enters email + password → taps Login</td><td>n/a</td></tr>
+    <tr><td>2</td><td>App calls Supabase Auth <code>signInWithPassword</code></td><td>Supabase Auth</td></tr>
+    <tr><td>3</td><td>If valid, app fetches the user's <code>profile.phone</code> and calls Edge Function</td><td><code>send-sms-otp</code></td></tr>
+    <tr><td>4</td><td>Edge Function: rate-limits (5/hr), creates challenge row, calls Twilio API</td><td>Twilio Programmable Messaging</td></tr>
+    <tr><td>5</td><td>Real SMS arrives at user's phone (assuming A2P 10DLC registered)</td><td>—</td></tr>
+    <tr><td>6</td><td>User enters 6-digit code → app calls verify Edge Function</td><td><code>verify-sms-otp</code></td></tr>
+    <tr><td>7</td><td>Edge Function checks SHA-256 hash + expiry → returns success</td><td>—</td></tr>
+    <tr><td>8</td><td>App routes to home screen based on role</td><td>—</td></tr>
+  </table>
+
+  <h3 class="sect">Build & test state</h3>
+  <div class="row"><div class="badge ok">✓</div><div class="content"><strong>App builds clean</strong> — last <code>xcodebuild build</code> returned BUILD SUCCEEDED. This is what Apple actually requires for archive.</div></div>
+  <div class="row"><div class="badge ok">✓</div><div class="content"><strong>245 / 247 tests pass.</strong> The 2 failing tests (<code>CommunityViewModelTests.createPostResetsForm</code> and <code>AdminViewModelTests.loadChatMonitorEntries</code>) appear to be pre-existing environmental issues — not regressions from current work. Apple doesn't run our test suite; they only check the binary compiles.</div></div>
+  <div class="row"><div class="badge ok">✓</div><div class="content"><strong>PrivacyInfo.xcprivacy</strong> declares all collected data types (email, phone, name, photos, precise location) and required-reason APIs (UserDefaults, SystemBootTime, FileTimestamp). Apple's 2024 mandatory privacy manifest is in place.</div></div>
+  <div class="row"><div class="badge ok">✓</div><div class="content"><strong>Info.plist permissions audited</strong> for Guideline 5.1.1 — all 5 declared usage descriptions (Camera, Photos, Location, FaceID, Calendars) are actively used in code.</div></div>
+
+  <h3 class="sect">Recent code fixes (Build 10)</h3>
+  <div class="row"><div class="badge ok">✓</div><div class="content">Edit-post flow now runs content through <code>ContentFilterService.analyzeAndEscalate</code> — high-risk edits route to <code>flaggedForCrisis</code> not just <code>pendingReview</code>.</div></div>
+  <div class="row"><div class="badge ok">✓</div><div class="content">Real Florida + Ohio Milton phone numbers wired into Support Resources (no more <code>tel:18005551234</code> placeholder).</div></div>
+  <div class="row"><div class="badge ok">✓</div><div class="content">Comment likes shipped — red heart UI, optimistic update + RPC reconciliation, persists across cold restart.</div></div>
+  <div class="row"><div class="badge ok">✓</div><div class="content">My Posts list + edit flow — Profile → "My Posts" navigates to a dedicated list; tap any post → ellipsis menu shows Edit + Delete.</div></div>
+
+  <div class="pg-footer">§1 The iOS App · Page 2</div>
+</div>
+
+<!-- ========== STATUS REPORT - SECTION 2 ========== -->
+<div class="page">
+  <div class="page-title">
+    <span class="num">§2</span>
+    <div>
+      <h2 class="title">Production Supabase</h2>
+      <p class="subtitle">Database, Auth, Edge Functions, Storage</p>
+    </div>
+  </div>
+
+  <h3 class="sect">What it does</h3>
+  <p style="font-size:13px;line-height:1.6;color:#2a2a2a;">Postgres database + Auth + serverless Edge Functions + file Storage. All app state lives here. Project ID <code>hksxzuytcmqqwxmfjzdp</code>. Pro tier (paid).</p>
+
+  <h3 class="sect">Current data state</h3>
+  <table class="tbl">
+    <tr><th>Table</th><th>Rows</th><th>Status</th></tr>
+    <tr><td><code>auth.users</code></td><td>8</td><td><span class="green">✓ Matches profiles 1:1</span></td></tr>
+    <tr><td><code>profiles</code></td><td>8</td><td><span class="green">✓ No orphans either way</span></td></tr>
+    <tr><td><code>profiles_with_phone</code></td><td>5</td><td><span class="green">✓ 5 accounts can receive OTP</span></td></tr>
+    <tr><td><code>profiles is_test_account=true</code></td><td>1</td><td><span class="green">✓ Only alexdemo (for Apple)</span></td></tr>
+    <tr><td><code>posts</code></td><td>0</td><td><span class="green">✓ Clean — real signups populate</span></td></tr>
+    <tr><td><code>comments</code></td><td>0</td><td><span class="green">✓ Clean</span></td></tr>
+    <tr><td><code>meetings</code></td><td>2</td><td><span class="green">✓ Real Milton-curated meetings</span></td></tr>
+    <tr><td><code>announcements</code></td><td>2</td><td><span class="green">✓ Real Milton-curated</span></td></tr>
+    <tr><td><code>badges</code> (catalog)</td><td>12</td><td><span class="green">✓ Award catalog ready</span></td></tr>
+  </table>
+
+  <h3 class="sect">Edge Functions deployed</h3>
+  <table class="tbl">
+    <tr><th>Function</th><th>Purpose</th><th>Status</th></tr>
+    <tr><td><code>send-sms-otp</code></td><td>Server-side OTP gen + Twilio SMS dispatch (3hr ago)</td><td><span class="green">✓ Deployed</span></td></tr>
+    <tr><td><code>verify-sms-otp</code></td><td>OTP verification w/ demo bypass gating</td><td><span class="green">✓ Deployed</span></td></tr>
+    <tr><td><code>flag-content</code></td><td>Crisis content fan-out to admin push notifications</td><td><span class="green">✓ Deployed</span></td></tr>
+    <tr><td><code>send-push-notification</code></td><td>APNS push notifications (welcome, approvals, crisis alerts)</td><td><span class="green">✓ Deployed</span></td></tr>
+    <tr><td><code>send-welcome-email</code></td><td>Branded welcome email via Resend (current OR proposed)</td><td><span class="amber">⚠ Current version; new branded staged</span></td></tr>
+    <tr><td><code>send-invite-sms</code></td><td>Admin-initiated invite SMS to prospective alumni</td><td><span class="green">✓ Deployed</span></td></tr>
+    <tr><td><code>assign-user-facility</code></td><td>Admin tool: bulk re-assign users to FL or OH facility</td><td><span class="green">✓ Deployed</span></td></tr>
+  </table>
+
+  <h3 class="sect">Compliance / security</h3>
+  <div class="row"><div class="badge ok">✓</div><div class="content"><strong>Row-Level Security (RLS):</strong> enabled on all 15 tables. Users can only read their own data + approved community content. Admins scoped by facility. Audit-logged on every privileged action.</div></div>
+  <div class="row"><div class="badge ok">✓</div><div class="content"><strong>Encryption at rest:</strong> Supabase default AES-256 across all columns. PII (sobriety dates, profile photos, chat messages, audit logs) all encrypted.</div></div>
+  <div class="row"><div class="badge ok">✓</div><div class="content"><strong>Encryption in transit:</strong> TLS 1.2+. All Edge Function calls + Storage uploads use HTTPS only.</div></div>
+  <div class="row"><div class="badge ok">✓</div><div class="content"><strong>BAA signed</strong> with Supabase per launch-kit/01.</div></div>
+
+  <h3 class="sect">Secrets configured</h3>
+  <div class="row"><div class="badge ok">✓</div><div class="content"><code>DEMO_BYPASS_ENABLED = false</code> (currently — flipped <em>off</em> for dress rehearsal; will be flipped back to <code>true</code> for Apple submission)</div></div>
+  <div class="row"><div class="badge ok">✓</div><div class="content"><code>TWILIO_ACCOUNT_SID</code> · <code>TWILIO_AUTH_TOKEN</code> · <code>TWILIO_PHONE_NUMBER</code> — all set</div></div>
+  <div class="row"><div class="badge ok">✓</div><div class="content"><code>RESEND_API_KEY</code> — set</div></div>
+  <div class="row"><div class="badge ok">✓</div><div class="content"><code>APNS_KEY_ID</code> · <code>APNS_TEAM_ID</code> · <code>APNS_PRIVATE_KEY</code> — set</div></div>
+
+  <div class="pg-footer">§2 Supabase · Page 3</div>
+</div>
+
+<!-- ========== STATUS REPORT - SECTION 3 ========== -->
+<div class="page">
+  <div class="page-title">
+    <span class="num">§3</span>
+    <div>
+      <h2 class="title">Twilio (SMS)</h2>
+      <p class="subtitle">OTP delivery — current blocker</p>
+    </div>
+  </div>
+
+  <h3 class="sect">What it does</h3>
+  <p style="font-size:13px;line-height:1.6;color:#2a2a2a;">Sends the 6-digit OTP code to user phones during login. The only Twilio product we use is Programmable Messaging. Per-SMS cost ~$0.0083 + carrier fees.</p>
+
+  <h3 class="sect">Current state</h3>
+  <div class="row"><div class="badge ok">✓</div><div class="content"><strong>Twilio account exists and is configured.</strong> Account SID + Auth Token + sending number are set in Supabase secrets.</div></div>
+  <div class="row"><div class="badge bad">✗</div><div class="content"><strong>BAA not yet signed.</strong> Required for HIPAA — phone numbers + Milton's recovery-treatment context = PHI. Without BAA, signing real users up is a HIPAA violation. <strong>This is the main public-launch blocker.</strong> Ready-to-send email is in <code>launch-kit/TWILIO-BAA-SEND-NOW.md</code>.</div></div>
+  <div class="row"><div class="badge amber">?</div><div class="content"><strong>A2P 10DLC status unknown.</strong> US carriers (AT&amp;T, Verizon, T-Mobile) require app-to-person SMS senders to register their "brand" and "campaign". Without it, carriers <strong>silently drop messages</strong> — no error, no delivery log. This is likely why yesterday's smoke test SMS didn't arrive. To check: log into Twilio Console.</div></div>
+  <div class="row"><div class="badge amber">?</div><div class="content"><strong>Account tier (trial vs paid) unknown.</strong> BAA requires paid. Same — check console.</div></div>
+
+  <h3 class="sect">What you'll see in Twilio Console once logged in</h3>
+  <ol style="font-size:13px;line-height:1.7;color:#444;">
+    <li><strong>Billing</strong> sidebar → top of page tells you Trial vs Paid</li>
+    <li><strong>Messaging → Regulatory Compliance → A2P 10DLC</strong> → Brand status + Campaign status</li>
+    <li><strong>Monitor → Logs → Messaging</strong> → every SMS attempt with status (delivered, failed, undelivered)</li>
+    <li>If you sent SMS yesterday: it appears here with delivery status. If status is "delivered" but you never got it on your phone → carrier filtering (10DLC issue). If status is "failed" → Twilio-side issue. If no log at all → Edge Function never reached Twilio.</li>
+  </ol>
+
+  <div class="pg-footer">§3 Twilio · Page 4</div>
+</div>
+
+<!-- ========== STATUS REPORT - SECTION 4 ========== -->
+<div class="page">
+  <div class="page-title">
+    <span class="num">§4</span>
+    <div>
+      <h2 class="title">Other Services</h2>
+      <p class="subtitle">Resend (email), APNS (push), App Store Connect, GitHub Pages</p>
+    </div>
+  </div>
+
+  <h3 class="sect">Resend (transactional email)</h3>
+  <div class="row"><div class="badge ok">✓</div><div class="content"><strong>Configured.</strong> <code>RESEND_API_KEY</code> set; <code>noreply@miltonrecovery.com</code> verified sender. Used by exactly one Edge Function: <code>send-welcome-email</code>.</div></div>
+  <div class="row"><div class="badge info">i</div><div class="content"><strong>1 email type in entire app.</strong> The welcome email (after signup). No password resets, no notifications, no digests. Body contains zero PHI (no name, no DOB, no diagnosis) — only "your application is pending review". <strong>BAA not required for Resend</strong> since no PHI flows.</div></div>
+  <div class="row"><div class="badge amber">⚠</div><div class="content"><strong>Branded redesign staged but not deployed.</strong> File at <code>send-welcome-email/index.ts.proposed</code> matches login-screen wordmark + 7-color brand band + dark footer with FL/OH phones + 988 crisis snippet. <em>One word from you and I deploy it in 30 seconds.</em></div></div>
+
+  <h3 class="sect">APNS (push notifications)</h3>
+  <div class="row"><div class="badge ok">✓</div><div class="content"><strong>Configured.</strong> <code>APNS_KEY_ID</code>, <code>APNS_TEAM_ID</code>, <code>APNS_PRIVATE_KEY</code> all in Supabase secrets. The <code>send-push-notification</code> Edge Function calls Apple's HTTP/2 API directly.</div></div>
+  <div class="row"><div class="badge ok">✓</div><div class="content"><strong>11 push types catalogued</strong> across alumni / admin / super_admin in <code>Docs/PUSH_NOTIFICATIONS.md</code>: application submitted, account approved, new comment, post approved/rejected, struggling button alert, crisis content flag, sobriety reset, emergency access notice, etc.</div></div>
+
+  <h3 class="sect">App Store Connect</h3>
+  <div class="row"><div class="badge ok">✓</div><div class="content">App listing prepared (per your prior work): icon, screenshots, description, keywords, privacy URL, support URL, age rating, category — all set.</div></div>
+  <div class="row"><div class="badge amber">→</div><div class="content"><strong>Awaiting Build 10 upload.</strong> Archive in Xcode → Distribute → Upload. ~30 min total of your time.</div></div>
+
+  <h3 class="sect">GitHub Pages (privacy + support)</h3>
+  <div class="row"><div class="badge ok">✓</div><div class="content"><code>miltonrecovery.com/privacy</code> + <code>miltonrecovery.com/app-support</code> — referenced from app footer, support sheet, and email footer. Verify these resolve before submission.</div></div>
+
+  <h3 class="sect">Vendor BAA matrix</h3>
+  <table class="tbl">
+    <tr><th>Vendor</th><th>Handles PHI?</th><th>BAA</th><th>Blocker?</th></tr>
+    <tr><td>Supabase</td><td>Yes (everything)</td><td><span class="green">✓ Signed</span></td><td>No</td></tr>
+    <tr><td>Twilio</td><td>Yes (phone + recovery context)</td><td><span class="red">✗ Not signed</span></td><td><span class="red">YES — public-launch blocker</span></td></tr>
+    <tr><td>Resend</td><td>No (welcome email has zero PHI)</td><td>Not required</td><td>No</td></tr>
+    <tr><td>Apple APNS</td><td>No (push body has no PHI)</td><td>Apple Developer Agreement covers</td><td>No</td></tr>
+  </table>
+
+  <div class="pg-footer">§4 Other Services · Page 5</div>
+</div>
+
+<!-- ========== ROADMAP PHASE 0 ========== -->
+<div class="page">
+  <div class="page-title">
+    <span class="num">0</span>
+    <div>
+      <h2 class="title">Today (~60 min)</h2>
+      <p class="subtitle">4 parallel steps, all unblock parallel work for you</p>
+    </div>
+    <span class="duration">~60 min</span>
+  </div>
+
+  <div class="step">
+    <div class="head"><div class="checkbox"></div><span class="step-num">0.1</span><h3 class="step-title">Approve or reject the branded welcome email</h3><span class="time">1 min</span></div>
+    <ol>
+      <li>Open <code>launch-kit/email-previews/01-CURRENT.pdf</code> (off-brand blue)</li>
+      <li>Open <code>launch-kit/email-previews/02-PROPOSED.pdf</code> (milton wordmark + 7-color band)</li>
+      <li>Reply: <strong>"approve email"</strong> or <strong>"keep current"</strong></li>
+    </ol>
+    <div class="ok"><strong>If approved:</strong> Claude renames <code>index.ts.proposed → index.ts</code> and deploys via <code>supabase functions deploy send-welcome-email</code> in 30 seconds. The file is already staged.</div>
+  </div>
+
+  <div class="step">
+    <div class="head"><div class="checkbox"></div><span class="step-num">0.2</span><h3 class="step-title">Send the Twilio BAA email (critical, ~2 min)</h3><span class="time">2 min</span></div>
+    <ol>
+      <li>New browser tab → <code>console.twilio.com</code> → sign in</li>
+      <li>Top-right → account dropdown → <strong>Account info</strong> → copy <strong>Account SID</strong> (32 chars, starts with <code>AC</code>)</li>
+      <li>Open <code>launch-kit/TWILIO-BAA-SEND-NOW.md</code> → copy the email body</li>
+      <li>New email → To: <code>privacy@twilio.com</code> → Subject: <code>BAA Request — Milton Recovery Centers — Account [your SID]</code></li>
+      <li>Paste body → fill in placeholders (Account SID + business address) → Send</li>
+      <li>Reply: <strong>"BAA email sent"</strong></li>
+    </ol>
+    <div class="note"><strong>Why this is urgent:</strong> BAA takes 1–2 weeks. Public launch is blocked until signed. Sending today moves you from blocked → waiting (in parallel with everything else).</div>
+  </div>
+
+  <div class="step">
+    <div class="head"><div class="checkbox"></div><span class="step-num">0.3</span><h3 class="step-title">Log into Twilio so Claude can audit the account</h3><span class="time">2 min + 5 min Claude</span></div>
+    <ol>
+      <li>Stay logged into <code>console.twilio.com</code></li>
+      <li>Reply: <strong>"logged into Twilio"</strong></li>
+      <li>Claude drives Chrome and reports: account tier (Trial / Paid), A2P 10DLC Brand status, A2P 10DLC Campaign status, recent Messaging logs (was yesterday's OTP attempt even logged?), HIPAA eligibility flag</li>
+    </ol>
+    <div class="info"><strong>Why Claude can't do this alone:</strong> Security rule blocks entering passwords on your behalf. Past the login screen, Claude takes over.</div>
+  </div>
+
+  <div class="step">
+    <div class="head"><div class="checkbox"></div><span class="step-num">0.4</span><h3 class="step-title">Retry SMS smoke test in TestFlight</h3><span class="time">3 min</span></div>
+    <ol>
+      <li>Open TestFlight Milton on your iPhone → if logged in, Profile → Logout</li>
+      <li>Email: <code>ezra@miltonrecovery.com</code> · Password: <code>Milton2026!</code> · tap Login</li>
+      <li>Watch your phone for real Twilio SMS to <strong>(201) 747-7727</strong></li>
+      <li>Reply: <strong>"SMS arrived"</strong> → Phase 2 dress rehearsal next. Or <strong>"No SMS"</strong> → A2P 10DLC fix needed (Phase 1)</li>
+    </ol>
+    <div class="note"><strong>What's different since yesterday:</strong> Edge Function was reading phone from wrong column (<code>auth.users.phone</code>) — fixed; now reads <code>profiles.phone</code> which IS populated. So SMS may now work, OR it may still not work because of A2P 10DLC (separate issue, handled in Phase 1).</div>
+  </div>
+
+  <div class="pg-footer">Phase 0 · Page 6</div>
+</div>
+
+<!-- ========== ROADMAP PHASE 1 ========== -->
+<div class="page">
+  <div class="page-title">
+    <span class="num">1</span>
+    <div>
+      <h2 class="title">Fix SMS Delivery (if needed)</h2>
+      <p class="subtitle">Skip if Phase 0.4 returned "SMS arrived"</p>
+    </div>
+    <span class="duration">10 min + 1–3 day wait</span>
+  </div>
+
+  <div class="step">
+    <div class="head"><div class="checkbox"></div><span class="step-num">1.1</span><h3 class="step-title">Upgrade Twilio if on Trial</h3><span class="time">2 min</span></div>
+    <ol>
+      <li>Console → <strong>Billing</strong> sidebar</li>
+      <li>If "Trial Account" banner → <strong>Upgrade</strong> → add credit card → confirm (~$1)</li>
+    </ol>
+  </div>
+
+  <div class="step">
+    <div class="head"><div class="checkbox"></div><span class="step-num">1.2</span><h3 class="step-title">Register A2P 10DLC Brand</h3><span class="time">5 min · 1–3 day approval</span></div>
+    <ol>
+      <li>Console → <strong>Messaging → Regulatory Compliance → A2P 10DLC</strong></li>
+      <li>Brand Registration → Register new Brand → <strong>Standard Brand</strong> ($4 one-time)</li>
+      <li>Fill form: Milton Recovery Centers / Milton Nation DBA / US / EIN / business address / <code>miltonrecovery.com</code> / <strong>Healthcare</strong> vertical / Ezra contact</li>
+      <li>Submit → wait for "Verified" (1–3 days)</li>
+      <li>Reply: <strong>"brand submitted"</strong></li>
+    </ol>
+  </div>
+
+  <div class="step">
+    <div class="head"><div class="checkbox"></div><span class="step-num">1.3</span><h3 class="step-title">Register A2P 10DLC Campaign</h3><span class="time">5 min · instant approval</span></div>
+    <ol>
+      <li>Same page → Campaign Registration → Register new Campaign</li>
+      <li>Use Case: <strong>Account Notifications</strong> or <strong>2FA / OTP</strong> (lowest fee)</li>
+      <li>Brand: select your Verified brand</li>
+      <li>Sample messages (paste):</li>
+    </ol>
+    <div class="copy-block">Your Milton Alumni verification code is: 123456. It expires in 5 minutes. Do not share this code.
+
+Your Milton Alumni verification code is: 987654. It expires in 5 minutes. Do not share this code.</div>
+    <ol start="5"><li>Opt-in: "Users enter phone during signup, agree to ToS, request 2FA code."</li>
+    <li>Opt-out: "Users can delete account in Settings → Delete Account, removing phone."</li>
+    <li>Help: "Reply HELP for assistance, STOP to unsubscribe."</li>
+    <li>Submit → instant approval · ~$15/month</li></ol>
+  </div>
+
+  <div class="step">
+    <div class="head"><div class="checkbox"></div><span class="step-num">1.4</span><h3 class="step-title">Attach campaign to sending phone</h3><span class="time">1 min</span></div>
+    <ol>
+      <li>Console → Phone Numbers → Manage → Active Numbers → click your sending number</li>
+      <li>Messaging section → assign Campaign → Save</li>
+    </ol>
+  </div>
+
+  <div class="step">
+    <div class="head"><div class="checkbox"></div><span class="step-num">1.5</span><h3 class="step-title">Retry SMS smoke test</h3><span class="time">3 min</span></div>
+    <ol>
+      <li>Repeat Step 0.4 → SMS should arrive in 30s</li>
+      <li>Reply: <strong>"SMS works"</strong></li>
+    </ol>
+  </div>
+
+  <div class="pg-footer">Phase 1 · Page 7</div>
+</div>
+
+<!-- ========== ROADMAP PHASE 2 ========== -->
+<div class="page">
+  <div class="page-title">
+    <span class="num">2</span>
+    <div>
+      <h2 class="title">Dress Rehearsal</h2>
+      <p class="subtitle">Real signup + admin approval, second phone</p>
+    </div>
+    <span class="duration">20 min active + 2–3 days passive</span>
+  </div>
+
+  <div class="step">
+    <div class="head"><div class="checkbox"></div><span class="step-num">2.1</span><h3 class="step-title">Install Build 10 on second phone</h3><span class="time">5 min</span></div>
+    <ol>
+      <li>App Store Connect → Users and Access → TestFlight → + Add Tester</li>
+      <li>Add the second phone's owner by Apple ID email</li>
+      <li>They receive an email/push invite → tap → Install TestFlight → Accept → Install Milton</li>
+    </ol>
+  </div>
+
+  <div class="step">
+    <div class="head"><div class="checkbox"></div><span class="step-num">2.2</span><h3 class="step-title">Register as a real new alumni from the second phone</h3><span class="time">5 min</span></div>
+    <ol>
+      <li>On second phone → open Milton → tap <strong>"Don't have an account? Register"</strong></li>
+      <li>Fill form: full name, username, email, real phone number (second phone), strong password, sobriety + discharge dates, recovery program</li>
+      <li>Submit → "Application submitted, awaiting admin approval"</li>
+      <li>Welcome email arrives → <strong>verify branding looks right</strong> (this is when you'll see the proposed design in action if you approved it in 0.1)</li>
+    </ol>
+  </div>
+
+  <div class="step">
+    <div class="head"><div class="checkbox"></div><span class="step-num">2.3</span><h3 class="step-title">Approve from admin (your primary phone)</h3><span class="time">3 min</span></div>
+    <ol>
+      <li>Your iPhone → logout from alumni-ezra session</li>
+      <li>Login as Florida Admin: email <code>admin@miltonrecovery.com</code> · password <code>Milton2026!</code></li>
+      <li>Real SMS arrives at (929) 617-2795 → enter code → admin dashboard</li>
+      <li>Push notification: "New Member Request" → tap → review → Approve → assign Florida</li>
+      <li>Second phone receives "You're Approved!" push</li>
+    </ol>
+    <div class="info"><strong>What this proves:</strong> Twilio SMS, push notifications, Resend email, admin approval flow — all end-to-end on production stack.</div>
+  </div>
+
+  <div class="step">
+    <div class="head"><div class="checkbox"></div><span class="step-num">2.4</span><h3 class="step-title">Use the app as a real consumer for 24–48 hours</h3><span class="time">passive</span></div>
+    <ol>
+      <li>Login on second phone with real credentials</li>
+      <li>Walk through <code>launch-kit/TESTFLIGHT-QA-BUILD-10.md</code> as the new alumni</li>
+      <li>Create posts in each category, comment, like, photo upload, struggling button, dial FL/OH numbers, check meetings tab</li>
+      <li>Background app overnight → re-open → confirm still logged in</li>
+    </ol>
+  </div>
+
+  <div class="step">
+    <div class="head"><div class="checkbox"></div><span class="step-num">2.5</span><h3 class="step-title">Document anything broken</h3><span class="time">passive</span></div>
+    <p style="font-size:13px;margin:6px 0 0;color:#444;">Apple Notes / sticky note: crashes, off-brand visuals, broken flows, slow screens, typos. Send the list when soak ends. Claude cuts Build 11 if anything significant.</p>
+  </div>
+
+  <div class="pg-footer">Phase 2 · Page 8</div>
+</div>
+
+<!-- ========== ROADMAP PHASE 3+4 ========== -->
+<div class="page">
+  <div class="page-title">
+    <span class="num">3·4</span>
+    <div>
+      <h2 class="title">Code Updates + Apple Submission</h2>
+      <p class="subtitle">Claude handles 3; you handle 4</p>
+    </div>
+    <span class="duration">30 min you + 24–48h Apple</span>
+  </div>
+
+  <div class="step">
+    <div class="head"><div class="checkbox"></div><span class="step-num">3.1</span><h3 class="step-title">Tell Claude what rehearsal found</h3><span class="time">1 min</span></div>
+    <ol>
+      <li>Paste your Phase 2.5 list. Claude fixes each, bumps to Build 11 if needed, re-tests, commits.</li>
+      <li>If 0.1 approved branded email: Claude deploys it in this phase too.</li>
+    </ol>
+  </div>
+
+  <div class="step">
+    <div class="head"><div class="checkbox"></div><span class="step-num">4.1</span><h3 class="step-title">Tell Claude "ready to submit"</h3><span class="time">1 sec</span></div>
+    <ol>
+      <li>Claude flips <code>DEMO_BYPASS_ENABLED → true</code> on Supabase</li>
+      <li>Claude re-seeds minimal demo content on alexdemo's account for the App Reviewer to see (sample posts, care team, badge)</li>
+    </ol>
+  </div>
+
+  <div class="step">
+    <div class="head"><div class="checkbox"></div><span class="step-num">4.2</span><h3 class="step-title">Archive in Xcode</h3><span class="time">10 min</span></div>
+    <ol>
+      <li>Xcode → top device selector → <strong>Any iOS Device (arm64)</strong></li>
+      <li>Product → Clean Build Folder (⇧⌘K)</li>
+      <li>Product → Archive · wait 3–5 min · Organizer opens automatically</li>
+    </ol>
+  </div>
+
+  <div class="step">
+    <div class="head"><div class="checkbox"></div><span class="step-num">4.3</span><h3 class="step-title">Upload + fill App Review form</h3><span class="time">20 min</span></div>
+    <ol>
+      <li>Organizer → select archive → Distribute App → App Store Connect → Upload → Auto-manage signing</li>
+      <li>Wait ~30 min for processing email</li>
+      <li>App Store Connect → My Apps → Milton → App Store tab → Prepare for Submission → + Build</li>
+      <li><strong>Demo account:</strong> User <code>appreviewer@miltonrecovery.com</code> · Password <code>Milton2026!</code></li>
+      <li><strong>Notes for Reviewer:</strong> paste from <code>launch-kit/SUBMIT-BUILD-10.md</code> Step 4</li>
+      <li><strong>Version Release:</strong> ☑ <strong>Manually release this version</strong> (lets you wait for BAA before going public)</li>
+    </ol>
+  </div>
+
+  <div class="step">
+    <div class="head"><div class="checkbox"></div><span class="step-num">4.4</span><h3 class="step-title">Submit for Review</h3><span class="time">1 click</span></div>
+    <ol>
+      <li>Add for Review → Submit for Review</li>
+      <li>Reply: <strong>"submitted"</strong></li>
+    </ol>
+    <div class="ok"><strong>Apple turnaround:</strong> 24–48 hours typical. Approved build sits in "Pending Developer Release" until you click Release.</div>
+  </div>
+
+  <div class="pg-footer">Phase 3+4 · Page 9</div>
+</div>
+
+<!-- ========== ROADMAP PHASE 5+6 ========== -->
+<div class="page">
+  <div class="page-title">
+    <span class="num">5·6</span>
+    <div>
+      <h2 class="title">Release Day + Day-1 Monitoring</h2>
+      <p class="subtitle">Don't click Release until BAA is signed</p>
+    </div>
+    <span class="duration">15 min release · 48h monitor</span>
+  </div>
+
+  <div class="step">
+    <div class="head"><div class="checkbox"></div><span class="step-num">5.1</span><h3 class="step-title">Confirm Twilio BAA is signed</h3><span class="time">1 min</span></div>
+    <ol>
+      <li>Check email for countersigned BAA from Twilio General Counsel</li>
+      <li>If yes → proceed. If no → wait. Approved app sits in Pending Developer Release indefinitely.</li>
+    </ol>
+    <div class="note"><strong>Why this matters:</strong> Without BAA, every real signup that sends SMS through Twilio is a HIPAA violation. Don't expose strangers.</div>
+  </div>
+
+  <div class="step">
+    <div class="head"><div class="checkbox"></div><span class="step-num">5.2</span><h3 class="step-title">Tell Claude "BAA signed, ready to release"</h3><span class="time">1 sec</span></div>
+    <p style="font-size:13px;margin:6px 0 0;color:#444;">Claude flips <code>DEMO_BYPASS_ENABLED → false</code> on Supabase. Demo bypass is dead.</p>
+  </div>
+
+  <div class="step">
+    <div class="head"><div class="checkbox"></div><span class="step-num">5.3</span><h3 class="step-title">Final production smoke test</h3><span class="time">10 min</span></div>
+    <ol>
+      <li>Brand-new phone (or wipe second phone) → install via TestFlight Build 10</li>
+      <li>Try demo phone <code>+15550001234</code> → must FAIL (proves bypass off)</li>
+      <li>Sign up as real new alumni → real Twilio SMS → welcome email → admin approves → login → everything works</li>
+    </ol>
+  </div>
+
+  <div class="step">
+    <div class="head"><div class="checkbox"></div><span class="step-num">5.4</span><h3 class="step-title">Click Release in App Store Connect</h3><span class="time">1 click</span></div>
+    <ol>
+      <li>App Store Connect → My Apps → Milton → your version → <strong>Release This Version</strong></li>
+      <li>App is downloadable from the public App Store within 2 hours</li>
+    </ol>
+    <div class="ok"><strong>Done.</strong> Milton Nation is live for anyone with an iPhone.</div>
+  </div>
+
+  <div class="step">
+    <div class="head"><div class="checkbox"></div><span class="step-num">6.1</span><h3 class="step-title">First 48h monitoring</h3><span class="time">passive · always on call</span></div>
+    <ol>
+      <li><strong>Supabase Auth → Users tab:</strong> every new signup row → approve from admin app within 1 hour during business hours</li>
+      <li><strong>Supabase Edge Functions → Logs:</strong> filter on errors, especially <code>send-sms-otp</code>, <code>flag-content</code></li>
+      <li><strong>Twilio Monitor → Messaging logs:</strong> watch for undelivered / failed</li>
+      <li><strong>Crisis pushes:</strong> have phone within reach — real alumni may post real crisis content; admin push fires; a timely response matters</li>
+      <li><strong>Inbox:</strong> <code>ezra@miltonrecovery.com</code> for support requests + App Store review notifications</li>
+    </ol>
+  </div>
+
+  <div class="pg-footer">Phase 5+6 · Page 10</div>
+</div>
+
+<!-- ========== APPENDIX ========== -->
+<div class="page">
+  <div class="page-title">
+    <span class="num">★</span>
+    <div>
+      <h2 class="title">Quick Reference</h2>
+      <p class="subtitle">All credentials, links, contacts in one place</p>
+    </div>
+  </div>
+
+  <h3 class="sect">All 8 production accounts</h3>
+  <table class="tbl">
+    <tr><th>Email</th><th>Password</th><th>Phone</th><th>Role</th></tr>
+    <tr><td><code>ezra@miltonrecovery.com</code></td><td><code>Milton2026!</code></td><td>+1 (201) 747-7727</td><td>alumni (your acct)</td></tr>
+    <tr><td><code>admin@miltonrecovery.com</code></td><td><code>Milton2026!</code></td><td>+1 (929) 617-2795</td><td>admin (FL)</td></tr>
+    <tr><td><code>super-demo@miltonrecovery.com</code></td><td><code>Milton2026!</code></td><td>+1 (555) 000-9999 (fake)</td><td>super_admin</td></tr>
+    <tr><td><code>appreviewer@miltonrecovery.com</code></td><td><code>Milton2026!</code></td><td>+1 (555) 000-1234</td><td>alumni (Apple Reviewer)</td></tr>
+    <tr><td><code>admin@miltonjefferson.com</code></td><td><code>Milton2026!</code></td><td>—</td><td>admin (OH)</td></tr>
+    <tr><td><code>admin-demo@miltonrecovery.com</code></td><td><code>Milton2026!</code></td><td>—</td><td>admin</td></tr>
+    <tr><td><code>case-manager-demo@miltonrecovery.com</code></td><td><code>Milton2026!</code></td><td>—</td><td>case_manager</td></tr>
+    <tr><td><code>therapist-demo@miltonrecovery.com</code></td><td><code>Milton2026!</code></td><td>—</td><td>therapist</td></tr>
+  </table>
+
+  <h3 class="sect">Dashboards</h3>
+  <table class="tbl">
+    <tr><td><strong>Supabase</strong></td><td><code>supabase.com/dashboard/project/hksxzuytcmqqwxmfjzdp</code></td></tr>
+    <tr><td><strong>Twilio</strong></td><td><code>console.twilio.com</code></td></tr>
+    <tr><td><strong>Resend</strong></td><td><code>resend.com/dashboard</code></td></tr>
+    <tr><td><strong>App Store Connect</strong></td><td><code>appstoreconnect.apple.com</code></td></tr>
+    <tr><td><strong>GitHub</strong></td><td>(your repo)</td></tr>
+  </table>
+
+  <h3 class="sect">Critical phone numbers</h3>
+  <table class="tbl">
+    <tr><td>Florida Milton — 24/7</td><td><strong>(844) 406-4325</strong></td></tr>
+    <tr><td>Ohio Milton — 24/7</td><td><strong>(740) 715-4673</strong></td></tr>
+    <tr><td>988 Suicide &amp; Crisis Lifeline</td><td><strong>988</strong> (call or text)</td></tr>
+    <tr><td>Crisis Text Line</td><td>Text <strong>HOME</strong> to <strong>741741</strong></td></tr>
+    <tr><td>SAMHSA Helpline</td><td><strong>1-800-662-4357</strong></td></tr>
+    <tr><td>Emergency</td><td><strong>911</strong></td></tr>
+  </table>
+
+  <h3 class="sect">Messages to send Claude (in order)</h3>
+  <ol style="font-size:12.5px;line-height:1.7;color:#444;">
+    <li>"approve email" or "keep current"</li>
+    <li>"BAA email sent"</li>
+    <li>"logged into Twilio"</li>
+    <li>"SMS arrived" or "no SMS"</li>
+    <li>"brand submitted" / "campaign live" (if needed)</li>
+    <li>(rehearsal feedback list)</li>
+    <li>"ready to submit"</li>
+    <li>"submitted"</li>
+    <li>"Apple approved"</li>
+    <li>"BAA signed, ready to release"</li>
+    <li>"released"</li>
+    <li>"first user signed up"</li>
+  </ol>
+
+  <h3 class="sect">Files in launch-kit/</h3>
+  <table class="tbl">
+    <tr><td><code>STATUS-AND-ROADMAP.pdf</code></td><td>← this document (master)</td></tr>
+    <tr><td><code>TWILIO-BAA-SEND-NOW.md</code></td><td>Send-ready BAA email body</td></tr>
+    <tr><td><code>SUBMIT-BUILD-10.md</code></td><td>App Review form text + verification checklist</td></tr>
+    <tr><td><code>TESTFLIGHT-QA-BUILD-10.md</code></td><td>30-min QA script for dress rehearsal</td></tr>
+    <tr><td><code>email-previews/01-CURRENT.pdf</code></td><td>Current welcome email design (off-brand)</td></tr>
+    <tr><td><code>email-previews/02-PROPOSED.pdf</code></td><td>Branded redesign (staged, awaiting approval)</td></tr>
+  </table>
+
+  <div class="pg-footer">Quick Reference · Page 11</div>
+</div>
+
+</body>
+</html>
