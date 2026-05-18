@@ -131,15 +131,20 @@ serve(async (req: Request) => {
       toPhone = "+1" + toPhone; // Default to US
     }
 
-    // Build the branded invite message
-    const greeting = name ? `Hi ${name.trim()}! ` : "";
+    // Branded invite message. STOP/HELP language is required by US carriers
+    // for ANY A2P 10DLC traffic. This message must go through a SEPARATE
+    // (future) TCR campaign registered with a Marketing or Mixed use case —
+    // DO NOT send through the 2FA-only OTP campaign or carriers will silently
+    // drop it and the OTP campaign risks suspension.
+    const appStoreUrl = Deno.env.get("APP_STORE_URL") ??
+      "https://apps.apple.com/us/app/milton-nation";
+    const greeting = name ? `Hi ${name.trim()}, ` : "";
     const message =
-      `${greeting}You've been invited to join the Milton Nation Alumni community! ` +
-      `Stay connected with your recovery support network, track milestones, ` +
-      `attend meetings, and chat with your care team.\n\n` +
-      `Download the Milton Alumni app:\n` +
-      `iOS: ${Deno.env.get("APP_STORE_URL") ?? "https://apps.apple.com/app/miltonalumni"}\n\n` +
-      `Your recovery community is waiting for you.\n` +
+      `${greeting}you're invited to Milton Nation — the alumni community ` +
+      `for Milton Recovery Centers.\n\n` +
+      `Stay connected, find meetings, and reach your care team, all in one place.\n\n` +
+      `Download for iOS: ${appStoreUrl}\n\n` +
+      `Reply STOP to opt out, HELP for help.\n` +
       `- Milton Recovery Centers`;
 
     // Send SMS via Twilio
