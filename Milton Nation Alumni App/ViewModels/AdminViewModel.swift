@@ -566,12 +566,12 @@ final class AdminViewModel {
                     facilityOverrides.removeValue(forKey: userId)
                     AuditLogger.shared.log(.approveUser, userId: userId, detail: "Approved: \(approvedUser.fullName) → \(facility.displayName)")
 
-                    // Notify the user they've been approved
-                    PushNotificationService.shared.scheduleLocalNotification(
-                        title: "Welcome to Milton Alumni!",
-                        body: "Your account has been approved. You can now log in and access the community.",
-                        userInfo: ["type": "user_approved", "userId": userId.uuidString]
-                    )
+                    // Approved-user notification is dispatched server-side via the
+                    // approveUser → send-push-notification Edge Function pipeline.
+                    // (Title: "You're Approved! 🎉" — see SupabaseDataService.approveUser.)
+                    // Previously also fired a local notification here on the admin's
+                    // device with stale "Milton Alumni" branding — removed to dedupe
+                    // and avoid showing the approval text on the WRONG device.
                 }
             } catch {
                 CrashReportingService.shared.recordError(error, context: "AdminViewModel.approvePendingUser")
@@ -822,11 +822,14 @@ final class AdminViewModel {
                     } else if action == .rejected {
                         AuditLogger.shared.log(.rejectPost, detail: "Post \(postId)")
 
-                        // Notify the user their post was rejected
+                        // Notify the user their post was rejected.
+                        // Softer tone for the recovery context — "rejected" can land hard
+                        // for someone in early recovery. We acknowledge, open the door to
+                        // care team support, and invite a re-try rather than scolding.
                         notifyPostAuthor(
                             userName: post.userName,
-                            title: "Post Not Approved",
-                            body: "Your community post didn't meet our community guidelines. Please review the guidelines and try again."
+                            title: "We couldn't publish your post",
+                            body: "Your latest community post didn't quite fit the guidelines. Open the app to revise it — your care team is here if you'd like to talk."
                         )
                     } else {
                         AuditLogger.shared.log(.rejectPost, detail: "Post \(postId)")
@@ -1522,9 +1525,13 @@ final class AdminViewModel {
             )
 
             // Notify the affected user via local notification (real device would get APNS push)
+            // HIPAA breach-notification-style alert. Be explicit about WHY (care
+            // and safety review) and HOW TO RESPOND (real Milton phone number).
+            // The bare "Privacy Notice" wording could spook the user without
+            // context — this version sets the safety frame.
             PushNotificationService.shared.scheduleLocalNotification(
-                title: "Privacy Notice",
-                body: "An administrator accessed your account data under an emergency access procedure.",
+                title: "Account Access Notice",
+                body: "For your safety, a Milton care team member reviewed your account today. If you have any questions, call (844) 406-4325.",
                 userInfo: ["type": "emergency_access_notice", "userId": targetUser.id.uuidString]
             )
 

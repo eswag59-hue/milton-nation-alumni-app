@@ -176,7 +176,11 @@ async function notifyAdmins(
       return 0;
     }
 
-    // Build notification content
+    // Build notification content.
+    // High-risk gets distinct, urgent copy that won't be skimmed past in a
+    // crowded notification tray. Medium and low keep the descriptive format
+    // since they're less time-sensitive and admins benefit from knowing the
+    // categories at a glance.
     const riskEmoji   = params.riskLevel === "high_risk"   ? "🚨"
                       : params.riskLevel === "medium_risk" ? "⚠️"
                       : "ℹ️";
@@ -185,10 +189,21 @@ async function notifyAdmins(
       .map(c => c.replace("_", " ").replace(/\b\w/g, ch => ch.toUpperCase()))
       .join(", ");
     const featureStr  = params.feature.replace("_", " ").replace(/\b\w/g, c => c.toUpperCase());
-    const emergency   = params.isEmergency ? " [EMERGENCY]" : "";
 
-    const title = `${riskEmoji} Content Flag: ${riskLabel}${emergency}`;
-    const body  = `${categoryStr} detected in ${featureStr}. Tap to review.`;
+    let title: string;
+    let body:  string;
+    if (params.riskLevel === "high_risk") {
+      // Urgent — surface above other notifications, demand immediate review
+      title = params.isEmergency
+        ? "🚨 URGENT — Member Safety Alert"
+        : "🚨 Member Safety Alert";
+      body  = "Crisis content detected. Tap to review immediately.";
+    } else {
+      // Medium / low — descriptive so admins can prioritize across multiple
+      const emergency = params.isEmergency ? " [EMERGENCY]" : "";
+      title = `${riskEmoji} Content Flag: ${riskLabel}${emergency}`;
+      body  = `${categoryStr} detected in ${featureStr}. Tap to review.`;
+    }
 
     // Send via Supabase Push API
     const supabaseUrl       = Deno.env.get("SUPABASE_URL") ?? "";
