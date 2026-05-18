@@ -402,10 +402,12 @@ struct ContentFlagsAdminView: View {
 
     private func categoryLabel(_ category: ContentCategory) -> String {
         switch category {
-        case .selfHarm:  return "Self-Harm"
-        case .drugs:     return "Drugs"
-        case .alcohol:   return "Alcohol"
-        case .violence:  return "Violence"
+        case .selfHarm:         return "Self-Harm"
+        case .drugs:            return "Drugs"
+        case .alcohol:          return "Alcohol"
+        case .violence:         return "Violence"
+        case .eatingDisorder:   return "Eating Disorder"
+        case .domesticViolence: return "Domestic Violence"
         }
     }
 }

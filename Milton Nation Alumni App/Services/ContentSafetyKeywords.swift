@@ -39,30 +39,48 @@ enum ContentRiskLevel: String, Codable, CaseIterable, Comparable, Sendable {
         case .highRisk:   return .mediumRisk
         }
     }
+
+    /// Upgrade by one level (used by time-immediacy detector).
+    /// Caps at `.highRisk` — "tonight + I'm definitely killing myself" doesn't
+    /// need to go higher than highRisk; it's already maximum urgency.
+    var upgraded: ContentRiskLevel {
+        switch self {
+        case .safe:       return .lowRisk   // surface awareness of time-bounded distress
+        case .lowRisk:    return .mediumRisk
+        case .mediumRisk: return .highRisk
+        case .highRisk:   return .highRisk
+        }
+    }
 }
 
 /// The harm category associated with a detected phrase.
 enum ContentCategory: String, Codable, CaseIterable, Sendable {
-    case selfHarm = "self_harm"
-    case drugs    = "drugs"
-    case alcohol  = "alcohol"
-    case violence = "violence"
+    case selfHarm         = "self_harm"
+    case drugs            = "drugs"
+    case alcohol          = "alcohol"
+    case violence         = "violence"
+    case eatingDisorder   = "eating_disorder"
+    case domesticViolence = "domestic_violence"
 
     var displayName: String {
         switch self {
-        case .selfHarm: return "Self-Harm / Suicide"
-        case .drugs:    return "Substance Use"
-        case .alcohol:  return "Alcohol"
-        case .violence: return "Violence / Threat"
+        case .selfHarm:         return "Self-Harm / Suicide"
+        case .drugs:            return "Substance Use"
+        case .alcohol:          return "Alcohol"
+        case .violence:         return "Violence / Threat"
+        case .eatingDisorder:   return "Eating Disorder"
+        case .domesticViolence: return "Domestic Violence"
         }
     }
 
     var icon: String {
         switch self {
-        case .selfHarm: return "heart.slash.fill"
-        case .drugs:    return "cross.case.fill"
-        case .alcohol:  return "wineglass.fill"
-        case .violence: return "exclamationmark.shield.fill"
+        case .selfHarm:         return "heart.slash.fill"
+        case .drugs:            return "cross.case.fill"
+        case .alcohol:          return "wineglass.fill"
+        case .violence:         return "exclamationmark.shield.fill"
+        case .eatingDisorder:   return "fork.knife.circle.fill"
+        case .domesticViolence: return "house.lodge.fill"
         }
     }
 }
@@ -103,10 +121,17 @@ enum ContentSafetyKeywords {
     }
 
     // MARK: - Self-Harm / Suicide
+    //
+    // CLINICAL REVIEW REQUIRED before launch. This list draws from:
+    // - The Columbia Suicide Severity Rating Scale (C-SSRS)
+    // - SAMHSA crisis indicators
+    // - Common abbreviations/slang in young-adult digital communication
+    // Milton clinical team should add Milton-specific patterns + remove
+    // any items that don't apply to your alumni population.
 
     static let selfHarm = Tier(
         high: [
-            // Direct suicidal ideation
+            // ── Direct suicidal ideation ──
             "kill myself", "killing myself", "kill my self",
             "kms",                           // abbreviation: kill myself
             "kys",                           // kill yourself (directed)
@@ -116,44 +141,84 @@ enum ContentSafetyKeywords {
             "suicide attempt", "attempted suicide",
             "want to die", "wanna die", "wanting to die",
             "wish i was dead", "wish i were dead",
+            "wish i could die",
             "better off dead", "better off not existing",
             "don't want to live", "dont want to live",
             "no reason to live", "nothing to live for",
-            "not worth living", "life isn't worth it",
-            // Means / method
+            "not worth living", "life isn't worth it", "life isnt worth it",
+            // ── Imminent signals: "I'm done" / "had enough" / disappear ──
+            "i'm done", "im done", "i am done",
+            "had enough", "i've had enough", "ive had enough",
+            "can't do this anymore", "cant do this anymore",
+            "i want to disappear", "wish i could disappear",
+            "want to disappear forever",
+            "leaving this world", "leaving everyone",
+            "won't be around", "wont be around",
+            "won't be here much longer", "wont be here much longer",
+            "world without me",
+            "want to sleep forever", "never wake up",
+            "make it stop", "i want it to end",
+            "ending my pain", "end my pain", "stop the pain",
+            "ending things", "ending it tonight",
+            // ── Means / method ──
             "going to overdose on purpose", "planning to overdose",
+            "od on purpose", "intentional overdose",
             "take all my pills", "swallow all my pills",
-            "jump off", "step in front of",
+            "pills and alcohol",                   // combined method
+            "jump off", "jumping off", "step in front of",
+            "in front of a train", "in front of a truck",
             "hang myself", "hang my self",
+            "tie a noose", "make a noose",
             "shoot myself", "shot myself",
+            "loaded gun", "my gun is loaded",
             "cut my wrists", "slit my wrists",
+            "drink bleach", "swallow bleach",
+            "carbon monoxide", "gas myself",
             "going to end it", "gonna end it",
             "want to end it all", "end it all",
             "plan to end it all", "decided to end it",
-            // Imminent signals
-            "said my goodbyes", "wrote a note",
+            // ── Imminent signals (final words / preparations) ──
+            "said my goodbyes", "saying goodbye",
+            "wrote a note", "left a note", "writing a note",
             "this is my last", "won't be here tomorrow",
-            "my last message", "goodbye everyone",
+            "my last message", "my last post", "last post ever",
+            "goodbye everyone", "final post", "fp",       // "fp" = final post (slang)
+            "tell my family i love them",
+            "give my stuff away", "giving my things away",
+            // ── Self-harm: tools / methods (NEW) ──
+            "buying a knife to use on myself",
+            "razor on my skin",
+            // ── Clinical risk markers (NEW) ──
+            "stopped taking my meds", "off my meds",
+            "haven't slept in days", "havent slept in days",
+            "haven't eaten in days", "havent eaten in days",
         ],
         medium: [
             "thinking about killing myself",
             "thought about ending it",
-            "considered suicide",
+            "considered suicide", "considering suicide",
             "can't go on anymore", "cannot go on anymore",
             "can't keep going", "cannot keep going",
             "don't want to be here anymore", "dont want to be here",
+            "don't want to be here", "dont want to be here",
             "tired of being alive", "tired of living",
+            "tired of being here", "tired of being a burden",
             "no way out", "no escape",
             "everyone would be better without me",
             "world is better without me",
             "nobody would miss me", "no one would miss me",
-            "what's the point of living",
+            "what's the point of living", "whats the point of living",
+            "what's the point anymore",
             "see no future", "no future for me",
             "thinking about self harm", "thinking about hurting myself",
+            "thinking about cutting",
             "hurting myself", "hurt myself",
             "cutting", "cutting myself", "started cutting",
+            "cut myself", "cutting again",
             "self harm", "self-harm", "selfharm",
-            "burning myself",
+            "sh",                                  // abbreviation for self-harm (single token)
+            "burning myself", "burn myself",
+            "razor on my skin", "use a razor",
         ],
         low: [
             // Distress signals that warrant awareness but not immediate escalation
@@ -161,15 +226,22 @@ enum ContentSafetyKeywords {
             "hate myself", "hating myself",
             "worthless", "i am worthless",
             "burden to everyone", "i'm a burden", "im a burden",
+            "feel like a burden",
             "no one cares", "nobody cares about me",
-            "all alone", "completely alone",
+            "no one would notice",
+            "all alone", "completely alone", "so alone",
             "can't take it anymore", "cant take it anymore",
             "don't care anymore", "stopped caring",
-            "depressed", "deeply depressed",
+            "depressed", "deeply depressed", "severely depressed",
             "empty inside", "feel empty",
-            "giving up", "i give up",
+            "feel nothing", "numb",
+            "giving up", "i give up", "ready to give up",
             "suicidal thoughts",             // mentioned but less direct
             "intrusive thoughts about dying",
+            "dark thoughts", "really dark place",
+            "dissociating", "feel dissociated",
+            "having flashbacks", "flashbacks",
+            "can't feel my body", "out of my body",
         ]
     )
 
@@ -177,59 +249,88 @@ enum ContentSafetyKeywords {
 
     static let drugs = Tier(
         high: [
-            // Opioids
+            // ── Opioids ──
             "heroin", "dope", "smack", "junk", "china white",
             "fentanyl", "fent", "fetty",
+            "boy",                                 // heroin slang ("got some boy")
+            "tar", "black tar",
             "shooting up", "shoot up", "shot up",
             "mainlining", "mainline",
             "using a needle", "needle drugs",
-            // Active relapse
+            "track marks", "needle marks",
+            "nodding", "nodding out",              // heroin behavioral
+            "chasing the dragon",
+            "speedball",                           // heroin + cocaine combo
+            // ── Active relapse ──
             "using again", "back on drugs",
             "started using again", "picked up again",
             "scored", "copped", "plugged",
             "got my fix", "getting my fix",
             "going to use", "gonna use", "about to use",
-            // Overdose
-            "overdosed", "od'd", "oded",
+            "broke my streak", "broke my sober streak",
+            "lost my clean time",
+            "went back out",                       // recovery slang for relapse
+            // ── Overdose ──
+            "overdosed", "od'd", "oded", "od'ed",
             "took too much", "too many pills",
             "almost overdosed", "nearly od'd",
-            // Hard stimulants
+            "narcan", "got narcan'd",              // someone was revived
+            // ── Hard stimulants ──
             "shooting meth", "smoking meth", "crystal meth",
+            "tweaking", "tweakin",                 // meth use
+            "ice",                                 // meth slang
             "crack cocaine", "smoking crack",
+            "freebasing",
+            // ── Combination / dangerous patterns ──
+            "lean", "purple drank", "sizzurp",     // codeine syrup combo
+            "robotripping",                        // DXM abuse
+            "candy flipping",                      // LSD + MDMA combo
         ],
         medium: [
-            // Cravings / thinking about use
+            // ── Cravings / thinking about use ──
             "craving", "cravings",
             "thinking about using", "want to use",
             "want to get high", "wanna get high",
             "feel like using",
             "miss getting high", "miss being high",
-            // Relapse language
+            "looking for stuff", "trying to score",
+            "want to score",
+            "triggered to use", "triggered today",
+            // ── Relapse language ──
             "relapsed", "relapsing", "had a relapse",
             "fell off", "fell off the wagon",
             "slipped", "had a slip",
             "went back to using",
-            // Named substances
+            "tempted to use",
+            // ── Named substances ──
             "meth", "methamphetamine", "crystal",
             "cocaine", "coke", "blow", "snow",
+            "bumps", "rails", "8-ball", "eight ball",
             "crack",
             "percocet", "percs", "oxycontin", "oxy",
             "hydrocodone", "vicodin", "vikes", "norco",
             "xanax", "bars", "benzos", "klonopin",
             "adderall misuse", "abusing adderall",
-            "ecstasy", "molly", "mdma",
-            "buying drugs", "dealer",
+            "ecstasy", "molly", "mdma", "rolling",
+            "ketamine", "k-hole", "ket",
+            "dmt", "ayahuasca",
+            "buying drugs", "dealer", "drug deal",
+            "spice", "k2",                         // synthetic cannabinoids
+            "kratom",                              // emerging concern
         ],
         low: [
             // Mentions without clear intent
             "weed", "marijuana", "cannabis", "pot", "bud",
             "high", "stoned", "blazed",
+            "dabs", "dabbing", "wax",              // concentrates
             "pills",
             "prescription", "prescription drugs",
             "plug",                            // slang for drug dealer
             "withdrawal", "withdrawals",
             "detox",
             "clean time at risk",
+            "trigger", "triggered",                // generic — flags for awareness
+            "haven't been sober", "havent been sober",
         ]
     )
 
@@ -237,30 +338,46 @@ enum ContentSafetyKeywords {
 
     static let alcohol = Tier(
         high: [
-            // Active drinking (relapse)
+            // ── Active drinking (relapse) ──
             "drinking again", "started drinking again",
-            "had a drink", "had drinks",
-            "drunk", "wasted", "hammered",
-            "blacked out", "black out",
+            "had a drink", "had drinks", "got drunk",
+            "drunk", "wasted", "hammered", "trashed",
+            "blacked out", "black out", "blackout",
             "relapsed on alcohol", "drank alcohol",
+            "drank too much", "couldn't stop drinking",
             "back on the bottle", "back on the sauce",
-            "broke my sobriety",
-            "not sober anymore",
+            "broke my sobriety", "broke sobriety",
+            "broke my clean time",
+            "not sober anymore", "no longer sober",
+            "fell off the wagon",                 // recovery-specific
+            "dui", "dwi",                         // legal consequences = signal
+            "drunk driving",
         ],
         medium: [
-            // Craving / thinking about drinking
+            // ── Craving / thinking about drinking ──
             "craving alcohol", "craving a drink",
             "want a drink", "want to drink",
+            "wanted a drink",
             "thinking about drinking",
             "miss drinking", "miss alcohol",
             "almost drank", "nearly drank",
             "tempted to drink",
+            "buzzed", "have a buzz", "feeling buzzed",
+            "drinking problem",                   // self-confession
+            // ── Pre-drinking patterns ──
+            "pre-game", "pregaming", "pre gaming",
+            "happy hour",
+            "going to the bar",
         ],
         low: [
             // Mentions without clear intent/relapse
-            "wine", "beer", "liquor", "spirits", "whiskey", "vodka",
+            "wine", "beer", "liquor", "spirits",
+            "whiskey", "vodka", "tequila", "rum",
+            "gin", "bourbon", "scotch", "champagne",
             "bar", "bars",
+            "shots",                              // multiple
             "going out for drinks",
+            "hungover", "hangover",
         ]
     )
 
@@ -270,11 +387,13 @@ enum ContentSafetyKeywords {
         high: [
             // Direct threats to others
             "going to kill", "gonna kill",
-            "want to kill", "i'll kill",
+            "want to kill", "i'll kill", "ill kill",
             "going to hurt", "gonna hurt",
             "going to attack", "gonna attack",
             "going to stab", "gonna stab",
             "going to shoot", "gonna shoot",
+            "shoot up the place", "shoot up the school",
+            "shoot up the office", "shoot up work",
             "have a gun", "have a knife", "armed",
             "make them pay", "they will pay",
             "threaten to hurt",
@@ -282,9 +401,12 @@ enum ContentSafetyKeywords {
         medium: [
             "want to hurt someone", "feel like hurting someone",
             "angry enough to hurt",
-            "rage", "in a rage",
+            "rage", "in a rage", "blackout rage",
             "violent thoughts", "thoughts of violence",
-            "can't control my anger",
+            "can't control my anger", "cant control my anger",
+            "going to lose it",
+            "about to snap", "going to snap", "gonna snap",
+            "seeing red", "see red",
             "going to do something stupid",
             "threatening", "made threats",
         ],
@@ -294,6 +416,144 @@ enum ContentSafetyKeywords {
             "want to scream",
         ]
     )
+
+    // MARK: - Eating Disorder (NEW v1)
+    //
+    // Heavily co-occurring with substance use disorder. Patterns to watch for:
+    // restriction (anorexia-leaning), binge/purge (bulimia-leaning), and
+    // explicit body-image distress. These signal a need for clinical follow-up
+    // and may indicate active eating-disorder relapse alongside SUD recovery.
+
+    static let eatingDisorder = Tier(
+        high: [
+            // ── Active purging behaviors ──
+            "made myself throw up", "make myself throw up",
+            "making myself vomit", "made myself vomit",
+            "purging", "purged", "purge after eating",
+            "throwing up after meals",
+            "taking laxatives to lose weight",
+            "abusing laxatives",
+            "using ipecac",
+            // ── Active restriction with danger signals ──
+            "haven't eaten in days", "havent eaten in days",
+            "not eating", "stopped eating",
+            "fasting for days",
+            "lost too much weight",
+            "passed out from not eating",
+            "feel like passing out from hunger",
+        ],
+        medium: [
+            // ── Restrictive / disordered patterns ──
+            "restricting", "restricting again",
+            "back to restricting",
+            "skipping meals", "skipping breakfast",
+            "fasting again", "intermittent fasting too much",
+            "counting calories obsessively",
+            "obsessed with calories",
+            "won't eat", "wont eat",
+            "throw up my food", "throwing up my food",
+            "binge eating", "binged",
+            "ate too much", "binge then purge",
+            "binging and purging", "bingeing and purging",
+            "starving myself",
+        ],
+        low: [
+            // Body-image / weight-related distress
+            "feel fat", "feeling fat",
+            "hate my body", "disgusted with my body",
+            "need to lose weight",
+            "weighing myself constantly",
+            "anorexia", "bulimia",
+            "ana", "mia",                          // pro-ED community shorthand (watch carefully)
+            "thinspo",                             // pro-eating-disorder content
+            "body checking",
+        ]
+    )
+
+    // MARK: - Domestic Violence (NEW v1)
+    //
+    // For incoming threats (user reporting violence done TO them by partner /
+    // family / household). Distinct from `violence` category which catches
+    // outgoing threats. Triggers care-team outreach + safe-call escalation.
+
+    static let domesticViolence = Tier(
+        high: [
+            // ── Active physical violence reported ──
+            "he hit me", "she hit me", "they hit me",
+            "he beat me", "she beat me", "got beat up",
+            "he punched me", "she punched me",
+            "he choked me", "she choked me",
+            "he strangled me", "strangled me",
+            "he broke", "broke my arm", "broke my nose",
+            "he threw me", "threw me against",
+            "he kicked me", "she kicked me",
+            // ── Direct threats from intimate partner / household ──
+            "going to kill me", "said he'll kill me", "said she'll kill me",
+            "threatened to kill me",
+            "threatened me with a gun", "pulled a gun on me",
+            "threatened me with a knife", "held a knife to",
+            "going to hurt me", "said he'll hurt me",
+            // ── Imminent danger ──
+            "not safe at home", "not safe in my house",
+            "afraid for my life", "scared for my life",
+            "trapped here", "can't leave him", "cant leave him",
+            "can't leave her", "cant leave her",
+            "he locked me in", "she locked me in",
+        ],
+        medium: [
+            // ── Ongoing abuse patterns ──
+            "abusive partner",
+            "abusive husband", "abusive wife",
+            "abusive boyfriend", "abusive girlfriend",
+            "he hurts me", "she hurts me",
+            "afraid of him", "afraid of her", "scared of him", "scared of her",
+            "he yells at me every day", "she yells at me every day",
+            "controlling everything i do",
+            "won't let me leave", "wont let me leave",
+            "won't let me see", "wont let me see",
+            "takes my phone away",
+            "won't let me have money", "wont let me have money",
+            "stalking me", "he stalks me", "she stalks me",
+            "following me everywhere",
+            // ── Recent violence (mild) ──
+            "he pushed me", "she pushed me",
+            "he shoved me", "she shoved me",
+            "grabbed me hard",
+        ],
+        low: [
+            // ── Concerning relationship dynamics ──
+            "afraid to go home",
+            "walking on eggshells",
+            "verbally abusive",
+            "name-calling", "calls me names",
+            "controlling",
+            "he won't talk to me", "she won't talk to me",
+            "isolating me from friends", "isolating me from family",
+        ]
+    )
+
+    // MARK: - Time-Immediacy Markers
+    //
+    // When any of these markers appears within 10 tokens of a medium/high-risk
+    // match, the engine elevates that match's risk by one tier (capped at
+    // highRisk). This is what makes "I'm cutting tonight" more urgent than
+    // "I've thought about cutting before."
+    //
+    // Designed to be aggressive on the side of safety. False elevation costs
+    // a follow-up admin review; false non-elevation could miss a real
+    // emergency.
+
+    static let timeImmediacyMarkers: [String] = [
+        "tonight", "today", "right now", "right this moment",
+        "in an hour", "in a few hours", "in 30 minutes", "in 15 minutes",
+        "this morning", "this afternoon", "this evening",
+        "after work", "after school", "when i get home",
+        "this weekend", "tomorrow morning",
+        "as soon as", "any minute now",
+        "minutes away", "hours away",
+        "i'm doing it", "im doing it", "doing it now",
+        "about to",                                   // "about to use" / "about to do it"
+    ]
 
     // MARK: - Emergency Fail-Safe Phrases
     //

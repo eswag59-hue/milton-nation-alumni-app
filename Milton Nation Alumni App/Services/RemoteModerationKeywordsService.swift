@@ -88,38 +88,53 @@ final class RemoteModerationKeywordsService: @unchecked Sendable {
         }
 
         return ContentSafetyEngineConfig(
-            selfHarmHigh:   keywords(category: "self_harm",  risk: "high_risk"),
-            selfHarmMedium: keywords(category: "self_harm",  risk: "medium_risk"),
-            selfHarmLow:    keywords(category: "self_harm",  risk: "low_risk"),
-            drugsHigh:      keywords(category: "drugs",      risk: "high_risk"),
-            drugsMedium:    keywords(category: "drugs",      risk: "medium_risk"),
-            drugsLow:       keywords(category: "drugs",      risk: "low_risk"),
-            alcoholHigh:    keywords(category: "alcohol",    risk: "high_risk"),
-            alcoholMedium:  keywords(category: "alcohol",    risk: "medium_risk"),
-            alcoholLow:     keywords(category: "alcohol",    risk: "low_risk"),
-            violenceHigh:   keywords(category: "violence",   risk: "high_risk"),
-            violenceMedium: keywords(category: "violence",   risk: "medium_risk"),
-            violenceLow:    keywords(category: "violence",   risk: "low_risk"),
-            emergency:      rows.filter { $0.category == "emergency" }.map(\.keyword).isEmpty
-                                ? ContentSafetyKeywords.emergencySafetyPhrases
-                                : rows.filter { $0.category == "emergency" }.map(\.keyword)
+            selfHarmHigh:           keywords(category: "self_harm",         risk: "high_risk"),
+            selfHarmMedium:         keywords(category: "self_harm",         risk: "medium_risk"),
+            selfHarmLow:            keywords(category: "self_harm",         risk: "low_risk"),
+            drugsHigh:              keywords(category: "drugs",             risk: "high_risk"),
+            drugsMedium:            keywords(category: "drugs",             risk: "medium_risk"),
+            drugsLow:               keywords(category: "drugs",             risk: "low_risk"),
+            alcoholHigh:            keywords(category: "alcohol",           risk: "high_risk"),
+            alcoholMedium:          keywords(category: "alcohol",           risk: "medium_risk"),
+            alcoholLow:             keywords(category: "alcohol",           risk: "low_risk"),
+            violenceHigh:           keywords(category: "violence",          risk: "high_risk"),
+            violenceMedium:         keywords(category: "violence",          risk: "medium_risk"),
+            violenceLow:            keywords(category: "violence",          risk: "low_risk"),
+            eatingDisorderHigh:     keywords(category: "eating_disorder",   risk: "high_risk"),
+            eatingDisorderMedium:   keywords(category: "eating_disorder",   risk: "medium_risk"),
+            eatingDisorderLow:      keywords(category: "eating_disorder",   risk: "low_risk"),
+            domesticViolenceHigh:   keywords(category: "domestic_violence", risk: "high_risk"),
+            domesticViolenceMedium: keywords(category: "domestic_violence", risk: "medium_risk"),
+            domesticViolenceLow:    keywords(category: "domestic_violence", risk: "low_risk"),
+            emergency:              rows.filter { $0.category == "emergency" }.map(\.keyword).isEmpty
+                                        ? ContentSafetyKeywords.emergencySafetyPhrases
+                                        : rows.filter { $0.category == "emergency" }.map(\.keyword),
+            // Time-immediacy markers are never remote-driven (they're a small,
+            // stable list of English time words). Always use the hardcoded set.
+            timeImmediacyMarkers:   ContentSafetyKeywords.timeImmediacyMarkers
         )
     }
 
     private func fallback(category: String, risk: String) -> [String] {
         switch (category, risk) {
-        case ("self_harm", "high_risk"):   return ContentSafetyKeywords.selfHarm.high
-        case ("self_harm", "medium_risk"): return ContentSafetyKeywords.selfHarm.medium
-        case ("self_harm", "low_risk"):    return ContentSafetyKeywords.selfHarm.low
-        case ("drugs",     "high_risk"):   return ContentSafetyKeywords.drugs.high
-        case ("drugs",     "medium_risk"): return ContentSafetyKeywords.drugs.medium
-        case ("drugs",     "low_risk"):    return ContentSafetyKeywords.drugs.low
-        case ("alcohol",   "high_risk"):   return ContentSafetyKeywords.alcohol.high
-        case ("alcohol",   "medium_risk"): return ContentSafetyKeywords.alcohol.medium
-        case ("alcohol",   "low_risk"):    return ContentSafetyKeywords.alcohol.low
-        case ("violence",  "high_risk"):   return ContentSafetyKeywords.violence.high
-        case ("violence",  "medium_risk"): return ContentSafetyKeywords.violence.medium
-        case ("violence",  "low_risk"):    return ContentSafetyKeywords.violence.low
+        case ("self_harm",         "high_risk"):   return ContentSafetyKeywords.selfHarm.high
+        case ("self_harm",         "medium_risk"): return ContentSafetyKeywords.selfHarm.medium
+        case ("self_harm",         "low_risk"):    return ContentSafetyKeywords.selfHarm.low
+        case ("drugs",             "high_risk"):   return ContentSafetyKeywords.drugs.high
+        case ("drugs",             "medium_risk"): return ContentSafetyKeywords.drugs.medium
+        case ("drugs",             "low_risk"):    return ContentSafetyKeywords.drugs.low
+        case ("alcohol",           "high_risk"):   return ContentSafetyKeywords.alcohol.high
+        case ("alcohol",           "medium_risk"): return ContentSafetyKeywords.alcohol.medium
+        case ("alcohol",           "low_risk"):    return ContentSafetyKeywords.alcohol.low
+        case ("violence",          "high_risk"):   return ContentSafetyKeywords.violence.high
+        case ("violence",          "medium_risk"): return ContentSafetyKeywords.violence.medium
+        case ("violence",          "low_risk"):    return ContentSafetyKeywords.violence.low
+        case ("eating_disorder",   "high_risk"):   return ContentSafetyKeywords.eatingDisorder.high
+        case ("eating_disorder",   "medium_risk"): return ContentSafetyKeywords.eatingDisorder.medium
+        case ("eating_disorder",   "low_risk"):    return ContentSafetyKeywords.eatingDisorder.low
+        case ("domestic_violence", "high_risk"):   return ContentSafetyKeywords.domesticViolence.high
+        case ("domestic_violence", "medium_risk"): return ContentSafetyKeywords.domesticViolence.medium
+        case ("domestic_violence", "low_risk"):    return ContentSafetyKeywords.domesticViolence.low
         default: return []
         }
     }

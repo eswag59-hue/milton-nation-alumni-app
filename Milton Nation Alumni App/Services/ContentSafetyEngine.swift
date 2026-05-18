@@ -42,34 +42,48 @@ struct ContentSafetyResult: Sendable {
 
 /// Mutable keyword configuration, replaceable from remote without redeployment.
 struct ContentSafetyEngineConfig: Sendable {
-    var selfHarmHigh:   [String]
-    var selfHarmMedium: [String]
-    var selfHarmLow:    [String]
-    var drugsHigh:      [String]
-    var drugsMedium:    [String]
-    var drugsLow:       [String]
-    var alcoholHigh:    [String]
-    var alcoholMedium:  [String]
-    var alcoholLow:     [String]
-    var violenceHigh:   [String]
-    var violenceMedium: [String]
-    var violenceLow:    [String]
-    var emergency:      [String]
+    var selfHarmHigh:           [String]
+    var selfHarmMedium:         [String]
+    var selfHarmLow:            [String]
+    var drugsHigh:              [String]
+    var drugsMedium:            [String]
+    var drugsLow:               [String]
+    var alcoholHigh:            [String]
+    var alcoholMedium:          [String]
+    var alcoholLow:             [String]
+    var violenceHigh:           [String]
+    var violenceMedium:         [String]
+    var violenceLow:            [String]
+    var eatingDisorderHigh:     [String]
+    var eatingDisorderMedium:   [String]
+    var eatingDisorderLow:      [String]
+    var domesticViolenceHigh:   [String]
+    var domesticViolenceMedium: [String]
+    var domesticViolenceLow:    [String]
+    var emergency:              [String]
+    var timeImmediacyMarkers:   [String]
 
     static let `default` = ContentSafetyEngineConfig(
-        selfHarmHigh:   ContentSafetyKeywords.selfHarm.high,
-        selfHarmMedium: ContentSafetyKeywords.selfHarm.medium,
-        selfHarmLow:    ContentSafetyKeywords.selfHarm.low,
-        drugsHigh:      ContentSafetyKeywords.drugs.high,
-        drugsMedium:    ContentSafetyKeywords.drugs.medium,
-        drugsLow:       ContentSafetyKeywords.drugs.low,
-        alcoholHigh:    ContentSafetyKeywords.alcohol.high,
-        alcoholMedium:  ContentSafetyKeywords.alcohol.medium,
-        alcoholLow:     ContentSafetyKeywords.alcohol.low,
-        violenceHigh:   ContentSafetyKeywords.violence.high,
-        violenceMedium: ContentSafetyKeywords.violence.medium,
-        violenceLow:    ContentSafetyKeywords.violence.low,
-        emergency:      ContentSafetyKeywords.emergencySafetyPhrases
+        selfHarmHigh:           ContentSafetyKeywords.selfHarm.high,
+        selfHarmMedium:         ContentSafetyKeywords.selfHarm.medium,
+        selfHarmLow:            ContentSafetyKeywords.selfHarm.low,
+        drugsHigh:              ContentSafetyKeywords.drugs.high,
+        drugsMedium:            ContentSafetyKeywords.drugs.medium,
+        drugsLow:               ContentSafetyKeywords.drugs.low,
+        alcoholHigh:            ContentSafetyKeywords.alcohol.high,
+        alcoholMedium:          ContentSafetyKeywords.alcohol.medium,
+        alcoholLow:             ContentSafetyKeywords.alcohol.low,
+        violenceHigh:           ContentSafetyKeywords.violence.high,
+        violenceMedium:         ContentSafetyKeywords.violence.medium,
+        violenceLow:            ContentSafetyKeywords.violence.low,
+        eatingDisorderHigh:     ContentSafetyKeywords.eatingDisorder.high,
+        eatingDisorderMedium:   ContentSafetyKeywords.eatingDisorder.medium,
+        eatingDisorderLow:      ContentSafetyKeywords.eatingDisorder.low,
+        domesticViolenceHigh:   ContentSafetyKeywords.domesticViolence.high,
+        domesticViolenceMedium: ContentSafetyKeywords.domesticViolence.medium,
+        domesticViolenceLow:    ContentSafetyKeywords.domesticViolence.low,
+        emergency:              ContentSafetyKeywords.emergencySafetyPhrases,
+        timeImmediacyMarkers:   ContentSafetyKeywords.timeImmediacyMarkers
     )
 }
 
@@ -146,6 +160,11 @@ struct ContentSafetyEngine: Sendable {
 
         // STEP 5: Negation detection — downgrade risk for negated phrases
         matches = applyNegation(matches, in: normalized)
+
+        // STEP 5.5: Time-immediacy elevation — "tonight I'm cutting" is more
+        // urgent than "sometimes I think about cutting". Applied AFTER negation
+        // so we don't accidentally re-elevate a negated phrase.
+        matches = applyTimeImmediacy(matches, in: normalized)
 
         // STEP 6: Aggregate
         guard !matches.isEmpty || isEmergency else {
@@ -267,18 +286,24 @@ struct ContentSafetyEngine: Sendable {
 
     private func buildKeywordList() -> [KW] {
         var list: [KW] = []
-        list += config.selfHarmHigh.map   { ($0, .selfHarm, .highRisk)    }
-        list += config.selfHarmMedium.map { ($0, .selfHarm, .mediumRisk)  }
-        list += config.selfHarmLow.map    { ($0, .selfHarm, .lowRisk)     }
-        list += config.drugsHigh.map      { ($0, .drugs,    .highRisk)    }
-        list += config.drugsMedium.map    { ($0, .drugs,    .mediumRisk)  }
-        list += config.drugsLow.map       { ($0, .drugs,    .lowRisk)     }
-        list += config.alcoholHigh.map    { ($0, .alcohol,  .highRisk)    }
-        list += config.alcoholMedium.map  { ($0, .alcohol,  .mediumRisk)  }
-        list += config.alcoholLow.map     { ($0, .alcohol,  .lowRisk)     }
-        list += config.violenceHigh.map   { ($0, .violence, .highRisk)    }
-        list += config.violenceMedium.map { ($0, .violence, .mediumRisk)  }
-        list += config.violenceLow.map    { ($0, .violence, .lowRisk)     }
+        list += config.selfHarmHigh.map           { ($0, .selfHarm,         .highRisk)    }
+        list += config.selfHarmMedium.map         { ($0, .selfHarm,         .mediumRisk)  }
+        list += config.selfHarmLow.map            { ($0, .selfHarm,         .lowRisk)     }
+        list += config.drugsHigh.map              { ($0, .drugs,            .highRisk)    }
+        list += config.drugsMedium.map            { ($0, .drugs,            .mediumRisk)  }
+        list += config.drugsLow.map               { ($0, .drugs,            .lowRisk)     }
+        list += config.alcoholHigh.map            { ($0, .alcohol,          .highRisk)    }
+        list += config.alcoholMedium.map          { ($0, .alcohol,          .mediumRisk)  }
+        list += config.alcoholLow.map             { ($0, .alcohol,          .lowRisk)     }
+        list += config.violenceHigh.map           { ($0, .violence,         .highRisk)    }
+        list += config.violenceMedium.map         { ($0, .violence,         .mediumRisk)  }
+        list += config.violenceLow.map            { ($0, .violence,         .lowRisk)     }
+        list += config.eatingDisorderHigh.map     { ($0, .eatingDisorder,   .highRisk)    }
+        list += config.eatingDisorderMedium.map   { ($0, .eatingDisorder,   .mediumRisk)  }
+        list += config.eatingDisorderLow.map      { ($0, .eatingDisorder,   .lowRisk)     }
+        list += config.domesticViolenceHigh.map   { ($0, .domesticViolence, .highRisk)    }
+        list += config.domesticViolenceMedium.map { ($0, .domesticViolence, .mediumRisk)  }
+        list += config.domesticViolenceLow.map    { ($0, .domesticViolence, .lowRisk)     }
         return list
     }
 
@@ -325,6 +350,44 @@ struct ContentSafetyEngine: Sendable {
     ///
     /// Note: This is intentionally conservative — negation only downgrades once,
     /// never below lowRisk, to avoid false negatives on genuine crisis content.
+    // MARK: - Time-Immediacy Elevation
+
+    /// Elevate risk by one tier when a time-immediacy marker appears anywhere
+    /// in the same text. This catches things like:
+    ///   - "I'm thinking about cutting tonight" → med → high
+    ///   - "Going to use after work today"       → high stays high
+    ///   - "About to take all my pills"          → high stays high (already max)
+    ///
+    /// Why we check the WHOLE text rather than proximity:
+    /// short messages where someone says "tonight" anywhere are almost always
+    /// referring to the harm they're discussing. False-elevation costs an
+    /// admin review; false non-elevation could miss a real time-bounded
+    /// emergency. We choose safety.
+    ///
+    /// Edge cases intentionally allowed through:
+    /// - "I haven't drunk tonight" → low risk gets upgraded to medium. That's
+    ///   fine — admin will see the flag, mark it as resolved, no harm done.
+    /// - Emergency / help-seeking phrases are NOT subject to this elevation
+    ///   (they're not "matches" — they go through `isEmergency`).
+    private func applyTimeImmediacy(_ matches: [ContentMatch], in normalized: String) -> [ContentMatch] {
+        guard !matches.isEmpty else { return matches }
+
+        let hasTimeMarker = config.timeImmediacyMarkers.contains { marker in
+            normalized.contains(marker)
+        }
+        guard hasTimeMarker else { return matches }
+
+        return matches.map { match in
+            ContentMatch(
+                keyword: match.keyword,
+                category: match.category,
+                riskContribution: match.riskContribution.upgraded
+            )
+        }
+    }
+
+    // MARK: - Negation
+
     private func applyNegation(_ matches: [ContentMatch], in normalized: String) -> [ContentMatch] {
         let tokens = normalized.components(separatedBy: .whitespaces)
 

@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Milton Nation — Content Safety Keyword List — Clinical Review</title>
+<style>
+  @page { size: 8.5in 11in; margin: 0.5in; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: 0; color: #101820; }
+  .cover { background: linear-gradient(135deg,#101820 0%,#165C7D 35%,#007396 70%,#369DA0 100%); color: white; height: 10in; padding: 1.2in 0.75in; page-break-after: always; position: relative; }
+  .cover .swatches { display:flex; height:8px; margin-bottom: 32px; }
+  .cover .swatches div { flex:1; }
+  .cover h1 { font-family: Georgia, serif; font-size: 60px; font-weight: 300; margin: 0; letter-spacing: -2px; }
+  .cover .subtitle { font-size: 22px; opacity: 0.9; margin: 8px 0 0; font-weight: 500; }
+  .cover .meta { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 14px; padding: 24px; margin-top: 40px; font-size: 14px; line-height: 1.65; }
+  .cover .meta h3 { color: #D4EB8E; font-size: 13px; margin: 0 0 12px; text-transform: uppercase; letter-spacing: 1px; }
+  .cover .meta strong { color: #D4EB8E; }
+  .cover .signoff { background: rgba(255,255,255,0.05); border: 1px dashed rgba(212,235,142,0.4); border-radius: 14px; padding: 24px; margin-top: 24px; font-size: 13px; line-height: 1.8; }
+  .cover .signoff h3 { color: #D4EB8E; font-size: 12px; margin: 0 0 16px; text-transform: uppercase; letter-spacing: 1px; }
+  .cover .signoff .line { display:block; border-bottom: 1px solid rgba(255,255,255,0.4); margin-bottom: 14px; height: 24px; }
+  .cover .signoff .label { font-size: 11px; opacity: 0.7; }
+
+  .page { padding: 0 0.25in 0.5in; page-break-after: always; }
+  .page:last-child { page-break-after: avoid; }
+
+  .cat-header { background: #101820; color: white; padding: 18px 24px; border-radius: 12px; margin-bottom: 18px; }
+  .cat-header h2 { margin: 0; font-size: 22px; font-weight: 700; }
+  .cat-header .icon { color: #D4EB8E; margin-right: 10px; }
+  .cat-header p { color: rgba(255,255,255,0.7); font-size: 12px; margin: 6px 0 0; line-height: 1.5; }
+
+  .tier { margin-bottom: 18px; page-break-inside: avoid; }
+  .tier .tier-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; padding: 6px 14px; border-radius: 6px; font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .tier .tier-head .count { margin-left: auto; font-size: 11px; opacity: 0.7; text-transform: none; letter-spacing: 0; }
+  .tier.high  .tier-head { background: #fde2e0; color: #8a1c12; border-left: 4px solid #d33; }
+  .tier.med   .tier-head { background: #fff3d6; color: #6b4500; border-left: 4px solid #f0a020; }
+  .tier.low   .tier-head { background: #e8f4f5; color: #003040; border-left: 4px solid #56B093; }
+
+  .phrases { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px 14px; padding: 0 4px; font-size: 12px; line-height: 1.55; color: #2a2a2a; }
+  .phrases .phrase { padding: 2px 4px; border-radius: 3px; }
+  .phrases .phrase:hover { background: #f4f6f8; }
+  .phrases .phrase code { font-family: "SF Mono", Monaco, monospace; background: transparent; color: #007396; font-size: 11.5px; }
+
+  .approval-box { display: flex; gap: 8px; margin-top: 8px; padding: 8px 12px; background: white; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 11px; }
+  .approval-box label { display: flex; align-items: center; gap: 4px; cursor: pointer; }
+  .approval-box .ck { width: 14px; height: 14px; border: 1.5px solid #007396; border-radius: 3px; display: inline-block; }
+
+  .note { background: #fff8e6; border-left: 4px solid #f0a020; padding: 10px 14px; margin: 10px 0; border-radius: 5px; font-size: 12px; color: #5a4500; }
+  .info { background: linear-gradient(135deg,#f0f8f8 0%,#e8f4f5 100%); border-left: 4px solid #007396; padding: 10px 14px; margin: 10px 0; border-radius: 5px; font-size: 12px; color: #003040; }
+
+  .pg-footer { font-size: 9px; color: #888; text-align: center; margin-top: 16px; border-top: 1px solid #eee; padding-top: 6px; }
+  h3.subhead { color: #007396; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; margin: 24px 0 10px; border-bottom: 2px solid #56B093; padding-bottom: 5px; }
+  .add-section { margin-top: 14px; padding: 12px; background: #fafafa; border: 1px dashed #6B7280; border-radius: 6px; font-size: 11px; color: #555; line-height: 1.6; }
+  .add-section strong { color: #101820; }
+</style>
+</head>
+<body>
+
+<!-- ========== COVER ========== -->
+<div class="cover">
+  <div class="swatches">
+    <div style="background:#101820"></div>
+    <div style="background:#165C7D"></div>
+    <div style="background:#007396"></div>
+    <div style="background:#0093B2"></div>
+    <div style="background:#369DA0"></div>
+    <div style="background:#56B093"></div>
+    <div style="background:#D4EB8E"></div>
+  </div>
+
+  <h1>milton</h1>
+  <p class="subtitle">Content Safety Keyword List — Clinical Review</p>
+
+  <div class="meta">
+    <h3>For the Reviewer</h3>
+    <p>This document lists every keyword and phrase the Milton Nation app uses to detect content that may indicate user distress, substance use relapse, or imminent safety concern. When detected in a post, comment, or chat message, these phrases trigger one or more of:</p>
+    <p>&nbsp;&nbsp;1. <strong>Show in-app crisis support resources</strong> (988, Crisis Text Line, SAMHSA, Milton FL/OH numbers)<br>
+    &nbsp;&nbsp;2. <strong>Push notification to admin / care team</strong> for review and outreach<br>
+    &nbsp;&nbsp;3. <strong>Route post or comment</strong> to admin moderation queue (not auto-published)</p>
+    <p style="margin-top:14px;"><strong>The system is designed to be aggressive on the side of safety</strong> — false positives cost an admin review; false negatives could miss a real crisis. The list below reflects that bias.</p>
+    <p style="margin-top:14px;"><strong>What we need from you:</strong> Sign off section by section, add any Milton-specific patterns we missed, and flag any phrases that don't apply to the Milton alumni population.</p>
+  </div>
+
+  <div class="signoff">
+    <h3>Clinician Sign-off</h3>
+    <span class="line"></span><span class="label">Reviewer name</span>
+    <span class="line"></span><span class="label">Role / credentials</span>
+    <span class="line"></span><span class="label">Date</span>
+    <span class="line"></span><span class="label">Signature</span>
+  </div>
+</div>
+
+<!-- ========== HOW THE SYSTEM WORKS ========== -->
+<div class="page">
+  <div class="cat-header">
+    <h2><span class="icon">⚙</span> How the System Works</h2>
+    <p>The detection pipeline that wraps every keyword in this document</p>
+  </div>
+
+  <h3 class="subhead">Detection Pipeline (6 stages)</h3>
+  <ol style="font-size:13px;line-height:1.7;color:#2a2a2a;">
+    <li><strong>Normalize.</strong> Lowercase, strip leet-speak (<code>h3r0in</code> → <code>heroin</code>), collapse repeated chars (<code>suuuuicide</code> → <code>suuicide</code>), remove obfuscation punctuation (<code>k.i.l.l</code> → <code>kill</code>).</li>
+    <li><strong>Emergency check.</strong> Phrases like "I need help" or "call 988" are treated as <em>help-seeking</em>, not harm — they surface crisis resources but don't penalize the user.</li>
+    <li><strong>Keyword match.</strong> Compare the normalized text against every phrase in this document. Word-boundary aware for single-word matches.</li>
+    <li><strong>Regex patterns.</strong> Multi-word grammar like "want / wanna / going to + harm verb + self".</li>
+    <li><strong>Negation downgrade.</strong> "I do NOT want to kill myself" → downgrade by one tier (e.g. high → medium).</li>
+    <li><strong>Time-immediacy elevation (NEW).</strong> "Tonight I'm going to..." → upgrade by one tier (e.g. medium → high). See last section.</li>
+  </ol>
+
+  <h3 class="subhead">Risk Tiers</h3>
+  <table style="width:100%;border-collapse:collapse;font-size:13px;">
+    <tr><th style="background:#101820;color:white;padding:8px 12px;text-align:left;width:120px;">Tier</th><th style="background:#101820;color:white;padding:8px 12px;text-align:left;">Triggers</th></tr>
+    <tr><td style="padding:8px 12px;border-bottom:1px solid #eee;font-weight:600;color:#d33;">High</td><td style="padding:8px 12px;border-bottom:1px solid #eee;">Push to admin team with elevated priority. Post is held for moderator review (not auto-published). User sees crisis resources sheet immediately.</td></tr>
+    <tr><td style="padding:8px 12px;border-bottom:1px solid #eee;font-weight:600;color:#f0a020;">Medium</td><td style="padding:8px 12px;border-bottom:1px solid #eee;">Push to admin team for review. Post is held for moderator approval. User sees crisis resources sheet.</td></tr>
+    <tr><td style="padding:8px 12px;font-weight:600;color:#56B093;">Low</td><td style="padding:8px 12px;">Logged for admin awareness. Post may auto-publish (per author's track record). User does NOT see crisis sheet — just awareness flag in admin dashboard.</td></tr>
+  </table>
+
+  <h3 class="subhead">Categories</h3>
+  <p style="font-size:13px;line-height:1.7;color:#2a2a2a;">
+    Six categories total. The original four (self-harm, drugs, alcohol, violence) are well-established. <strong>Eating disorder and domestic violence are new in this version</strong> based on the clinical reality that both heavily co-occur with substance use disorder. Please review the new categories with particular care.
+  </p>
+
+  <div class="note">
+    <strong>Privacy note:</strong> Raw user text never leaves the device. The detection happens locally. Only metadata (category, risk level, count of matches) is sent to the server — never the user's actual words.
+  </div>
+
+  <div class="pg-footer">How the System Works · Page 2</div>
+</div>
+
+<!-- ========== CATEGORY: SELF-HARM ========== -->
+<div class="page">
+  <div class="cat-header">
+    <h2><span class="icon">♥</span> Self-Harm / Suicide</h2>
+    <p>Direct suicidal ideation, imminent signals, methods of harm, and distress signals across three tiers. Drawn from C-SSRS, SAMHSA crisis indicators, and common young-adult digital-communication patterns.</p>
+  </div>
+
+  <div class="tier high">
+    <div class="tier-head">🚨 HIGH RISK <span class="count">~60 phrases</span></div>
+    <div class="phrases">
+      <div class="phrase">kill myself</div><div class="phrase">killing myself</div>
+      <div class="phrase">kill my self</div><div class="phrase">kms</div>
+      <div class="phrase">kys</div><div class="phrase">end my life</div>
+      <div class="phrase">ending my life</div><div class="phrase">take my own life</div>
+      <div class="phrase">taking my life</div><div class="phrase">commit suicide</div>
+      <div class="phrase">committing suicide</div><div class="phrase">suicide attempt</div>
+      <div class="phrase">attempted suicide</div><div class="phrase">want to die</div>
+      <div class="phrase">wanna die</div><div class="phrase">wanting to die</div>
+      <div class="phrase">wish i was dead</div><div class="phrase">wish i were dead</div>
+      <div class="phrase">wish i could die</div><div class="phrase">better off dead</div>
+      <div class="phrase">better off not existing</div><div class="phrase">don't want to live</div>
+      <div class="phrase">no reason to live</div><div class="phrase">nothing to live for</div>
+      <div class="phrase">not worth living</div><div class="phrase">life isn't worth it</div>
+      <div class="phrase">i'm done</div><div class="phrase">had enough</div>
+      <div class="phrase">i've had enough</div><div class="phrase">can't do this anymore</div>
+      <div class="phrase">i want to disappear</div><div class="phrase">wish i could disappear</div>
+      <div class="phrase">leaving this world</div><div class="phrase">leaving everyone</div>
+      <div class="phrase">won't be around</div><div class="phrase">won't be here much longer</div>
+      <div class="phrase">world without me</div><div class="phrase">want to sleep forever</div>
+      <div class="phrase">never wake up</div><div class="phrase">make it stop</div>
+      <div class="phrase">i want it to end</div><div class="phrase">ending my pain</div>
+      <div class="phrase">stop the pain</div><div class="phrase">going to overdose on purpose</div>
+      <div class="phrase">od on purpose</div><div class="phrase">intentional overdose</div>
+      <div class="phrase">take all my pills</div><div class="phrase">swallow all my pills</div>
+      <div class="phrase">pills and alcohol</div><div class="phrase">jump off</div>
+      <div class="phrase">jumping off</div><div class="phrase">step in front of</div>
+      <div class="phrase">in front of a train</div><div class="phrase">hang myself</div>
+      <div class="phrase">tie a noose</div><div class="phrase">make a noose</div>
+      <div class="phrase">shoot myself</div><div class="phrase">loaded gun</div>
+      <div class="phrase">my gun is loaded</div><div class="phrase">cut my wrists</div>
+      <div class="phrase">slit my wrists</div><div class="phrase">drink bleach</div>
+      <div class="phrase">swallow bleach</div><div class="phrase">carbon monoxide</div>
+      <div class="phrase">gas myself</div><div class="phrase">said my goodbyes</div>
+      <div class="phrase">saying goodbye</div><div class="phrase">wrote a note</div>
+      <div class="phrase">left a note</div><div class="phrase">won't be here tomorrow</div>
+      <div class="phrase">my last message</div><div class="phrase">my last post</div>
+      <div class="phrase">last post ever</div><div class="phrase">goodbye everyone</div>
+      <div class="phrase">final post</div><div class="phrase">fp (final post)</div>
+      <div class="phrase">tell my family i love them</div><div class="phrase">give my stuff away</div>
+      <div class="phrase">giving my things away</div><div class="phrase">stopped taking my meds</div>
+      <div class="phrase">off my meds</div><div class="phrase">haven't slept in days</div>
+      <div class="phrase">haven't eaten in days</div>
+    </div>
+    <div class="approval-box">
+      <label><span class="ck"></span>Approve all</label>
+      <label><span class="ck"></span>Remove some (see notes)</label>
+      <label><span class="ck"></span>Add more (see notes)</label>
+    </div>
+  </div>
+
+  <div class="tier med">
+    <div class="tier-head">⚠️ MEDIUM RISK <span class="count">~25 phrases</span></div>
+    <div class="phrases">
+      <div class="phrase">thinking about killing myself</div><div class="phrase">thought about ending it</div>
+      <div class="phrase">considered suicide</div><div class="phrase">considering suicide</div>
+      <div class="phrase">can't go on anymore</div><div class="phrase">can't keep going</div>
+      <div class="phrase">don't want to be here anymore</div><div class="phrase">tired of being alive</div>
+      <div class="phrase">tired of living</div><div class="phrase">tired of being here</div>
+      <div class="phrase">tired of being a burden</div><div class="phrase">no way out</div>
+      <div class="phrase">no escape</div><div class="phrase">everyone would be better without me</div>
+      <div class="phrase">nobody would miss me</div><div class="phrase">what's the point of living</div>
+      <div class="phrase">see no future</div><div class="phrase">no future for me</div>
+      <div class="phrase">thinking about self harm</div><div class="phrase">thinking about cutting</div>
+      <div class="phrase">hurting myself</div><div class="phrase">hurt myself</div>
+      <div class="phrase">cutting</div><div class="phrase">cutting myself</div>
+      <div class="phrase">started cutting</div><div class="phrase">cut myself</div>
+      <div class="phrase">self harm / self-harm / selfharm</div><div class="phrase">sh (self-harm abbrev)</div>
+      <div class="phrase">burning myself</div><div class="phrase">razor on my skin</div>
+    </div>
+    <div class="approval-box">
+      <label><span class="ck"></span>Approve all</label>
+      <label><span class="ck"></span>Remove some (see notes)</label>
+      <label><span class="ck"></span>Add more (see notes)</label>
+    </div>
+  </div>
+
+  <div class="tier low">
+    <div class="tier-head">ℹ️ LOW RISK <span class="count">~25 phrases</span></div>
+    <div class="phrases">
+      <div class="phrase">feeling hopeless</div><div class="phrase">completely hopeless</div>
+      <div class="phrase">hate myself</div><div class="phrase">hating myself</div>
+      <div class="phrase">worthless</div><div class="phrase">i am worthless</div>
+      <div class="phrase">burden to everyone</div><div class="phrase">i'm a burden</div>
+      <div class="phrase">feel like a burden</div><div class="phrase">no one cares</div>
+      <div class="phrase">nobody cares about me</div><div class="phrase">no one would notice</div>
+      <div class="phrase">all alone</div><div class="phrase">completely alone</div>
+      <div class="phrase">so alone</div><div class="phrase">can't take it anymore</div>
+      <div class="phrase">don't care anymore</div><div class="phrase">stopped caring</div>
+      <div class="phrase">depressed</div><div class="phrase">deeply depressed</div>
+      <div class="phrase">severely depressed</div><div class="phrase">empty inside</div>
+      <div class="phrase">feel empty</div><div class="phrase">feel nothing</div>
+      <div class="phrase">numb</div><div class="phrase">giving up</div>
+      <div class="phrase">i give up</div><div class="phrase">ready to give up</div>
+      <div class="phrase">suicidal thoughts</div><div class="phrase">intrusive thoughts about dying</div>
+      <div class="phrase">dark thoughts</div><div class="phrase">really dark place</div>
+      <div class="phrase">dissociating</div><div class="phrase">feel dissociated</div>
+      <div class="phrase">having flashbacks</div><div class="phrase">flashbacks</div>
+      <div class="phrase">can't feel my body</div><div class="phrase">out of my body</div>
+    </div>
+    <div class="approval-box">
+      <label><span class="ck"></span>Approve all</label>
+      <label><span class="ck"></span>Remove some (see notes)</label>
+      <label><span class="ck"></span>Add more (see notes)</label>
+    </div>
+  </div>
+
+  <div class="add-section">
+    <strong>Phrases the Milton clinical team would add:</strong>
+    <br>&nbsp;<br>____________________________________________________________________
+    <br>&nbsp;<br>____________________________________________________________________
+    <br>&nbsp;<br>____________________________________________________________________
+  </div>
+
+  <div class="pg-footer">Self-Harm / Suicide · Page 3</div>
+</div>
+
+<!-- ========== CATEGORY: DRUGS ========== -->
+<div class="page">
+  <div class="cat-header">
+    <h2><span class="icon">⚕</span> Drugs / Substance Use</h2>
+    <p>Active substance use, relapse confessions, cravings, named substances and slang. The system flags both consumption ("I used") and intent ("about to use") differently.</p>
+  </div>
+
+  <div class="tier high">
+    <div class="tier-head">🚨 HIGH RISK <span class="count">~55 phrases</span></div>
+    <div class="phrases">
+      <div class="phrase">heroin</div><div class="phrase">dope</div>
+      <div class="phrase">smack</div><div class="phrase">junk</div>
+      <div class="phrase">china white</div><div class="phrase">fentanyl</div>
+      <div class="phrase">fent</div><div class="phrase">fetty</div>
+      <div class="phrase">boy (heroin slang)</div><div class="phrase">tar</div>
+      <div class="phrase">black tar</div><div class="phrase">shooting up</div>
+      <div class="phrase">shoot up</div><div class="phrase">shot up</div>
+      <div class="phrase">mainlining</div><div class="phrase">mainline</div>
+      <div class="phrase">using a needle</div><div class="phrase">needle drugs</div>
+      <div class="phrase">track marks</div><div class="phrase">needle marks</div>
+      <div class="phrase">nodding</div><div class="phrase">nodding out</div>
+      <div class="phrase">chasing the dragon</div><div class="phrase">speedball</div>
+      <div class="phrase">using again</div><div class="phrase">back on drugs</div>
+      <div class="phrase">started using again</div><div class="phrase">picked up again</div>
+      <div class="phrase">scored</div><div class="phrase">copped</div>
+      <div class="phrase">plugged</div><div class="phrase">got my fix</div>
+      <div class="phrase">getting my fix</div><div class="phrase">going to use</div>
+      <div class="phrase">gonna use</div><div class="phrase">about to use</div>
+      <div class="phrase">broke my streak</div><div class="phrase">broke my sober streak</div>
+      <div class="phrase">lost my clean time</div><div class="phrase">went back out</div>
+      <div class="phrase">overdosed</div><div class="phrase">od'd / oded / od'ed</div>
+      <div class="phrase">took too much</div><div class="phrase">too many pills</div>
+      <div class="phrase">almost overdosed</div><div class="phrase">nearly od'd</div>
+      <div class="phrase">narcan</div><div class="phrase">got narcan'd</div>
+      <div class="phrase">shooting meth</div><div class="phrase">smoking meth</div>
+      <div class="phrase">crystal meth</div><div class="phrase">tweaking / tweakin</div>
+      <div class="phrase">ice (meth slang)</div><div class="phrase">crack cocaine</div>
+      <div class="phrase">smoking crack</div><div class="phrase">freebasing</div>
+      <div class="phrase">lean</div><div class="phrase">purple drank</div>
+      <div class="phrase">sizzurp</div><div class="phrase">robotripping</div>
+      <div class="phrase">candy flipping</div>
+    </div>
+    <div class="approval-box">
+      <label><span class="ck"></span>Approve all</label>
+      <label><span class="ck"></span>Remove some</label>
+      <label><span class="ck"></span>Add more</label>
+    </div>
+  </div>
+
+  <div class="tier med">
+    <div class="tier-head">⚠️ MEDIUM RISK <span class="count">~40 phrases</span></div>
+    <div class="phrases">
+      <div class="phrase">craving</div><div class="phrase">cravings</div>
+      <div class="phrase">thinking about using</div><div class="phrase">want to use</div>
+      <div class="phrase">want to get high</div><div class="phrase">wanna get high</div>
+      <div class="phrase">feel like using</div><div class="phrase">miss getting high</div>
+      <div class="phrase">miss being high</div><div class="phrase">looking for stuff</div>
+      <div class="phrase">trying to score</div><div class="phrase">want to score</div>
+      <div class="phrase">triggered to use</div><div class="phrase">triggered today</div>
+      <div class="phrase">relapsed</div><div class="phrase">relapsing</div>
+      <div class="phrase">had a relapse</div><div class="phrase">fell off</div>
+      <div class="phrase">fell off the wagon</div><div class="phrase">slipped</div>
+      <div class="phrase">had a slip</div><div class="phrase">went back to using</div>
+      <div class="phrase">tempted to use</div><div class="phrase">meth / methamphetamine</div>
+      <div class="phrase">crystal</div><div class="phrase">cocaine / coke / blow / snow</div>
+      <div class="phrase">bumps</div><div class="phrase">rails</div>
+      <div class="phrase">8-ball / eight ball</div><div class="phrase">crack</div>
+      <div class="phrase">percocet / percs</div><div class="phrase">oxycontin / oxy</div>
+      <div class="phrase">hydrocodone / vicodin</div><div class="phrase">vikes / norco</div>
+      <div class="phrase">xanax / bars / benzos</div><div class="phrase">klonopin</div>
+      <div class="phrase">adderall misuse</div><div class="phrase">abusing adderall</div>
+      <div class="phrase">ecstasy / molly / mdma</div><div class="phrase">rolling</div>
+      <div class="phrase">ketamine / k-hole / ket</div><div class="phrase">dmt / ayahuasca</div>
+      <div class="phrase">buying drugs</div><div class="phrase">dealer / drug deal</div>
+      <div class="phrase">spice / k2</div><div class="phrase">kratom</div>
+    </div>
+    <div class="approval-box">
+      <label><span class="ck"></span>Approve all</label>
+      <label><span class="ck"></span>Remove some</label>
+      <label><span class="ck"></span>Add more</label>
+    </div>
+  </div>
+
+  <div class="tier low">
+    <div class="tier-head">ℹ️ LOW RISK <span class="count">~20 phrases</span></div>
+    <div class="phrases">
+      <div class="phrase">weed / marijuana / cannabis</div><div class="phrase">pot / bud</div>
+      <div class="phrase">high / stoned / blazed</div><div class="phrase">dabs / dabbing / wax</div>
+      <div class="phrase">pills</div><div class="phrase">prescription / prescription drugs</div>
+      <div class="phrase">plug (dealer slang)</div><div class="phrase">withdrawal / withdrawals</div>
+      <div class="phrase">detox</div><div class="phrase">clean time at risk</div>
+      <div class="phrase">trigger / triggered</div><div class="phrase">haven't been sober</div>
+    </div>
+    <div class="approval-box">
+      <label><span class="ck"></span>Approve all</label>
+      <label><span class="ck"></span>Remove some</label>
+      <label><span class="ck"></span>Add more</label>
+    </div>
+  </div>
+
+  <div class="add-section">
+    <strong>Milton-specific drug slang or patterns to add:</strong>
+    <br>&nbsp;<br>____________________________________________________________________
+    <br>&nbsp;<br>____________________________________________________________________
+  </div>
+
+  <div class="pg-footer">Drugs / Substance Use · Page 4</div>
+</div>
+
+<!-- ========== CATEGORY: ALCOHOL ========== -->
+<div class="page">
+  <div class="cat-header">
+    <h2><span class="icon">🍷</span> Alcohol</h2>
+    <p>Active drinking confessions, cravings, named beverages, and pre-drinking patterns.</p>
+  </div>
+
+  <div class="tier high">
+    <div class="tier-head">🚨 HIGH RISK <span class="count">~25 phrases</span></div>
+    <div class="phrases">
+      <div class="phrase">drinking again</div><div class="phrase">started drinking again</div>
+      <div class="phrase">had a drink</div><div class="phrase">had drinks</div>
+      <div class="phrase">got drunk</div><div class="phrase">drunk</div>
+      <div class="phrase">wasted</div><div class="phrase">hammered</div>
+      <div class="phrase">trashed</div><div class="phrase">blacked out</div>
+      <div class="phrase">black out</div><div class="phrase">blackout</div>
+      <div class="phrase">relapsed on alcohol</div><div class="phrase">drank alcohol</div>
+      <div class="phrase">drank too much</div><div class="phrase">couldn't stop drinking</div>
+      <div class="phrase">back on the bottle</div><div class="phrase">back on the sauce</div>
+      <div class="phrase">broke my sobriety</div><div class="phrase">broke sobriety</div>
+      <div class="phrase">broke my clean time</div><div class="phrase">not sober anymore</div>
+      <div class="phrase">no longer sober</div><div class="phrase">fell off the wagon</div>
+      <div class="phrase">dui / dwi</div><div class="phrase">drunk driving</div>
+    </div>
+    <div class="approval-box">
+      <label><span class="ck"></span>Approve all</label>
+      <label><span class="ck"></span>Remove some</label>
+      <label><span class="ck"></span>Add more</label>
+    </div>
+  </div>
+
+  <div class="tier med">
+    <div class="tier-head">⚠️ MEDIUM RISK <span class="count">~14 phrases</span></div>
+    <div class="phrases">
+      <div class="phrase">craving alcohol</div><div class="phrase">craving a drink</div>
+      <div class="phrase">want a drink</div><div class="phrase">want to drink</div>
+      <div class="phrase">wanted a drink</div><div class="phrase">thinking about drinking</div>
+      <div class="phrase">miss drinking</div><div class="phrase">miss alcohol</div>
+      <div class="phrase">almost drank</div><div class="phrase">nearly drank</div>
+      <div class="phrase">tempted to drink</div><div class="phrase">buzzed</div>
+      <div class="phrase">have a buzz</div><div class="phrase">feeling buzzed</div>
+      <div class="phrase">drinking problem</div><div class="phrase">pre-game / pregaming</div>
+      <div class="phrase">happy hour</div><div class="phrase">going to the bar</div>
+    </div>
+    <div class="approval-box">
+      <label><span class="ck"></span>Approve all</label>
+      <label><span class="ck"></span>Remove some</label>
+      <label><span class="ck"></span>Add more</label>
+    </div>
+  </div>
+
+  <div class="tier low">
+    <div class="tier-head">ℹ️ LOW RISK <span class="count">~13 phrases</span></div>
+    <div class="phrases">
+      <div class="phrase">wine</div><div class="phrase">beer</div>
+      <div class="phrase">liquor</div><div class="phrase">spirits</div>
+      <div class="phrase">whiskey / vodka</div><div class="phrase">tequila / rum</div>
+      <div class="phrase">gin / bourbon / scotch</div><div class="phrase">champagne</div>
+      <div class="phrase">bar / bars</div><div class="phrase">shots</div>
+      <div class="phrase">going out for drinks</div><div class="phrase">hungover / hangover</div>
+    </div>
+    <div class="approval-box">
+      <label><span class="ck"></span>Approve all</label>
+      <label><span class="ck"></span>Remove some</label>
+      <label><span class="ck"></span>Add more</label>
+    </div>
+  </div>
+
+  <div class="pg-footer">Alcohol · Page 5</div>
+</div>
+
+<!-- ========== CATEGORY: VIOLENCE ========== -->
+<div class="page">
+  <div class="cat-header">
+    <h2><span class="icon">⚠</span> Violence / Outgoing Threats</h2>
+    <p>Threats made BY the user against others. Distinct from domestic violence (where user reports being hurt by another).</p>
+  </div>
+
+  <div class="tier high">
+    <div class="tier-head">🚨 HIGH RISK <span class="count">~16 phrases</span></div>
+    <div class="phrases">
+      <div class="phrase">going to kill / gonna kill</div><div class="phrase">want to kill</div>
+      <div class="phrase">i'll kill</div><div class="phrase">going to hurt / gonna hurt</div>
+      <div class="phrase">going to attack / gonna attack</div><div class="phrase">going to stab / gonna stab</div>
+      <div class="phrase">going to shoot / gonna shoot</div><div class="phrase">shoot up the place</div>
+      <div class="phrase">shoot up the school</div><div class="phrase">shoot up the office</div>
+      <div class="phrase">shoot up work</div><div class="phrase">have a gun</div>
+      <div class="phrase">have a knife</div><div class="phrase">armed</div>
+      <div class="phrase">make them pay</div><div class="phrase">they will pay</div>
+      <div class="phrase">threaten to hurt</div>
+    </div>
+    <div class="approval-box">
+      <label><span class="ck"></span>Approve all</label>
+      <label><span class="ck"></span>Remove some</label>
+      <label><span class="ck"></span>Add more</label>
+    </div>
+  </div>
+
+  <div class="tier med">
+    <div class="tier-head">⚠️ MEDIUM RISK <span class="count">~14 phrases</span></div>
+    <div class="phrases">
+      <div class="phrase">want to hurt someone</div><div class="phrase">feel like hurting someone</div>
+      <div class="phrase">angry enough to hurt</div><div class="phrase">rage / in a rage</div>
+      <div class="phrase">blackout rage</div><div class="phrase">violent thoughts</div>
+      <div class="phrase">thoughts of violence</div><div class="phrase">can't control my anger</div>
+      <div class="phrase">going to lose it</div><div class="phrase">about to snap</div>
+      <div class="phrase">going to snap / gonna snap</div><div class="phrase">seeing red</div>
+      <div class="phrase">see red</div><div class="phrase">going to do something stupid</div>
+      <div class="phrase">threatening</div><div class="phrase">made threats</div>
+    </div>
+    <div class="approval-box">
+      <label><span class="ck"></span>Approve all</label>
+      <label><span class="ck"></span>Remove some</label>
+      <label><span class="ck"></span>Add more</label>
+    </div>
+  </div>
+
+  <div class="tier low">
+    <div class="tier-head">ℹ️ LOW RISK <span class="count">~6 phrases</span></div>
+    <div class="phrases">
+      <div class="phrase">angry / furious / enraged</div><div class="phrase">hate them</div>
+      <div class="phrase">i hate</div><div class="phrase">want to scream</div>
+    </div>
+    <div class="approval-box">
+      <label><span class="ck"></span>Approve all</label>
+      <label><span class="ck"></span>Remove some</label>
+      <label><span class="ck"></span>Add more</label>
+    </div>
+  </div>
+
+  <div class="pg-footer">Violence · Page 6</div>
+</div>
+
+<!-- ========== CATEGORY: EATING DISORDER (NEW) ========== -->
+<div class="page">
+  <div class="cat-header">
+    <h2><span class="icon">🍽</span> Eating Disorder <span style="color:#D4EB8E;font-size:13px;">— NEW</span></h2>
+    <p>New category. Eating disorders are heavily co-occurring with SUD recovery. Patterns: restriction (anorexia-leaning), binge/purge (bulimia-leaning), explicit body-image distress.</p>
+  </div>
+
+  <div class="tier high">
+    <div class="tier-head">🚨 HIGH RISK <span class="count">~14 phrases</span></div>
+    <div class="phrases">
+      <div class="phrase">made myself throw up</div><div class="phrase">make myself throw up</div>
+      <div class="phrase">making myself vomit</div><div class="phrase">made myself vomit</div>
+      <div class="phrase">purging</div><div class="phrase">purged</div>
+      <div class="phrase">purge after eating</div><div class="phrase">throwing up after meals</div>
+      <div class="phrase">taking laxatives to lose weight</div><div class="phrase">abusing laxatives</div>
+      <div class="phrase">using ipecac</div><div class="phrase">haven't eaten in days</div>
+      <div class="phrase">not eating</div><div class="phrase">stopped eating</div>
+      <div class="phrase">fasting for days</div><div class="phrase">lost too much weight</div>
+      <div class="phrase">passed out from not eating</div><div class="phrase">feel like passing out from hunger</div>
+    </div>
+    <div class="approval-box">
+      <label><span class="ck"></span>Approve all</label>
+      <label><span class="ck"></span>Remove some</label>
+      <label><span class="ck"></span>Add more</label>
+    </div>
+  </div>
+
+  <div class="tier med">
+    <div class="tier-head">⚠️ MEDIUM RISK <span class="count">~14 phrases</span></div>
+    <div class="phrases">
+      <div class="phrase">restricting</div><div class="phrase">restricting again</div>
+      <div class="phrase">back to restricting</div><div class="phrase">skipping meals</div>
+      <div class="phrase">skipping breakfast</div><div class="phrase">fasting again</div>
+      <div class="phrase">intermittent fasting too much</div><div class="phrase">counting calories obsessively</div>
+      <div class="phrase">obsessed with calories</div><div class="phrase">won't eat</div>
+      <div class="phrase">throw up my food</div><div class="phrase">throwing up my food</div>
+      <div class="phrase">binge eating / binged</div><div class="phrase">ate too much</div>
+      <div class="phrase">binge then purge</div><div class="phrase">binging and purging</div>
+      <div class="phrase">starving myself</div>
+    </div>
+    <div class="approval-box">
+      <label><span class="ck"></span>Approve all</label>
+      <label><span class="ck"></span>Remove some</label>
+      <label><span class="ck"></span>Add more</label>
+    </div>
+  </div>
+
+  <div class="tier low">
+    <div class="tier-head">ℹ️ LOW RISK <span class="count">~10 phrases</span></div>
+    <div class="phrases">
+      <div class="phrase">feel fat / feeling fat</div><div class="phrase">hate my body</div>
+      <div class="phrase">disgusted with my body</div><div class="phrase">need to lose weight</div>
+      <div class="phrase">weighing myself constantly</div><div class="phrase">anorexia</div>
+      <div class="phrase">bulimia</div><div class="phrase">ana (pro-ED slang)</div>
+      <div class="phrase">mia (pro-ED slang)</div><div class="phrase">thinspo (pro-ED content)</div>
+      <div class="phrase">body checking</div>
+    </div>
+    <div class="approval-box">
+      <label><span class="ck"></span>Approve all</label>
+      <label><span class="ck"></span>Remove some</label>
+      <label><span class="ck"></span>Add more</label>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Clinical question:</strong> Should "ana" / "mia" / "thinspo" be elevated from LOW to MEDIUM? They're code words used in active pro-eating-disorder online communities. Their appearance may signal a user engaging with harmful content. Defer to clinical judgment.
+  </div>
+
+  <div class="pg-footer">Eating Disorder · Page 7</div>
+</div>
+
+<!-- ========== CATEGORY: DOMESTIC VIOLENCE (NEW) ========== -->
+<div class="page">
+  <div class="cat-header">
+    <h2><span class="icon">🏠</span> Domestic Violence — Incoming <span style="color:#D4EB8E;font-size:13px;">— NEW</span></h2>
+    <p>New category. For users reporting violence done TO them by partner, family, or household. Triggers care-team outreach and safe-call escalation.</p>
+  </div>
+
+  <div class="tier high">
+    <div class="tier-head">🚨 HIGH RISK <span class="count">~25 phrases</span></div>
+    <div class="phrases">
+      <div class="phrase">he hit me</div><div class="phrase">she hit me</div>
+      <div class="phrase">they hit me</div><div class="phrase">he beat me</div>
+      <div class="phrase">she beat me</div><div class="phrase">got beat up</div>
+      <div class="phrase">he punched me</div><div class="phrase">she punched me</div>
+      <div class="phrase">he choked me</div><div class="phrase">she choked me</div>
+      <div class="phrase">he strangled me</div><div class="phrase">strangled me</div>
+      <div class="phrase">he broke</div><div class="phrase">broke my arm</div>
+      <div class="phrase">broke my nose</div><div class="phrase">he threw me</div>
+      <div class="phrase">threw me against</div><div class="phrase">he kicked me</div>
+      <div class="phrase">she kicked me</div><div class="phrase">going to kill me</div>
+      <div class="phrase">said he'll kill me</div><div class="phrase">said she'll kill me</div>
+      <div class="phrase">threatened to kill me</div><div class="phrase">threatened me with a gun</div>
+      <div class="phrase">pulled a gun on me</div><div class="phrase">threatened me with a knife</div>
+      <div class="phrase">held a knife to</div><div class="phrase">going to hurt me</div>
+      <div class="phrase">said he'll hurt me</div><div class="phrase">not safe at home</div>
+      <div class="phrase">not safe in my house</div><div class="phrase">afraid for my life</div>
+      <div class="phrase">scared for my life</div><div class="phrase">trapped here</div>
+      <div class="phrase">can't leave him</div><div class="phrase">can't leave her</div>
+      <div class="phrase">he locked me in</div><div class="phrase">she locked me in</div>
+    </div>
+    <div class="approval-box">
+      <label><span class="ck"></span>Approve all</label>
+      <label><span class="ck"></span>Remove some</label>
+      <label><span class="ck"></span>Add more</label>
+    </div>
+  </div>
+
+  <div class="tier med">
+    <div class="tier-head">⚠️ MEDIUM RISK <span class="count">~18 phrases</span></div>
+    <div class="phrases">
+      <div class="phrase">abusive partner</div><div class="phrase">abusive husband</div>
+      <div class="phrase">abusive wife</div><div class="phrase">abusive boyfriend</div>
+      <div class="phrase">abusive girlfriend</div><div class="phrase">he hurts me</div>
+      <div class="phrase">she hurts me</div><div class="phrase">afraid of him</div>
+      <div class="phrase">afraid of her</div><div class="phrase">scared of him</div>
+      <div class="phrase">scared of her</div><div class="phrase">he yells at me every day</div>
+      <div class="phrase">controlling everything i do</div><div class="phrase">won't let me leave</div>
+      <div class="phrase">won't let me see</div><div class="phrase">takes my phone away</div>
+      <div class="phrase">won't let me have money</div><div class="phrase">stalking me</div>
+      <div class="phrase">he stalks me</div><div class="phrase">she stalks me</div>
+      <div class="phrase">following me everywhere</div><div class="phrase">he pushed me</div>
+      <div class="phrase">she pushed me</div><div class="phrase">he shoved me</div>
+      <div class="phrase">she shoved me</div><div class="phrase">grabbed me hard</div>
+    </div>
+    <div class="approval-box">
+      <label><span class="ck"></span>Approve all</label>
+      <label><span class="ck"></span>Remove some</label>
+      <label><span class="ck"></span>Add more</label>
+    </div>
+  </div>
+
+  <div class="tier low">
+    <div class="tier-head">ℹ️ LOW RISK <span class="count">~8 phrases</span></div>
+    <div class="phrases">
+      <div class="phrase">afraid to go home</div><div class="phrase">walking on eggshells</div>
+      <div class="phrase">verbally abusive</div><div class="phrase">name-calling</div>
+      <div class="phrase">calls me names</div><div class="phrase">controlling</div>
+      <div class="phrase">he won't talk to me</div><div class="phrase">she won't talk to me</div>
+      <div class="phrase">isolating me from friends</div><div class="phrase">isolating me from family</div>
+    </div>
+    <div class="approval-box">
+      <label><span class="ck"></span>Approve all</label>
+      <label><span class="ck"></span>Remove some</label>
+      <label><span class="ck"></span>Add more</label>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Clinical question:</strong> When this fires, what should admin do? Recommend: trained-staff outreach within 1 hour, NEVER contact via SMS/email (could be intercepted), use the in-app care-team chat which is encrypted. Should the system include the National DV Hotline (1-800-799-7233) in the in-app crisis resources sheet when this category fires?
+  </div>
+
+  <div class="pg-footer">Domestic Violence · Page 8</div>
+</div>
+
+<!-- ========== EMERGENCY + TIME IMMEDIACY ========== -->
+<div class="page">
+  <div class="cat-header">
+    <h2><span class="icon">🆘</span> Emergency Help-Seeking + Time-Immediacy</h2>
+    <p>Two special-purpose lists that modify how the system responds.</p>
+  </div>
+
+  <h3 class="subhead">Emergency Help-Seeking Phrases (NEVER flag as harm)</h3>
+  <p style="font-size:12px;color:#555;line-height:1.6;margin-bottom:10px;">
+    When any of these appears, the system <strong>shows the crisis resources sheet</strong> (988, Crisis Text Line, SAMHSA, Milton FL/OH, 911) and notifies admins for follow-up — but does NOT penalize the user, hold their post, or flag it as harm. The user is reaching out for help; we want to surface help.
+  </p>
+
+  <div class="tier low" style="margin-bottom:16px;">
+    <div class="tier-head" style="background:#e8f4f5;color:#003040;border-left:4px solid #007396;">🤝 HELP-SEEKING <span class="count">~16 phrases</span></div>
+    <div class="phrases">
+      <div class="phrase">call 988</div><div class="phrase">988</div>
+      <div class="phrase">suicide hotline</div><div class="phrase">crisis line</div>
+      <div class="phrase">crisis hotline</div><div class="phrase">call 911</div>
+      <div class="phrase">call the police</div><div class="phrase">need help now</div>
+      <div class="phrase">please help me</div><div class="phrase">i need help</div>
+      <div class="phrase">help me please</div><div class="phrase">i'm in crisis</div>
+      <div class="phrase">im in crisis</div><div class="phrase">crisis text line</div>
+      <div class="phrase">samhsa</div><div class="phrase">national helpline</div>
+      <div class="phrase">going to call for help</div><div class="phrase">reaching out for help</div>
+      <div class="phrase">texting a crisis line</div>
+    </div>
+    <div class="approval-box">
+      <label><span class="ck"></span>Approve all</label>
+      <label><span class="ck"></span>Add more (e.g. Milton-specific safe words)</label>
+    </div>
+  </div>
+
+  <h3 class="subhead">Time-Immediacy Markers (Risk Elevation)</h3>
+  <p style="font-size:12px;color:#555;line-height:1.6;margin-bottom:10px;">
+    When any of these appears anywhere in the same text as a risk match, the system <strong>elevates that match's risk by one tier</strong> (e.g. medium → high). Caps at high risk. Rationale: "I'm cutting tonight" is materially different from "I've thought about cutting before" — the time-boundedness signals imminent action.
+  </p>
+
+  <div class="tier high">
+    <div class="tier-head">⏰ TIME ELEVATION <span class="count">~24 markers</span></div>
+    <div class="phrases">
+      <div class="phrase">tonight</div><div class="phrase">today</div>
+      <div class="phrase">right now</div><div class="phrase">right this moment</div>
+      <div class="phrase">in an hour</div><div class="phrase">in a few hours</div>
+      <div class="phrase">in 30 minutes</div><div class="phrase">in 15 minutes</div>
+      <div class="phrase">this morning</div><div class="phrase">this afternoon</div>
+      <div class="phrase">this evening</div><div class="phrase">after work</div>
+      <div class="phrase">after school</div><div class="phrase">when i get home</div>
+      <div class="phrase">this weekend</div><div class="phrase">tomorrow morning</div>
+      <div class="phrase">as soon as</div><div class="phrase">any minute now</div>
+      <div class="phrase">minutes away</div><div class="phrase">hours away</div>
+      <div class="phrase">i'm doing it / im doing it</div><div class="phrase">doing it now</div>
+      <div class="phrase">about to</div>
+    </div>
+    <div class="approval-box">
+      <label><span class="ck"></span>Approve all</label>
+      <label><span class="ck"></span>Adjust (some too aggressive?)</label>
+      <label><span class="ck"></span>Add more</label>
+    </div>
+  </div>
+
+  <div class="info">
+    <strong>Example:</strong> A user writes <em>"I'm cutting tonight."</em><br>
+    Without time elevation: matches "cutting" → MEDIUM risk → admin sees notification within 1 hour.<br>
+    With time elevation: matches "cutting" + sees "tonight" → upgrades to HIGH risk → push to admin with elevated priority, post held for review, crisis resources surfaced.
+  </div>
+
+  <div class="pg-footer">Special Lists · Page 9</div>
+</div>
+
+<!-- ========== FINAL SIGN-OFF ========== -->
+<div class="page">
+  <div class="cat-header">
+    <h2><span class="icon">✓</span> Final Sign-Off</h2>
+    <p>Clinical review summary and approval</p>
+  </div>
+
+  <h3 class="subhead">Summary of changes from clinical review</h3>
+  <div class="add-section" style="min-height:120px;">
+    <strong>Phrases added:</strong>
+    <br>&nbsp;<br>____________________________________________________________________
+    <br>&nbsp;<br>____________________________________________________________________
+    <br>&nbsp;<br>____________________________________________________________________
+    <br>&nbsp;<br>____________________________________________________________________
+  </div>
+
+  <div class="add-section" style="min-height:120px;margin-top:14px;">
+    <strong>Phrases removed:</strong>
+    <br>&nbsp;<br>____________________________________________________________________
+    <br>&nbsp;<br>____________________________________________________________________
+    <br>&nbsp;<br>____________________________________________________________________
+    <br>&nbsp;<br>____________________________________________________________________
+  </div>
+
+  <div class="add-section" style="min-height:120px;margin-top:14px;">
+    <strong>Risk tier adjustments (which phrase moved to which tier):</strong>
+    <br>&nbsp;<br>____________________________________________________________________
+    <br>&nbsp;<br>____________________________________________________________________
+    <br>&nbsp;<br>____________________________________________________________________
+  </div>
+
+  <div class="add-section" style="min-height:90px;margin-top:14px;">
+    <strong>Comments / clinical notes:</strong>
+    <br>&nbsp;<br>____________________________________________________________________
+    <br>&nbsp;<br>____________________________________________________________________
+    <br>&nbsp;<br>____________________________________________________________________
+  </div>
+
+  <h3 class="subhead" style="margin-top:30px;">Clinician approval</h3>
+  <table style="width:100%;border-collapse:collapse;margin-top:14px;">
+    <tr>
+      <td style="padding:14px 12px;border-bottom:1px solid #aaa;width:60%;font-size:12px;color:#555;">Reviewer name (printed)</td>
+      <td style="padding:14px 12px;border-bottom:1px solid #aaa;font-size:12px;color:#555;">Role / credentials</td>
+    </tr>
+    <tr>
+      <td style="padding:24px 0 0;"></td>
+      <td style="padding:24px 0 0;"></td>
+    </tr>
+    <tr>
+      <td style="padding:14px 12px;border-bottom:1px solid #aaa;font-size:12px;color:#555;">Signature</td>
+      <td style="padding:14px 12px;border-bottom:1px solid #aaa;font-size:12px;color:#555;">Date</td>
+    </tr>
+    <tr>
+      <td style="padding:36px 0 0;"></td>
+      <td style="padding:36px 0 0;"></td>
+    </tr>
+  </table>
+
+  <h3 class="subhead">Once signed</h3>
+  <p style="font-size:13px;color:#444;line-height:1.7;">
+    Return this document to Ezra at <strong>media@miltonjefferson.com</strong> or
+    <strong>ebarish@miltonhealthgroup.com</strong>. We'll then update the keyword
+    list in the production Supabase database (no app rebuild required — changes
+    take effect within 4 hours on every user's device).
+  </p>
+
+  <div class="pg-footer">Final Sign-Off · Page 10</div>
+</div>
+
+</body>
+</html>
