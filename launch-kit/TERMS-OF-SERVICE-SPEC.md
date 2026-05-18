@@ -40,7 +40,7 @@ The Privacy page (already live at `/privacy`) should link to this new page in it
 > The Milton Nation Alumni App and this Site are intended solely for verified alumni of Milton Recovery Centers (Florida and Ohio facilities) who have completed or are currently enrolled in a treatment program. You must be at least 18 years of age. By creating an account, you represent that you meet these requirements.
 
 ### 3. Account Responsibilities
-> You are responsible for maintaining the confidentiality of your account credentials (email, password, and the phone number you register for two-factor authentication). You must notify us immediately at ezra@miltonrecovery.com if you suspect any unauthorized access.
+> You are responsible for maintaining the confidentiality of your account credentials (email, password, and the phone number you register for two-factor authentication). You must notify us immediately at media@miltonjefferson.com if you suspect any unauthorized access.
 
 ### 4. Acceptable Use
 > You agree not to:
@@ -67,11 +67,11 @@ This section is the one TCR specifically wants. Use this language verbatim, adju
 >
 > **Message and data rates:** Standard message and data rates may apply, per your mobile carrier's plan.
 >
-> **Support:** For SMS-related help, contact <a href="mailto:ezra@miltonrecovery.com">ezra@miltonrecovery.com</a> or call **(844) 406-4325** (Florida) / **(740) 715-4673** (Ohio).
+> **Support:** For SMS-related help, contact <a href="mailto:media@miltonjefferson.com">media@miltonjefferson.com</a> or call **(844) 406-4325** (Florida) / **(740) 715-4673** (Ohio).
 >
 > **Opt-out:** You may opt out at any time by replying **STOP** to any verification message. Opting out will disable your ability to log in to the app until you re-enroll your phone number via the in-app Settings → Phone Number flow.
 >
-> **Help:** Reply **HELP** to any verification message for assistance, or contact <a href="mailto:ezra@miltonrecovery.com">ezra@miltonrecovery.com</a>.
+> **Help:** Reply **HELP** to any verification message for assistance, or contact <a href="mailto:media@miltonjefferson.com">media@miltonjefferson.com</a>.
 
 ⚠️ **Bold formatting matters.** TCR will reject if STOP and HELP are not visually emphasized. Use `<strong>STOP</strong>` and `<strong>HELP</strong>` in the HTML.
 
@@ -101,7 +101,7 @@ This section is the one TCR specifically wants. Use this language verbatim, adju
 
 ### 15. Contact
 > Milton Recovery Centers
-> Email: <a href="mailto:ezra@miltonrecovery.com">ezra@miltonrecovery.com</a>
+> Email: <a href="mailto:media@miltonjefferson.com">media@miltonjefferson.com</a>
 > Florida: (844) 406-4325 (24/7)
 > Ohio: (740) 715-4673 (24/7)
 

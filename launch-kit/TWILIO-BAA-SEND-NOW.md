@@ -35,7 +35,7 @@ Account details:
 - Twilio products in use today: Programmable Messaging (SMS)
 - Anticipated monthly volume at launch: ~500–2,000 SMS
 - Primary contact: Ezra Barishansky
-- Email: ezra@miltonrecovery.com
+- Email: ebarish@miltonhealthgroup.com
 - Phone: +1 (201) 747-7727
 - Company address: [PASTE YOUR REGISTERED BUSINESS ADDRESS]
 

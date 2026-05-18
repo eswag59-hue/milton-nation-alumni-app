@@ -59,7 +59,7 @@ The profile.phone bug from yesterday is fixed. Retry to confirm whether SMS work
 
 1. Open TestFlight Milton on your iPhone
 2. Log out if logged in (Profile → Logout)
-3. Login screen → Email: `ezra@miltonrecovery.com` → Password: `Milton2026!` → Login
+3. Login screen → Email: `media@miltonjefferson.com` → Password: `Milton2026!` → Login
 4. Wait 30s
 5. **Report back:**
    - ✅ SMS arrived → great, Twilio is working, just need to check why some carriers might still drop
@@ -91,7 +91,7 @@ Without this, US carriers silently drop your SMS. **This is independent of the B
    - Vertical: **Healthcare**
    - Stock symbol: leave blank (you're private)
    - Address: registered business address
-   - Contact: Ezra Barishansky, ezra@miltonrecovery.com, (201) 747-7727
+   - Contact: Ezra Barishansky, media@miltonjefferson.com, (201) 747-7727
 4. Submit → status goes from "pending" → "verified" usually within 24 hours
 
 ### Step 2 — Campaign registration (~5 min to submit, instant approval after brand)
@@ -250,7 +250,7 @@ URL: `https://appstoreconnect.apple.com` → My Apps → Milton → App Store ta
    - First name: Ezra
    - Last name: Barishansky
    - Phone: (201) 747-7727
-   - Email: ezra@miltonrecovery.com
+   - Email: media@miltonjefferson.com
 6. **Version Release**: ☑ **Manually release this version** (critical — lets you flip bypass off + smoke-test before going public)
 7. Scan left sidebar for red dots — fix anything required (App Privacy questionnaire, Age Rating, Pricing)
 
@@ -316,7 +316,7 @@ Download numbers. Reviews. App Store reviews.
 
 ## 6.4 — Email inbox
 
-`ezra@miltonrecovery.com` — users may write in for support.
+`media@miltonjefferson.com` — users may write in for support.
 
 ## 6.5 — Twilio Messaging logs
 

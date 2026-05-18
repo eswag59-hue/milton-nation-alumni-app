@@ -129,7 +129,7 @@ public release). Resend handles welcome emails only — body contains
 no PHI.
 
 If you have questions during review:
-- Email: ezra@miltonrecovery.com
+- Email: media@miltonjefferson.com
 - Phone: (844) 406-4325 (Milton Recovery Centers main line)
 ```
 
@@ -139,7 +139,7 @@ If you have questions during review:
 | First name | `Ezra` |
 | Last name | `Barishansky` |
 | Phone | *(your real phone)* |
-| Email | `ezra@miltonrecovery.com` |
+| Email | `media@miltonjefferson.com` |
 
 ### Step 6: Version Release
 - ☑ **Manually release this version**

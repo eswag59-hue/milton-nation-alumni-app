@@ -216,7 +216,7 @@ struct SettingsScreen: View {
                     "role": user.role.rawValue,
                     "status": user.status.rawValue
                 ],
-                "note": "To request a full copy of all messages and posts, contact support@miltonrecovery.com"
+                "note": "To request a full copy of all messages and posts, contact media@miltonjefferson.com"
             ]
 
             if let jsonData = try? JSONSerialization.data(withJSONObject: exportDict, options: .prettyPrinted) {
