@@ -184,7 +184,11 @@ serve(async (req: Request) => {
     const twilioBody = new URLSearchParams({
       To: toPhone,
       From: twilioPhone,
-      Body: `Your Milton Alumni verification code is: ${otp}. It expires in 5 minutes. Do not share this code.`,
+      // SMS body must match the samples submitted to TCR for the A2P 10DLC
+      // campaign. Includes STOP / HELP language as required by US carrier rules.
+      // Changing this without also updating the TCR campaign samples risks
+      // triggering a carrier-level filter.
+      Body: `Milton Nation: Your verification code is ${otp}. It expires in 5 minutes. Do not share this code. Reply STOP to opt out, HELP for help.`,
     });
 
     const twilioResponse = await fetch(twilioUrl, {
