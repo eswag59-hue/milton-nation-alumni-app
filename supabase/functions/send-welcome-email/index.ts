@@ -76,39 +76,57 @@ serve(async (req: Request) => {
       );
     }
 
-    // Generic greeting — no PHI in body or subject.
+    // Branded welcome email — no PHI in body or subject.
     // Resend does not hold a HIPAA BAA; never include name, DOB, diagnosis,
     // or any other PHI in emails sent through this function.
+    // Design matches login screen wordmark + AppTheme.swift brand palette.
     const html = `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><title>Welcome to Milton Nation</title></head>
-<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f5;margin:0;padding:0;">
-  <div style="max-width:560px;margin:40px auto;background:white;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
-    <div style="background:#1a3a5c;padding:32px;text-align:center;">
-      <h1 style="color:white;margin:0;font-size:24px;font-weight:700;">Milton Nation</h1>
-      <p style="color:rgba(255,255,255,0.8);margin:8px 0 0;font-size:14px;">Milton Recovery Centers Alumni Community</p>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f2f5f5;margin:0;padding:0;">
+  <div style="max-width:560px;margin:40px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(16,24,32,0.08);">
+    <div style="display:flex;height:8px;line-height:0;">
+      <div style="flex:1;background:#101820;">&nbsp;</div>
+      <div style="flex:1;background:#165C7D;">&nbsp;</div>
+      <div style="flex:1;background:#007396;">&nbsp;</div>
+      <div style="flex:1;background:#0093B2;">&nbsp;</div>
+      <div style="flex:1;background:#369DA0;">&nbsp;</div>
+      <div style="flex:1;background:#56B093;">&nbsp;</div>
+      <div style="flex:1;background:#D4EB8E;">&nbsp;</div>
     </div>
-    <div style="padding:32px;">
-      <h2 style="color:#1a3a5c;margin:0 0 16px;">Welcome to Milton Nation! 🎉</h2>
-      <p style="color:#444;line-height:1.6;margin:0 0 16px;">
-        Your application to join the <strong>Milton Nation</strong> alumni community has been received
-        and is currently <strong>pending admin review</strong>.
+    <div style="padding:40px 32px 32px;text-align:center;background:#ffffff;">
+      <h1 style="color:#101820;margin:0;font-size:42px;font-weight:300;letter-spacing:-1px;font-family:Georgia,'Times New Roman',serif;">milton</h1>
+      <p style="color:#6B7280;margin:6px 0 0;font-size:14px;font-weight:500;letter-spacing:0.5px;">Milton Nation Alumni</p>
+      <div style="width:40px;height:2px;background:#D4EB8E;margin:18px auto 0;border-radius:1px;"></div>
+      <p style="color:#6B7280;margin:18px 0 0;font-size:13px;font-style:italic;">Driven by purpose. Committed to care.</p>
+    </div>
+    <div style="padding:8px 32px 36px;">
+      <h2 style="color:#101820;margin:24px 0 12px;font-size:24px;font-weight:700;text-align:center;">Welcome to the community</h2>
+      <p style="color:#444;line-height:1.7;margin:0 0 18px;font-size:15px;text-align:center;">
+        Your application to join the <strong style="color:#007396;">Milton Nation</strong> alumni community has been received and is being reviewed.
       </p>
-      <p style="color:#444;line-height:1.6;margin:0 0 24px;">
-        You'll receive a push notification as soon as your account is approved and active.
-      </p>
-      <div style="background:#f0f4f8;border-radius:8px;padding:16px;margin:0 0 24px;">
-        <p style="color:#1a3a5c;font-weight:600;margin:0 0 8px;font-size:14px;">What happens next?</p>
-        <ul style="color:#555;margin:0;padding-left:20px;font-size:14px;line-height:1.8;">
-          <li>An admin reviews your application (usually within 24 hours)</li>
-          <li>You receive a push notification when approved</li>
-          <li>Log in to access the full community, meetings, and care team chat</li>
-        </ul>
+      <div style="background:linear-gradient(135deg,#f0f8f8 0%,#e8f4f5 100%);border-radius:12px;padding:20px;margin:24px 0;border-left:4px solid #56B093;">
+        <p style="color:#101820;font-weight:600;margin:0 0 12px;font-size:14px;">What happens next</p>
+        <table style="width:100%;border-spacing:0;">
+          <tr><td style="padding:8px 0;width:30px;vertical-align:top;"><div style="width:24px;height:24px;background:#007396;border-radius:12px;color:white;text-align:center;line-height:24px;font-size:13px;font-weight:700;">1</div></td><td style="padding:8px 0 8px 12px;color:#444;font-size:14px;line-height:1.5;">An admin reviews your application (typically within 24 hours)</td></tr>
+          <tr><td style="padding:8px 0;vertical-align:top;"><div style="width:24px;height:24px;background:#0093B2;border-radius:12px;color:white;text-align:center;line-height:24px;font-size:13px;font-weight:700;">2</div></td><td style="padding:8px 0 8px 12px;color:#444;font-size:14px;line-height:1.5;">You'll receive a push notification once approved</td></tr>
+          <tr><td style="padding:8px 0;vertical-align:top;"><div style="width:24px;height:24px;background:#56B093;border-radius:12px;color:white;text-align:center;line-height:24px;font-size:13px;font-weight:700;">3</div></td><td style="padding:8px 0 8px 12px;color:#444;font-size:14px;line-height:1.5;">Sign in to access the community, meetings, and your care team</td></tr>
+        </table>
       </div>
-      <p style="color:#888;font-size:13px;margin:0;">
-        Milton Recovery Centers &middot;
-        <a href="https://miltonrecovery.com/app-support/" style="color:#1a3a5c;">Contact Support</a>
-        &middot; <a href="https://miltonrecovery.com" style="color:#1a3a5c;">miltonrecovery.com</a>
+      <div style="background:#fafafa;border:1px solid #e5e7eb;border-radius:10px;padding:16px;margin:24px 0 0;">
+        <p style="color:#6B7280;font-size:12px;margin:0 0 6px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Need support now?</p>
+        <p style="color:#444;font-size:13px;line-height:1.6;margin:0;">The <strong>988 Suicide &amp; Crisis Lifeline</strong> is free and confidential, 24/7. Call or text <strong>988</strong> anytime, even before your account is approved.</p>
+      </div>
+    </div>
+    <div style="background:#101820;padding:24px 32px;text-align:center;">
+      <p style="color:rgba(255,255,255,0.95);margin:0 0 8px;font-size:13px;font-weight:600;letter-spacing:0.3px;">Milton Recovery Centers</p>
+      <p style="color:rgba(255,255,255,0.6);margin:0 0 14px;font-size:12px;">Florida &middot; (844) 406-4325 &nbsp;&middot;&nbsp; Ohio &middot; (740) 715-4673</p>
+      <p style="margin:0;">
+        <a href="https://miltonrecovery.com" style="color:#D4EB8E;text-decoration:none;font-size:12px;font-weight:500;">miltonrecovery.com</a>
+        <span style="color:rgba(255,255,255,0.3);margin:0 8px;">&middot;</span>
+        <a href="https://miltonrecovery.com/app-support" style="color:#D4EB8E;text-decoration:none;font-size:12px;font-weight:500;">Support</a>
+        <span style="color:rgba(255,255,255,0.3);margin:0 8px;">&middot;</span>
+        <a href="https://miltonrecovery.com/privacy" style="color:#D4EB8E;text-decoration:none;font-size:12px;font-weight:500;">Privacy</a>
       </p>
     </div>
   </div>
