@@ -17,6 +17,95 @@ const ROLE_NOTIFY_WINDOW_MINUTES = 60;
 const USER_NOTIFY_RATE_LIMIT = 10;
 const USER_NOTIFY_WINDOW_MINUTES = 60;
 
+// ─── Direct APNs delivery ────────────────────────────────────────────────────
+// We sign an ES256 JWT with our APNs auth key (.p8) and POST to
+// https://api.push.apple.com/3/device/{token} per device. Apple requires HTTP/2;
+// Deno Deploy negotiates HTTP/2 via ALPN automatically.
+
+const APNS_KEY_ID = Deno.env.get("APNS_KEY_ID") ?? "";
+const APNS_TEAM_ID = Deno.env.get("APNS_TEAM_ID") ?? "";
+const APNS_BUNDLE_ID = Deno.env.get("APNS_BUNDLE_ID") ?? "";
+const APNS_PRIVATE_KEY_PEM = Deno.env.get("APNS_PRIVATE_KEY") ?? "";
+// Production: api.push.apple.com. Sandbox: api.sandbox.push.apple.com (dev provisioning only).
+const APNS_HOST = Deno.env.get("APNS_HOST") ?? "https://api.push.apple.com";
+
+let cachedJwt: { token: string; refreshAfter: number } | null = null;
+
+function base64UrlFromBytes(bytes: Uint8Array): string {
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
+}
+
+function base64UrlFromString(str: string): string {
+  return base64UrlFromBytes(new TextEncoder().encode(str));
+}
+
+async function importApnsPrivateKey(pem: string): Promise<CryptoKey> {
+  const cleaned = pem
+    .replace(/-----BEGIN PRIVATE KEY-----/g, "")
+    .replace(/-----END PRIVATE KEY-----/g, "")
+    .replace(/\s/g, "");
+  const der = Uint8Array.from(atob(cleaned), (c) => c.charCodeAt(0));
+  return await crypto.subtle.importKey(
+    "pkcs8",
+    der.buffer,
+    { name: "ECDSA", namedCurve: "P-256" },
+    false,
+    ["sign"],
+  );
+}
+
+async function generateApnsJwt(): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  // Apple requires JWT refresh at least every 60 min. Refresh at 50.
+  if (cachedJwt && cachedJwt.refreshAfter > now) {
+    return cachedJwt.token;
+  }
+  if (!APNS_KEY_ID || !APNS_TEAM_ID || !APNS_PRIVATE_KEY_PEM) {
+    throw new Error("APNs env not configured: missing APNS_KEY_ID, APNS_TEAM_ID, or APNS_PRIVATE_KEY");
+  }
+  const header = base64UrlFromString(JSON.stringify({ alg: "ES256", kid: APNS_KEY_ID, typ: "JWT" }));
+  const payload = base64UrlFromString(JSON.stringify({ iss: APNS_TEAM_ID, iat: now }));
+  const signingInput = `${header}.${payload}`;
+  const key = await importApnsPrivateKey(APNS_PRIVATE_KEY_PEM);
+  const sigBuf = await crypto.subtle.sign(
+    { name: "ECDSA", hash: { name: "SHA-256" } },
+    key,
+    new TextEncoder().encode(signingInput),
+  );
+  const sig = base64UrlFromBytes(new Uint8Array(sigBuf));
+  const jwt = `${signingInput}.${sig}`;
+  cachedJwt = { token: jwt, refreshAfter: now + 50 * 60 };
+  return jwt;
+}
+
+interface ApnsResult {
+  token: string;
+  status: number;
+  removed?: boolean;
+  error?: string;
+}
+
+async function sendApns(
+  deviceToken: string,
+  apsPayload: Record<string, unknown>,
+  jwt: string,
+): Promise<Response> {
+  return await fetch(`${APNS_HOST}/3/device/${deviceToken}`, {
+    method: "POST",
+    headers: {
+      "authorization": `bearer ${jwt}`,
+      "apns-topic": APNS_BUNDLE_ID,
+      "apns-push-type": "alert",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify(apsPayload),
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -224,34 +313,54 @@ serve(async (req: Request) => {
       );
     }
 
-    // Send via Supabase Push API (uses APNs key configured in Supabase Dashboard)
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-
-    const pushResponse = await fetch(`${supabaseUrl}/push/v1/send`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${serviceRoleKey}`,
+    // ── Direct APNs delivery ─────────────────────────────────────────────────
+    const apsPayload: Record<string, unknown> = {
+      aps: {
+        alert: { title, body },
+        sound: "default",
       },
-      body: JSON.stringify({
-        recipients: deviceTokens.map((token) => ({
-          device_token: token,
-          provider: "apns",
-        })),
-        notification: { title, body },
-        data: notifData ?? {},
+      ...(notifData ?? {}),
+    };
+
+    let jwt: string;
+    try {
+      jwt = await generateApnsJwt();
+    } catch (err) {
+      console.error("[send-push-notification] APNs JWT signing failed:", err);
+      return new Response(
+        JSON.stringify({ error: "APNs credentials misconfigured", detail: String(err) }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const settled = await Promise.allSettled(
+      deviceTokens.map(async (token): Promise<ApnsResult> => {
+        const resp = await sendApns(token, apsPayload, jwt);
+        if (resp.status === 200) {
+          return { token, status: 200 };
+        }
+        // 410 = device token no longer valid; purge it.
+        if (resp.status === 410) {
+          await supabaseAdmin.from("device_tokens").delete().eq("token", token);
+          return { token, status: 410, removed: true };
+        }
+        const errBody = await resp.text().catch(() => "");
+        return { token, status: resp.status, error: errBody.slice(0, 500) };
       }),
-    });
+    );
 
-    const pushResult = pushResponse.ok
-      ? await pushResponse.json().catch(() => ({}))
-      : { error: await pushResponse.text() };
+    const results: ApnsResult[] = settled.map((r) =>
+      r.status === "fulfilled"
+        ? r.value
+        : { token: "?", status: 0, error: String(r.reason) }
+    );
+    const sent = results.filter((r) => r.status === 200).length;
+    const failed = results.length - sent;
 
-    console.log(`send-push-notification: sent to ${deviceTokens.length} device(s)`, pushResult);
+    console.log(`[send-push-notification] APNs sent=${sent} failed=${failed} of ${deviceTokens.length}`);
 
     return new Response(
-      JSON.stringify({ sent: deviceTokens.length, result: pushResult }),
+      JSON.stringify({ sent, failed, total: deviceTokens.length, results }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
