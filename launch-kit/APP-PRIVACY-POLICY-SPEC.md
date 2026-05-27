@@ -41,7 +41,7 @@ Also: add a link from the existing `/privacy` page that points at the new one ("
 >
 > **Contact for privacy questions:**
 > - Privacy Officer: Ezra Barishansky
-> - Email: <a href="mailto:media@miltonjefferson.com">media@miltonjefferson.com</a>
+> - Email: <a href="mailto:media@miltonhealthgroup.com">media@miltonhealthgroup.com</a>
 > - Phone: (844) 406-4325
 > - Mail: Milton Recovery Centers, 521 Northlake Blvd, North Palm Beach, FL 33408
 
@@ -105,7 +105,7 @@ Use this section verbatim (it's what The Campaign Registry expects to see):
 >
 > **Opt-out:** Reply <strong>STOP</strong> to any verification message to unsubscribe. Opting out disables your ability to log in until you re-enroll your phone number via in-app Settings → Phone Number.
 >
-> **Help:** Reply <strong>HELP</strong> to any verification message, or contact <a href="mailto:media@miltonjefferson.com">media@miltonjefferson.com</a>.
+> **Help:** Reply <strong>HELP</strong> to any verification message, or contact <a href="mailto:media@miltonhealthgroup.com">media@miltonhealthgroup.com</a>.
 
 ⚠️ **STOP and HELP must be visually bold** (use `<strong>` in HTML). TCR rejects without this.
 
@@ -139,7 +139,7 @@ Use this section verbatim (it's what The Campaign Registry expects to see):
 > - **Be notified** of any breach affecting your PHI within 60 days of discovery
 > - **File a complaint** with the U.S. Department of Health and Human Services Office for Civil Rights, or with the appropriate state agency, if you believe your privacy rights have been violated. Filing a complaint will not affect the treatment or services you receive.
 >
-> To exercise any of these rights, email <a href="mailto:media@miltonjefferson.com">media@miltonjefferson.com</a>.
+> To exercise any of these rights, email <a href="mailto:media@miltonhealthgroup.com">media@miltonhealthgroup.com</a>.
 
 ### 12. Security
 
@@ -176,7 +176,7 @@ Use this section verbatim (it's what The Campaign Registry expects to see):
 ### 18. Contact
 
 > **Milton Recovery Centers**
-> Email: <a href="mailto:media@miltonjefferson.com">media@miltonjefferson.com</a>
+> Email: <a href="mailto:media@miltonhealthgroup.com">media@miltonhealthgroup.com</a>
 > Phone: (844) 406-4325 (24/7)
 > Ohio: (740) 715-4673 (24/7)
 > Mail: 521 Northlake Blvd, North Palm Beach, FL 33408

@@ -175,7 +175,7 @@ Crisis content disclosure: The app includes a "I'm Struggling" feature that conn
 | First name | `Ezra` |
 | Last name | `Barishansky` |
 | Phone | `<your real phone>` |
-| Email | `media@miltonjefferson.com` |
+| Email | `media@miltonhealthgroup.com` |
 
 ### Notes for Reviewer (additional, beyond demo)
 ```
@@ -190,7 +190,7 @@ Compliance posture:
 
 Vendor BAAs: Supabase (signed), Twilio (in process). Resend handles welcome emails only — body contains no PHI.
 
-If you have questions during review, please email media@miltonjefferson.com or call +1-844-406-4325 (Milton Recovery Centers main line).
+If you have questions during review, please email media@miltonhealthgroup.com or call +1-844-406-4325 (Milton Recovery Centers main line).
 ```
 
 ---

@@ -237,7 +237,10 @@ struct ContentFilterTests {
 
     @Test("Flagged comment gets pendingReview status via localFilter")
     func flaggedCommentPendingReview() {
-        let result = service.localFilter("I relapsed and I'm struggling today")
+        // NOTE: avoid time-immediacy markers ("today", "tonight", etc.) which
+        // intentionally elevate medium-risk content to crisis-tier via the
+        // time-immediacy elevation step in ContentSafetyEngine.
+        let result = service.localFilter("I relapsed and I'm struggling")
         #expect(result.status == .flagged)
         let commentStatus: PostStatus
         switch result.status {

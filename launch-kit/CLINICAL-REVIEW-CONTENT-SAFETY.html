@@ -5,35 +5,40 @@
 <title>Milton Nation — Content Safety Keyword List — Clinical Review</title>
 <style>
   @page { size: 8.5in 11in; margin: 0.5in; }
-  * { box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: 0; color: #101820; }
-  .cover { background: linear-gradient(135deg,#101820 0%,#165C7D 35%,#007396 70%,#369DA0 100%); color: white; height: 10in; padding: 1.2in 0.75in; page-break-after: always; position: relative; }
+  /* Force Chrome headless to print colored backgrounds */
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  html, body { background: white !important; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: 0; color: #101820; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .cover { background: linear-gradient(135deg,#101820 0%,#165C7D 35%,#007396 70%,#369DA0 100%) !important; color: white; padding: 0.6in 0.5in 0.5in; page-break-after: always; position: relative; }
   .cover .swatches { display:flex; height:8px; margin-bottom: 32px; }
   .cover .swatches div { flex:1; }
   .cover h1 { font-family: Georgia, serif; font-size: 60px; font-weight: 300; margin: 0; letter-spacing: -2px; }
   .cover .subtitle { font-size: 22px; opacity: 0.9; margin: 8px 0 0; font-weight: 500; }
-  .cover .meta { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 14px; padding: 24px; margin-top: 40px; font-size: 14px; line-height: 1.65; }
+  .cover .meta { background: rgba(255,255,255,0.08) !important; border: 1px solid rgba(255,255,255,0.15); border-radius: 14px; padding: 18px; margin-top: 28px; font-size: 12.5px; line-height: 1.55; }
   .cover .meta h3 { color: #D4EB8E; font-size: 13px; margin: 0 0 12px; text-transform: uppercase; letter-spacing: 1px; }
   .cover .meta strong { color: #D4EB8E; }
-  .cover .signoff { background: rgba(255,255,255,0.05); border: 1px dashed rgba(212,235,142,0.4); border-radius: 14px; padding: 24px; margin-top: 24px; font-size: 13px; line-height: 1.8; }
+  .cover .signoff { background: rgba(255,255,255,0.05) !important; border: 1px dashed rgba(212,235,142,0.4); border-radius: 14px; padding: 18px; margin-top: 18px; font-size: 12px; line-height: 1.6; }
   .cover .signoff h3 { color: #D4EB8E; font-size: 12px; margin: 0 0 16px; text-transform: uppercase; letter-spacing: 1px; }
   .cover .signoff .line { display:block; border-bottom: 1px solid rgba(255,255,255,0.4); margin-bottom: 14px; height: 24px; }
   .cover .signoff .label { font-size: 11px; opacity: 0.7; }
 
-  .page { padding: 0 0.25in 0.5in; page-break-after: always; }
+  .page { padding: 0 0.1in 0.3in; page-break-after: always; background: white !important; }
   .page:last-child { page-break-after: avoid; }
+  /* Keep category header glued to its first tier — tiers can split mid-tier
+     to avoid orphaning the header on its own page. */
+  .cat-header { page-break-after: avoid; break-after: avoid; }
 
-  .cat-header { background: #101820; color: white; padding: 18px 24px; border-radius: 12px; margin-bottom: 18px; }
+  .cat-header { background: #101820 !important; color: white; padding: 14px 20px; border-radius: 12px; margin-bottom: 14px; }
   .cat-header h2 { margin: 0; font-size: 22px; font-weight: 700; }
   .cat-header .icon { color: #D4EB8E; margin-right: 10px; }
   .cat-header p { color: rgba(255,255,255,0.7); font-size: 12px; margin: 6px 0 0; line-height: 1.5; }
 
-  .tier { margin-bottom: 18px; page-break-inside: avoid; }
-  .tier .tier-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; padding: 6px 14px; border-radius: 6px; font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .tier { margin-bottom: 18px; }
+  .tier .tier-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; padding: 6px 14px; border-radius: 6px; font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; page-break-after: avoid; break-after: avoid; }
   .tier .tier-head .count { margin-left: auto; font-size: 11px; opacity: 0.7; text-transform: none; letter-spacing: 0; }
-  .tier.high  .tier-head { background: #fde2e0; color: #8a1c12; border-left: 4px solid #d33; }
-  .tier.med   .tier-head { background: #fff3d6; color: #6b4500; border-left: 4px solid #f0a020; }
-  .tier.low   .tier-head { background: #e8f4f5; color: #003040; border-left: 4px solid #56B093; }
+  .tier.high  .tier-head { background: #fde2e0 !important; color: #8a1c12; border-left: 4px solid #d33; }
+  .tier.med   .tier-head { background: #fff3d6 !important; color: #6b4500; border-left: 4px solid #f0a020; }
+  .tier.low   .tier-head { background: #e8f4f5 !important; color: #003040; border-left: 4px solid #56B093; }
 
   .phrases { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px 14px; padding: 0 4px; font-size: 12px; line-height: 1.55; color: #2a2a2a; }
   .phrases .phrase { padding: 2px 4px; border-radius: 3px; }
@@ -44,8 +49,8 @@
   .approval-box label { display: flex; align-items: center; gap: 4px; cursor: pointer; }
   .approval-box .ck { width: 14px; height: 14px; border: 1.5px solid #007396; border-radius: 3px; display: inline-block; }
 
-  .note { background: #fff8e6; border-left: 4px solid #f0a020; padding: 10px 14px; margin: 10px 0; border-radius: 5px; font-size: 12px; color: #5a4500; }
-  .info { background: linear-gradient(135deg,#f0f8f8 0%,#e8f4f5 100%); border-left: 4px solid #007396; padding: 10px 14px; margin: 10px 0; border-radius: 5px; font-size: 12px; color: #003040; }
+  .note { background: #fff8e6 !important; border-left: 4px solid #f0a020; padding: 10px 14px; margin: 10px 0; border-radius: 5px; font-size: 12px; color: #5a4500; }
+  .info { background: #e8f4f5 !important; border-left: 4px solid #007396; padding: 10px 14px; margin: 10px 0; border-radius: 5px; font-size: 12px; color: #003040; }
 
   .pg-footer { font-size: 9px; color: #888; text-align: center; margin-top: 16px; border-top: 1px solid #eee; padding-top: 6px; }
   h3.subhead { color: #007396; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; margin: 24px 0 10px; border-bottom: 2px solid #56B093; padding-bottom: 5px; }
@@ -778,7 +783,7 @@
 
   <h3 class="subhead">Once signed</h3>
   <p style="font-size:13px;color:#444;line-height:1.7;">
-    Return this document to Ezra at <strong>media@miltonjefferson.com</strong> or
+    Return this document to Ezra at <strong>media@miltonhealthgroup.com</strong> or
     <strong>ebarish@miltonhealthgroup.com</strong>. We'll then update the keyword
     list in the production Supabase database (no app rebuild required — changes
     take effect within 4 hours on every user's device).

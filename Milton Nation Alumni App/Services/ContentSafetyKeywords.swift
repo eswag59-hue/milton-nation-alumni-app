@@ -218,7 +218,7 @@ enum ContentSafetyKeywords {
             "self harm", "self-harm", "selfharm",
             "sh",                                  // abbreviation for self-harm (single token)
             "burning myself", "burn myself",
-            "razor on my skin", "use a razor",
+            "use a razor",                         // "razor on my skin" is HIGH risk, not medium
         ],
         low: [
             // Distress signals that warrant awareness but not immediate escalation
@@ -349,7 +349,7 @@ enum ContentSafetyKeywords {
             "broke my sobriety", "broke sobriety",
             "broke my clean time",
             "not sober anymore", "no longer sober",
-            "fell off the wagon",                 // recovery-specific
+            // "fell off the wagon" lives in drugs.medium (covers all substances incl. alcohol)
             "dui", "dwi",                         // legal consequences = signal
             "drunk driving",
         ],
