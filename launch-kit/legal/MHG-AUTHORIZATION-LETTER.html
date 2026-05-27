@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Milton Health Group LLC — Letter of Authorization</title>
+<style>
+  @page { size: 8.5in 11in; margin: 0.75in; }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  html, body { background: white !important; }
+  body {
+    font-family: "Times New Roman", Times, serif;
+    margin: 0; padding: 0;
+    color: #000;
+    font-size: 11.5pt;
+    line-height: 1.5;
+  }
+
+  /* === Letterhead === */
+  .letterhead {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    border-bottom: none;
+    margin-bottom: 32px;
+  }
+  .logo {
+    width: 180px;
+    flex-shrink: 0;
+  }
+  .logo .wordmark {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 42pt;
+    font-weight: 300;
+    color: #1a1a1a;
+    line-height: 1;
+    letter-spacing: -1px;
+  }
+  .logo .subtitle {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 9pt;
+    letter-spacing: 5px;
+    color: #1a1a1a;
+    margin-top: 4px;
+    font-weight: 400;
+  }
+  .company {
+    text-align: right;
+    flex-grow: 1;
+    padding-left: 24px;
+  }
+  .company h1 {
+    font-family: "Times New Roman", Times, serif;
+    font-size: 22pt;
+    font-weight: 700;
+    margin: 0;
+    line-height: 1.15;
+    color: #000;
+    letter-spacing: 0.5px;
+  }
+  .company .addr {
+    font-size: 10pt;
+    margin-top: 8px;
+    line-height: 1.45;
+    color: #000;
+  }
+  .company .addr a {
+    color: #1155cc;
+    text-decoration: underline;
+  }
+
+  /* === Body === */
+  .date {
+    margin-top: 18px;
+    margin-bottom: 28px;
+    font-size: 11pt;
+  }
+  .date strong { font-weight: bold; }
+
+  .to-block {
+    margin-bottom: 24px;
+    font-size: 11pt;
+    line-height: 1.4;
+  }
+
+  .re {
+    margin-bottom: 18px;
+    font-weight: bold;
+    font-size: 11.5pt;
+  }
+  .re-sub {
+    margin-top: 4px;
+    font-weight: bold;
+    font-size: 10.5pt;
+    color: #333;
+  }
+
+  .heading {
+    font-size: 13pt;
+    font-weight: bold;
+    margin: 22px 0 8px;
+  }
+
+  p { margin: 0 0 12px; text-align: left; }
+
+  ul { margin: 8px 0 14px 24px; padding: 0; }
+  ul li { margin-bottom: 6px; line-height: 1.45; }
+
+  table.entity-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 16px;
+    font-size: 10.5pt;
+  }
+  table.entity-table th {
+    background: #1a1a1a !important;
+    color: white !important;
+    padding: 6px 10px;
+    text-align: left;
+    border: 1px solid #1a1a1a;
+    font-weight: bold;
+    font-size: 10pt;
+  }
+  table.entity-table td {
+    padding: 6px 10px;
+    border: 1px solid #ccc;
+    background: white !important;
+  }
+
+  /* === Signatures === */
+  .signatures {
+    margin-top: 56px;
+    display: flex;
+    justify-content: space-between;
+    gap: 40px;
+  }
+  .sig-block {
+    flex: 1;
+    font-size: 10.5pt;
+  }
+  .sig-line {
+    border-bottom: 1px solid #000;
+    height: 1px;
+    margin-bottom: 8px;
+    width: 100%;
+  }
+  .sig-name {
+    font-weight: bold;
+    font-size: 11pt;
+    margin-bottom: 2px;
+  }
+  .sig-title {
+    font-style: italic;
+    color: #333;
+    margin-bottom: 8px;
+  }
+  .sig-contact {
+    font-size: 9.5pt;
+    color: #444;
+    line-height: 1.4;
+  }
+  .sig-date {
+    margin-top: 24px;
+    font-size: 10.5pt;
+  }
+  .sig-date .line {
+    display: inline-block;
+    border-bottom: 1px solid #000;
+    width: 160px;
+    margin-left: 8px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ LETTERHEAD ============ -->
+<div class="letterhead">
+  <div class="logo">
+    <div class="wordmark">milton</div>
+    <div class="subtitle">HEALTH GROUP</div>
+  </div>
+  <div class="company">
+    <h1>MILTON HEALTH GROUP<br>LLC.</h1>
+    <div class="addr">
+      560 Sylvan Avenue, Suite 1000<br>
+      Englewood Cliffs, NJ 07632<br>
+      Phone: (917) 648-6394<br>
+      Email: <a href="mailto:michael@miltonhealthgroup.com">michael@miltonhealthgroup.com</a>
+    </div>
+  </div>
+</div>
+
+<!-- ============ DATE ============ -->
+<div class="date">
+  <strong>Date:</strong> _____________________
+</div>
+
+<!-- ============ TO ============ -->
+<div class="to-block">
+  <strong>Twilio Inc.</strong><br>
+  Trust Hub Compliance Team<br>
+  101 Spear Street, 1st Floor<br>
+  San Francisco, CA 94105
+</div>
+
+<!-- ============ RE ============ -->
+<div class="re">
+  Re: Letter of Authorization for Ezra Barishansky — Twilio Trust Hub, A2P 10DLC, and HIPAA BAA
+  <div class="re-sub">Twilio Account SID: AC3ad114d4769975de61f426a49e52a2de</div>
+</div>
+
+<!-- ============ BODY ============ -->
+<p>To whom it may concern,</p>
+
+<p>This letter serves as official authorization confirming that <strong>Ezra Barishansky</strong>, an active employee of Milton Health Group LLC, is fully empowered to act on behalf of the following entities for purposes of vendor onboarding, account registration, contract execution, and ongoing operational management:</p>
+
+<table class="entity-table">
+  <tr>
+    <th>Entity</th>
+    <th>State Filed</th>
+    <th>EIN</th>
+  </tr>
+  <tr>
+    <td><strong>Milton Health Group LLC</strong> (parent)</td>
+    <td>Florida (operating from NJ)</td>
+    <td>93-2880131</td>
+  </tr>
+  <tr>
+    <td>Milton Recovery LLC (FL facility)</td>
+    <td>Florida</td>
+    <td>99-1013461</td>
+  </tr>
+  <tr>
+    <td>Milton Jefferson LLC (OH facility)</td>
+    <td>Ohio</td>
+    <td>99-3269984</td>
+  </tr>
+</table>
+
+<p>Specifically, Ezra Barishansky is authorized to:</p>
+
+<ul>
+  <li>Register, manage, and modify Trust Hub Customer Profiles and Business Profiles with Twilio Inc., on behalf of the entities listed above.</li>
+  <li>Register, manage, and resubmit A2P 10DLC Brand registrations and Campaign registrations through Twilio's regulatory compliance system.</li>
+  <li>Sign and execute Business Associate Agreements (BAAs) under the Health Insurance Portability and Accountability Act (HIPAA) with Twilio Inc., on behalf of Milton Health Group LLC and its subsidiaries.</li>
+  <li>Sign and execute Data Protection Addenda (DPAs), service contracts, and other Twilio-related agreements.</li>
+  <li>Manage day-to-day operations of Twilio messaging services, including SMS, voice, and related products used by the Milton Nation Alumni App.</li>
+</ul>
+
+<p>Ezra Barishansky's role at Milton Health Group LLC is <strong>App Development, Marketing, Media, and Content Specialist</strong> — responsible for overseeing the company's digital presence, app-based development projects, and marketing and media content strategies. Ezra has been an integral part of our team and is an active and trusted employee of the company.</p>
+
+<p>This authorization is effective as of the date above and shall remain in effect until expressly revoked in writing by an Authorized Member or Manager of Milton Health Group LLC.</p>
+
+<p>For verification, please reach out to the signatory at the contact information provided below.</p>
+
+<p>Sincerely,</p>
+
+<!-- ============ SIGNATURE ============ -->
+<div class="signatures">
+
+  <div class="sig-block" style="flex: 0 0 60%; max-width: 60%;">
+    <div class="sig-line"></div>
+    <div class="sig-name">Michael Schwartz</div>
+    <div class="sig-title">Co-Owner &amp; Authorized Member</div>
+    <div class="sig-contact">
+      Milton Health Group LLC<br>
+      Email: michael@miltonhealthgroup.com<br>
+      Phone: (917) 648-6394
+    </div>
+  </div>
+
+</div>
+
+<div class="sig-date">
+  Date: <span class="line"></span>
+</div>
+
+</body>
+</html>
