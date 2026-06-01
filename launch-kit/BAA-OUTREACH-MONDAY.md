@@ -1,67 +1,46 @@
-# Twilio HIPAA BAA — Monday 6/1 outreach kit
+# Twilio HIPAA BAA — Monday 6/8 outreach kit
 
-**Status:** BAA is now defense-in-depth, NOT launch-blocking, after the OTP brand strip (commit `5e9b5ff`, deployed 2026-05-31). Pursue these three channels in parallel Monday morning. Expected time: 30 minutes total.
+**Status:** BAA is now defense-in-depth, NOT launch-blocking, after the OTP brand strip (commit `5e9b5ff`, deployed 2026-05-31).
 
-Pick whichever path responds first; once one moves, drop the others or fold them into the same thread.
+**CORRECTION 2026-05-31 23:20:** Per Twilio's actual documentation (`https://www.twilio.com/docs/iam/twilio-editions/hippa`), a HIPAA BAA with Twilio requires Security or Enterprise Edition (paid tier upgrades, typically $1k+/mo minimum commit). There is no direct BAA email — the path is "contact your account manager or Twilio Sales." `healthcare-baa@twilio.com` does NOT exist (verified by bounce 2026-05-31 23:05). The original advice to email that address was wrong. See "Action 1" below for the corrected approach.
+
+Given the cost of upgrading to a HIPAA-eligible tier, and the fact that OTP messages are now brand-anonymous (no PHI flows through Twilio for the launch-critical flow), **you may want to skip pursuing the BAA entirely.** Revisit only if you ever want to send branded outbound SMS (e.g., the currently-deferred invite SMS).
 
 ---
 
-## Action 1 — Phone call (do this first, fastest signal)
+## Action 1 — Phone call to Twilio Sales (ONLY remaining outbound path)
 
 **Call:** 1-877-468-9456 (Twilio Sales)
 
+This is now the FIRST question, not the LAST. The healthcare-baa@ direct inbox does not exist; BAA execution is gated behind a Sales conversation about upgrading to Security or Enterprise Edition.
+
 **Script (read literally if you want):**
 
-> Hi, this is Ezra Barishansky calling on behalf of Milton Health Group LLC. Twilio Account SID `AC3ad114d4769975de61f426a49e52a2de`. I need to be connected to a healthcare or HIPAA solutions engineer.
+> Hi, this is Ezra Barishansky calling on behalf of Milton Health Group LLC. Twilio Account SID `AC3ad114d4769975de61f426a49e52a2de`.
 >
-> Context: we run a recovery alumni iOS app. We have an open support ticket — number 27179042 — that started about a HIPAA BAA execution. The A2P 10DLC campaign portion of that ticket is now resolved on our end via direct API call. The remaining ask is the BAA itself.
+> Context: we run a recovery alumni iOS app. We have an open support ticket — number 27179042. Our A2P 10DLC campaign is currently in vetting under use case 2FA. Per your documentation, a HIPAA BAA with Twilio requires Security or Enterprise Edition.
 >
-> We have a signed authorization letter on file from our parent entity, EIN 93-2880131. We are ready to sign whatever standard BAA you provide today. What is your fastest path?
+> Before I go further, I need to understand the cost: (1) what's the monthly minimum commit for the cheapest HIPAA-eligible tier on my account? (2) Is the BAA standard-form sign-and-execute, or does it require a back-and-forth redline? (3) What's the realistic timeline from upgrade to executed BAA — days, weeks, months?
+>
+> I'm not committing today — just gathering the data to make a build-vs-buy decision. Our outbound SMS is already brand-anonymous so we don't currently process PHI through Twilio, but we'd like to understand the option.
 
 **What you want from the call:**
-- Name + direct email of the healthcare AE/SE who will own this
-- Realistic timeline (days vs weeks)
-- Whether they need to upsell you to a paid tier first (be prepared for this — current account balance is $23.15)
-- Whether there's a standard BAA PDF you can just sign immediately, or whether it requires a back-and-forth redline
+- Hard monthly cost for HIPAA-eligible tier (Security Edition? Enterprise?)
+- Whether the standard BAA is sign-as-is or requires legal review on both sides
+- Time-to-signature
+- Whether Twilio Verify (their dedicated OTP product) has different BAA terms
 
-**Red flags:** If they say "submit a request and someone will get back to you within 5 business days" — escalate by name to a manager. Don't accept queue-routing.
-
----
-
-## Action 2 — Email to healthcare BAA inbox
-
-**To:** healthcare-baa@twilio.com
-**CC:** (after the phone call, CC the AE you spoke with so the two threads converge)
-**Subject:** BAA execution request — Milton Health Group LLC — Ticket #27179042
-
-**Body — paste verbatim:**
-
-Hi Twilio Healthcare Compliance,
-
-I'm requesting execution of a HIPAA Business Associate Agreement for the following account:
-
-- **Entity:** Milton Health Group LLC (Delaware LLC, EIN 93-2880131)
-- **Twilio Account SID:** `AC3ad114d4769975de61f426a49e52a2de`
-- **Primary contact:** Ezra Barishansky, `ebarish@miltonhealthgroup.com`
-- **Open ticket:** #27179042
-- **Authorization letter:** signed by Michael Schwartz, MHG co-owner, on file with ticket (attached again here for convenience)
-
-We operate a substance-use-disorder recovery alumni iOS app. Our Twilio usage today is Programmable Messaging (A2P 10DLC, use case 2FA, Campaign Sid `QE2c6890da8086d771620e9b13fadeba0b` currently in vetting). Our outbound SMS bodies have been deliberately brand-anonymous so that Twilio is not handling Protected Health Information as part of the OTP flow. We're requesting a BAA as defense-in-depth and to enable future expansion into branded messaging.
-
-We are ready to execute Twilio's standard BAA immediately on receipt. No redlines anticipated.
-
-Please advise on next steps and timeline.
-
-Thank you,
-Ezra Barishansky
-ebarish@miltonhealthgroup.com
-(your phone)
-
-**Attach:** `launch-kit/legal/MHG-AUTHORIZATION-SIGNED.pdf`
+**Likely outcome:** the number they quote is high enough that you skip this path and stay on standard Programmable Messaging with brand-anonymous OTPs. That's the right answer unless Milton scales into territory where branded SMS to identified patients becomes a real product need.
 
 ---
 
-## Action 3 — Reply on existing ticket #27179042 (to Akash)
+## Action 2 — Twilio Sales contact form (alternative to phone)
+
+If you don't want to call: https://www.twilio.com/contact-sales — submit with the same talking points as the phone script. Less interactive, slower turnaround, but the same destination.
+
+---
+
+## Action 3 — Reply on existing ticket #27179042 (to Akash) ← SENT 2026-05-31
 
 This is a short ticket update — primary value is consolidating the BAA ask alongside the now-resolved Campaign work, and giving Akash an opportunity to route internally.
 
