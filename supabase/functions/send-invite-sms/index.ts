@@ -139,13 +139,19 @@ serve(async (req: Request) => {
     const appStoreUrl = Deno.env.get("APP_STORE_URL") ??
       "https://apps.apple.com/us/app/milton-nation";
     const greeting = name ? `Hi ${name.trim()}, ` : "";
+    // HIPAA NOTE (2026-05-31): an SMS that explicitly identifies the recipient
+    // as an alumni of a specific Substance Use Disorder treatment program
+    // creates PHI under the HIPAA 18-identifiers rule (phone + treatment-
+    // program association). Invite SMS is intentionally vendor-anonymous;
+    // recipient learns the specific program name only after installing the
+    // app and signing in (inside BAA-covered Supabase). Update the App Store
+    // listing title in tandem so the install destination isn't itself a
+    // disclosure.
     const message =
-      `${greeting}you're invited to Milton Nation — the alumni community ` +
-      `for Milton Recovery Centers.\n\n` +
-      `Stay connected, find meetings, and reach your care team, all in one place.\n\n` +
+      `${greeting}you've been invited to a peer recovery community app. ` +
+      `Stay connected, find meetings, and reach your care team — all in one place.\n\n` +
       `Download for iOS: ${appStoreUrl}\n\n` +
-      `Reply STOP to opt out, HELP for help.\n` +
-      `- Milton Recovery Centers`;
+      `Reply STOP to opt out, HELP for help.`;
 
     // Send SMS via Twilio
     const twilioSid = Deno.env.get("TWILIO_ACCOUNT_SID") ?? "";

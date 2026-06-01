@@ -188,7 +188,14 @@ serve(async (req: Request) => {
       // campaign. Includes STOP / HELP language as required by US carrier rules.
       // Changing this without also updating the TCR campaign samples risks
       // triggering a carrier-level filter.
-      Body: `Milton Nation: Your verification code is ${otp}. It expires in 5 minutes. Do not share this code. Reply STOP to opt out, HELP for help.`,
+      //
+      // HIPAA NOTE (2026-05-31): brand reference deliberately omitted. A
+      // phone number alone is not PHI, but a phone number + identifier of a
+      // specific Substance Use Disorder treatment program IS PHI under the
+      // HIPAA 18-identifiers rule. Keeping the OTP brand-anonymous means
+      // Twilio is not processing PHI on our behalf and no BAA is required
+      // for this OTP flow. In-app post-OTP screens remain fully branded.
+      Body: `Your verification code is ${otp}. It expires in 5 minutes. Do not share this code. Reply STOP to opt out, HELP for help.`,
     });
 
     const twilioResponse = await fetch(twilioUrl, {
