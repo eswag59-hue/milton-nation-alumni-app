@@ -153,15 +153,24 @@ serve(async (req: Request) => {
       `Download for iOS: ${appStoreUrl}\n\n` +
       `Reply STOP to opt out, HELP for help.`;
 
-    // Send SMS via Twilio
+    // Send SMS via Twilio.
+    // Routed through the MARKETING-use-case Messaging Service (separate from
+    // the 2FA OTP Messaging Service) so this invite traffic doesn't risk the
+    // 2FA campaign's standing with carriers. The Messaging Service handles
+    // sender selection automatically; do NOT set `From` here.
+    // Service SID: MG58c4c25a365e158067a5875b6488bad8 (created 2026-06-01).
+    // Falls back to TWILIO_INVITE_MESSAGING_SERVICE_SID env override for
+    // staging / disaster-recovery rotation.
     const twilioSid = Deno.env.get("TWILIO_ACCOUNT_SID") ?? "";
     const twilioAuth = Deno.env.get("TWILIO_AUTH_TOKEN") ?? "";
-    const twilioPhone = Deno.env.get("TWILIO_PHONE_NUMBER") ?? "";
+    const inviteMessagingServiceSid =
+      Deno.env.get("TWILIO_INVITE_MESSAGING_SERVICE_SID") ??
+      "MG58c4c25a365e158067a5875b6488bad8";
 
     const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`;
     const twilioBody = new URLSearchParams({
       To: toPhone,
-      From: twilioPhone,
+      MessagingServiceSid: inviteMessagingServiceSid,
       Body: message,
     });
 
