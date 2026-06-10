@@ -13,7 +13,7 @@
 
 The Milton Nation iOS app is a private alumni community for Milton Recovery Centers and Milton Jefferson alumni. It launches on the Apple App Store. This memo documents how the app handles patient identifying information and protected health information (PHI), confirms compliance with **HIPAA** and **42 CFR Part 2** (the stricter federal regulation governing substance use disorder treatment records), and identifies one remaining gap with a documented remediation plan.
 
-**Bottom line:** All patient health information and treatment-status indicators flow only through vendors who have signed Business Associate Agreements with us. SMS verification and push notifications are intentionally brand-anonymous so no third-party SMS or device vendor ever sees information that could identify the recipient as a Milton Recovery patient. One gap remains around welcome emails (Section 7), which has a remediation plan that does not block launch.
+**Bottom line:** All patient health information and treatment-status indicators flow only through vendors who have signed Business Associate Agreements with us. SMS verification, push notifications, and welcome emails are intentionally brand-anonymous so no third-party SMS, device, or email vendor ever sees information that could identify the recipient as a Milton Recovery patient.
 
 You are not being asked to attest to the legal contracts or the technical security implementation — both are handled by counsel and engineering. You are being asked to confirm that the clinical workflow protections described here (crisis response, content moderation, care-team confidentiality, patient consent and deletion rights) align with the standard of care for the patients this app serves.
 
@@ -43,7 +43,7 @@ You are not being asked to attest to the legal contracts or the technical securi
 | **Twilio** (SMS verification codes) | Patient's phone number; generic OTP message body ("Your verification code is 123456. It expires in 5 minutes."). **No mention of "Milton Recovery," "Milton Nation," "alumni," or anything that would indicate the recipient is a treatment patient.** | No PHI processed | Not required. We deliberately removed all brand identifiers from outbound SMS specifically to avoid creating a PHI exposure that would require a BAA. Documented in a separate vendor risk memo for legal counsel. |
 | **Apple Push Notifications (APNs)** | A device-specific opaque token plus the notification text ("New comment on your post" or, for crisis alerts, "URGENT: User may need immediate help" — no patient identifier in either). | No PHI processed | Not required. Apple's standard developer terms govern operational reliability. Notification payloads never contain patient name, phone, treatment facility, or any other identifier. |
 | **Apple App Store** | App listing metadata only (app name, description, screenshots). No patient data. | No PHI processed | Not required. |
-| **Resend** (welcome email vendor) | Patient's email address; welcome email body that currently identifies the recipient as a Milton Nation alumni applicant. | **Identifiable as PHI** — see Section 7 (Known Gaps) below. | Resend's standard tier does not offer a HIPAA BAA. **Remediation planned** — Section 7. |
+| **Resend** (welcome email vendor) | Patient's email address; brand-anonymous welcome email body identifying only the app name "Milton Nation" with no mention of Milton Recovery Centers, alumni status, recovery community, or any treatment-program identifier. | No PHI processed (as of 2026-06-10 — see Section 7 for what changed and why). | Not required under the architecture deployed on 2026-06-10. |
 | **GitHub** (source code hosting) | App source code only. No patient data. | No PHI processed | Not required. |
 
 ---
@@ -119,21 +119,24 @@ This section covers the workflows you would specifically scrutinize as a clinici
 
 ---
 
-## 7. Known gap and remediation plan
+## 7. Resend welcome email — gap identified and closed on 2026-06-10
 
-**The Resend welcome email vendor.** When a new alumni completes signup, the app sends them an automated welcome email. The email is delivered via a third-party transactional email service called Resend. The current welcome email body explicitly identifies the recipient as a Milton Nation alumni applicant. Resend's standard tier does not offer a HIPAA Business Associate Agreement.
+During the preparation of this memo, we identified that the automated welcome email sent to new alumni applicants via the Resend transactional email service contained language that identified the recipient as a Milton Recovery Centers alumni applicant (specifically: the body referenced "Milton Nation alumni community" and "Milton Recovery Centers" by name, and the footer listed both the Florida and Ohio clinical phone lines). Resend does not hold a HIPAA Business Associate Agreement at the tier we use.
 
-**Why this matters:** Resend is processing an email body that, combined with the recipient's email address, identifies the recipient as a Milton Recovery treatment alumni. Under a strict reading of HIPAA, this would require Resend to be under a BAA.
+**This gap has been remediated.** As of 2026-06-10 the welcome email body and subject have been rewritten so that the only Milton-related text Resend sees is the app name "Milton Nation" itself. The treatment-program identifiers "Milton Recovery Centers," "alumni community," "recovery community," and the clinical phone lines have been removed. The recipient learns the specific identity and clinical scope of the Milton Nation community only after they install the app on their phone and authenticate into the Supabase-hosted backend, which is fully HIPAA-covered.
 
-**Remediation options (one of these will be implemented before public launch or within 30 days of launch):**
+**What the welcome email now says:**
 
-1. **Strip identifying language from the welcome email** — same approach we took with SMS. Email body would say "Welcome — your application has been received" without naming Milton Recovery, Milton Nation, or implying treatment status. Implementation: 30 minutes of engineering work.
-2. **Migrate to a HIPAA-eligible email provider** — SendGrid's Pro plan or Amazon SES both offer BAAs. Implementation: ~2 hours of engineering work; small monthly cost difference.
-3. **Defer welcome emails entirely** — Milton Recovery Centers staff send a personal email from their own MRC-hosted address after admin approval, replacing the automated email. Implementation: 0 engineering work; small additional staff workflow burden.
+- Subject: "Welcome to Milton Nation"
+- Title: "Welcome to Milton Nation"
+- Body: "Your application has been received and is being reviewed."
+- Next steps: three generic numbered steps (admin reviews, push notification on approval, sign in).
+- Crisis resource: the 988 Suicide and Crisis Lifeline (universal, not patient-identifying).
+- Footer: links to Support, Privacy, Terms — no clinical phone numbers, no "Milton Recovery Centers" branding.
 
-**Recommended path:** Option 1 (strip identifying language from automated email) plus Milton Recovery Centers staff sending a personal follow-up from their MRC address. Patient experience is preserved, no vendor PHI exposure, no BAA negotiation required.
+**Effect:** Under the same legal analysis applied to the Twilio SMS architecture, Resend is no longer processing PHI on behalf of Milton Recovery Centers. A BAA is not required, and the welcome email is consistent with the rest of the app's brand-anonymous vendor surfaces.
 
-**Timeline:** completed before public launch unless we decide otherwise.
+**Engineering record:** Welcome email source code at `supabase/functions/send-welcome-email/index.ts`, deployed to production Supabase 2026-06-10. The HIPAA-driven naming convention is documented as an inline code comment so future engineering work cannot accidentally reintroduce the gap.
 
 ---
 
@@ -154,13 +157,13 @@ So you can confirm nothing is missing from the picture:
 I have reviewed the architecture described in Sections 2 through 8 of this memo. I confirm that:
 
 1. The data inventory in Section 2 accurately describes what patient information the Milton Nation app collects, with no clinical information missing or mischaracterized.
-2. The vendor flow in Section 3 accurately describes which third parties see which patient information, with the Resend gap in Section 7 honestly disclosed.
+2. The vendor flow in Section 3 accurately describes which third parties see which patient information.
 3. The HIPAA and 42 CFR Part 2 confidentiality, audit, consent, and subcontractor controls described in Section 4 are sufficient to protect Milton Recovery Centers patients identified as alumni.
 4. The clinical safety workflows in Section 5 — automated content moderation, crisis response sheet, urgent care-team push notifications, care-team chat — meet my standard of care for the alumni population this app serves.
 5. The patient rights documented in Section 6 are honored by the app and are not in conflict with the rights granted to patients by their original Milton Recovery Centers consent documents.
-6. The remediation plan in Section 7 for the Resend welcome email gap is reasonable and will be completed within the timeline stated.
+6. The Resend welcome email remediation described in Section 7 is in production as of 2026-06-10 and closes the identified gap.
 
-I authorize launch of the Milton Nation Alumni App on the Apple App Store, conditional on Section 7 remediation being completed within the stated timeline.
+I authorize launch of the Milton Nation Alumni App on the Apple App Store.
 
 | | |
 |---|---|

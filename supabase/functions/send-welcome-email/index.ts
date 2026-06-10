@@ -76,9 +76,15 @@ serve(async (req: Request) => {
       );
     }
 
-    // Branded welcome email — no PHI in body or subject.
-    // Resend does not hold a HIPAA BAA; never include name, DOB, diagnosis,
-    // or any other PHI in emails sent through this function.
+    // HIPAA NOTE (2026-06-10): Resend does not hold a HIPAA BAA. Body and
+    // subject MUST NOT identify the recipient as a Milton Recovery Centers
+    // patient or alumni of a substance use disorder treatment program. The
+    // app name "Milton Nation" is retained because it is a brand name with
+    // no inherent treatment-program meaning; "Milton Recovery Centers,"
+    // "alumni community," "recovery community," "treatment," and clinical
+    // telephone numbers are removed. The recipient learns the specific
+    // identity and clinical scope of Milton Nation only after they install
+    // the app and authenticate into Supabase, which is HIPAA-covered.
     // Design matches login screen wordmark + AppTheme.swift brand palette.
     const html = `<!DOCTYPE html>
 <html>
@@ -96,37 +102,34 @@ serve(async (req: Request) => {
     </div>
     <div style="padding:40px 32px 32px;text-align:center;background:#ffffff;">
       <h1 style="color:#101820;margin:0;font-size:42px;font-weight:300;letter-spacing:-1px;font-family:Georgia,'Times New Roman',serif;">milton</h1>
-      <p style="color:#6B7280;margin:6px 0 0;font-size:14px;font-weight:500;letter-spacing:0.5px;">Milton Nation Alumni</p>
+      <p style="color:#6B7280;margin:6px 0 0;font-size:14px;font-weight:500;letter-spacing:0.5px;">Milton Nation</p>
       <div style="width:40px;height:2px;background:#D4EB8E;margin:18px auto 0;border-radius:1px;"></div>
-      <p style="color:#6B7280;margin:18px 0 0;font-size:13px;font-style:italic;">Driven by purpose. Committed to care.</p>
     </div>
     <div style="padding:8px 32px 36px;">
-      <h2 style="color:#101820;margin:24px 0 12px;font-size:24px;font-weight:700;text-align:center;">Welcome to the community</h2>
+      <h2 style="color:#101820;margin:24px 0 12px;font-size:24px;font-weight:700;text-align:center;">Welcome to Milton Nation</h2>
       <p style="color:#444;line-height:1.7;margin:0 0 18px;font-size:15px;text-align:center;">
-        Your application to join the <strong style="color:#007396;">Milton Nation</strong> alumni community has been received and is being reviewed.
+        Your application has been received and is being reviewed.
       </p>
       <div style="background:linear-gradient(135deg,#f0f8f8 0%,#e8f4f5 100%);border-radius:12px;padding:20px;margin:24px 0;border-left:4px solid #56B093;">
         <p style="color:#101820;font-weight:600;margin:0 0 12px;font-size:14px;">What happens next</p>
         <table style="width:100%;border-spacing:0;">
           <tr><td style="padding:8px 0;width:30px;vertical-align:top;"><div style="width:24px;height:24px;background:#007396;border-radius:12px;color:white;text-align:center;line-height:24px;font-size:13px;font-weight:700;">1</div></td><td style="padding:8px 0 8px 12px;color:#444;font-size:14px;line-height:1.5;">An admin reviews your application (typically within 24 hours)</td></tr>
           <tr><td style="padding:8px 0;vertical-align:top;"><div style="width:24px;height:24px;background:#0093B2;border-radius:12px;color:white;text-align:center;line-height:24px;font-size:13px;font-weight:700;">2</div></td><td style="padding:8px 0 8px 12px;color:#444;font-size:14px;line-height:1.5;">You'll receive a push notification once approved</td></tr>
-          <tr><td style="padding:8px 0;vertical-align:top;"><div style="width:24px;height:24px;background:#56B093;border-radius:12px;color:white;text-align:center;line-height:24px;font-size:13px;font-weight:700;">3</div></td><td style="padding:8px 0 8px 12px;color:#444;font-size:14px;line-height:1.5;">Sign in to access the community, meetings, and your care team</td></tr>
+          <tr><td style="padding:8px 0;vertical-align:top;"><div style="width:24px;height:24px;background:#56B093;border-radius:12px;color:white;text-align:center;line-height:24px;font-size:13px;font-weight:700;">3</div></td><td style="padding:8px 0 8px 12px;color:#444;font-size:14px;line-height:1.5;">Sign in to access the app</td></tr>
         </table>
       </div>
       <div style="background:#fafafa;border:1px solid #e5e7eb;border-radius:10px;padding:16px;margin:24px 0 0;">
         <p style="color:#6B7280;font-size:12px;margin:0 0 6px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Need support now?</p>
-        <p style="color:#444;font-size:13px;line-height:1.6;margin:0;">The <strong>988 Suicide &amp; Crisis Lifeline</strong> is free and confidential, 24/7. Call or text <strong>988</strong> anytime, even before your account is approved.</p>
+        <p style="color:#444;font-size:13px;line-height:1.6;margin:0;">The <strong>988 Suicide &amp; Crisis Lifeline</strong> is free and confidential, 24/7. Call or text <strong>988</strong> anytime.</p>
       </div>
     </div>
-    <div style="background:#101820;padding:24px 32px;text-align:center;">
-      <p style="color:rgba(255,255,255,0.95);margin:0 0 8px;font-size:13px;font-weight:600;letter-spacing:0.3px;">Milton Recovery Centers</p>
-      <p style="color:rgba(255,255,255,0.6);margin:0 0 14px;font-size:12px;">Florida &middot; (844) 406-4325 &nbsp;&middot;&nbsp; Ohio &middot; (740) 715-4673</p>
+    <div style="background:#101820;padding:20px 32px;text-align:center;">
       <p style="margin:0;">
-        <a href="https://miltonrecovery.com" style="color:#D4EB8E;text-decoration:none;font-size:12px;font-weight:500;">miltonrecovery.com</a>
-        <span style="color:rgba(255,255,255,0.3);margin:0 8px;">&middot;</span>
         <a href="https://miltonrecovery.com/app-support" style="color:#D4EB8E;text-decoration:none;font-size:12px;font-weight:500;">Support</a>
         <span style="color:rgba(255,255,255,0.3);margin:0 8px;">&middot;</span>
-        <a href="https://miltonrecovery.com/privacy" style="color:#D4EB8E;text-decoration:none;font-size:12px;font-weight:500;">Privacy</a>
+        <a href="https://miltonrecovery.com/milton-nation-privacy/" style="color:#D4EB8E;text-decoration:none;font-size:12px;font-weight:500;">Privacy</a>
+        <span style="color:rgba(255,255,255,0.3);margin:0 8px;">&middot;</span>
+        <a href="https://miltonrecovery.com/app-terms-of-use/" style="color:#D4EB8E;text-decoration:none;font-size:12px;font-weight:500;">Terms</a>
       </p>
     </div>
   </div>
@@ -142,7 +145,7 @@ serve(async (req: Request) => {
       body: JSON.stringify({
         from: "Milton Nation <noreply@miltonrecovery.com>",
         to: [to],
-        subject: "Welcome to Milton Nation!",
+        subject: "Welcome to Milton Nation",
         html,
       }),
     });
