@@ -329,12 +329,22 @@ final class SupabaseDataService: DataServiceProtocol {
             matchedKeywords: matchedKeywords
         )
 
-        let post: CommunityPost = try await client.from("posts")
+        // supabase-swift 2.41.1 has a bug where `.insert(...).select().single()`
+        // does NOT set Accept: application/vnd.pgrst.object+json on the request,
+        // so the server returns a JSON array (one element) instead of a single
+        // object. Swift's decoder then throws "data couldn't be read because it
+        // is missing" when it sees `[` where it expected `{`. We work around it
+        // by decoding the response as an array and taking the first element.
+        // (Same workaround applied to every insert+select+single site in this file.)
+        let inserted: [CommunityPost] = try await client.from("posts")
             .insert(insert)
             .select()
-            .single()
             .execute()
             .value
+        guard let post = inserted.first else {
+            throw NSError(domain: "SupabaseDataService.createPost", code: 1,
+                          userInfo: [NSLocalizedDescriptionKey: "Server returned empty response on insert."])
+        }
 
         return post
     }
@@ -415,12 +425,16 @@ final class SupabaseDataService: DataServiceProtocol {
             status: status.rawValue
         )
 
-        let comment: Comment = try await client.from("comments")
+        // See createPost comment re: supabase-swift 2.41.1 insert+single bug.
+        let insertedComments: [Comment] = try await client.from("comments")
             .insert(insert)
             .select()
-            .single()
             .execute()
             .value
+        guard let comment = insertedComments.first else {
+            throw NSError(domain: "SupabaseDataService.submitComment", code: 1,
+                          userInfo: [NSLocalizedDescriptionKey: "Server returned empty response on insert."])
+        }
 
         // Increment post comments count via RPC
         try await client.rpc(
@@ -560,12 +574,16 @@ final class SupabaseDataService: DataServiceProtocol {
     }
 
     func createMeeting(_ meeting: Meeting) async throws -> Meeting {
-        let inserted: Meeting = try await client.from("meetings")
+        // See createPost comment re: supabase-swift 2.41.1 insert+single bug.
+        let insertedMeetings: [Meeting] = try await client.from("meetings")
             .insert(meeting)
             .select()
-            .single()
             .execute()
             .value
+        guard let inserted = insertedMeetings.first else {
+            throw NSError(domain: "SupabaseDataService.createMeeting", code: 1,
+                          userInfo: [NSLocalizedDescriptionKey: "Server returned empty response on insert."])
+        }
         return inserted
     }
 
@@ -659,12 +677,16 @@ final class SupabaseDataService: DataServiceProtocol {
             matchedKeywords: matchedKeywords
         )
 
-        var message: ChatMessage = try await client.from("messages")
+        // See createPost comment re: supabase-swift 2.41.1 insert+single bug.
+        let insertedMessages: [ChatMessage] = try await client.from("messages")
             .insert(insert)
             .select()
-            .single()
             .execute()
             .value
+        guard var message = insertedMessages.first else {
+            throw NSError(domain: "SupabaseDataService.sendMessage", code: 1,
+                          userInfo: [NSLocalizedDescriptionKey: "Server returned empty response on insert."])
+        }
 
         message.isFromCurrentUser = true
 
@@ -766,12 +788,16 @@ final class SupabaseDataService: DataServiceProtocol {
     }
 
     func createAnnouncement(title: String, description: String) async throws -> Announcement {
-        let announcement: Announcement = try await client.from("announcements")
+        // See createPost comment re: supabase-swift 2.41.1 insert+single bug.
+        let inserted: [Announcement] = try await client.from("announcements")
             .insert(AnnouncementInsertParams(title: title, description: description))
             .select()
-            .single()
             .execute()
             .value
+        guard let announcement = inserted.first else {
+            throw NSError(domain: "SupabaseDataService.createAnnouncement", code: 1,
+                          userInfo: [NSLocalizedDescriptionKey: "Server returned empty response on insert."])
+        }
 
         return announcement
     }
@@ -868,7 +894,8 @@ final class SupabaseDataService: DataServiceProtocol {
         if !existing.isEmpty { return nil } // Already recorded
 
         // Record the milestone
-        let milestone: SobrietyMilestone = try await client.from("sobriety_milestones")
+        // See createPost comment re: supabase-swift 2.41.1 insert+single bug.
+        let insertedMilestones: [SobrietyMilestone] = try await client.from("sobriety_milestones")
             .insert(MilestoneInsertParams(
                 userId: user.id,
                 milestoneType: type.rawValue,
@@ -876,9 +903,12 @@ final class SupabaseDataService: DataServiceProtocol {
                 pointsAwarded: type.points
             ))
             .select()
-            .single()
             .execute()
             .value
+        guard let milestone = insertedMilestones.first else {
+            throw NSError(domain: "SupabaseDataService.recordMilestone", code: 1,
+                          userInfo: [NSLocalizedDescriptionKey: "Server returned empty response on insert."])
+        }
 
         // Also award the points
         _ = try? await awardPoints(action: .milestoneReached)
