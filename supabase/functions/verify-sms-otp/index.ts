@@ -93,74 +93,79 @@ serve(async (req: Request) => {
     }
     // ────────────────────────────────────────────────────────────────────────
 
-    // Find the latest non-expired, non-verified challenge for this user
-    const { data: challenge, error: challengeError } = await supabaseAdmin
-      .from("sms_otp_challenges")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("verified", false)
-      .gt("expires_at", new Date().toISOString())
-      .order("created_at", { ascending: false })
-      .limit(1)
+    // ── Real path: check the code with Twilio Verify ─────────────────────
+    // Verify owns code storage, expiry, and attempt-counting. We look up the
+    // user's phone and ask Verify whether <phone, code> is approved.
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .select("phone")
+      .eq("id", user.id)
       .single();
 
-    if (challengeError || !challenge) {
+    if (profileError || !profile?.phone) {
+      return new Response(
+        JSON.stringify({ verified: false, error: "No phone number on file. Please request a new code." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    let toPhone = profile.phone.replace(/[\s\-\(\)]/g, "");
+    if (!toPhone.startsWith("+")) {
+      toPhone = "+1" + toPhone; // Default to US
+    }
+
+    const twilioSid = Deno.env.get("TWILIO_ACCOUNT_SID") ?? "";
+    const twilioAuth = Deno.env.get("TWILIO_AUTH_TOKEN") ?? "";
+    const verifyServiceSid = Deno.env.get("TWILIO_VERIFY_SERVICE_SID") ?? "";
+
+    const checkUrl = `https://verify.twilio.com/v2/Services/${verifyServiceSid}/VerificationCheck`;
+    const checkBody = new URLSearchParams({ To: toPhone, Code: code });
+
+    const checkResponse = await fetch(checkUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: "Basic " + btoa(`${twilioSid}:${twilioAuth}`),
+      },
+      body: checkBody.toString(),
+    });
+
+    // Verify returns 404 when there is no pending verification — i.e. the code
+    // expired, was already consumed, or too many wrong attempts voided it.
+    if (checkResponse.status === 404) {
       return new Response(
         JSON.stringify({ verified: false, error: "No active verification code. Please request a new one." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Check max attempts
-    if (challenge.attempts >= challenge.max_attempts) {
-      // Delete the exhausted challenge
-      await supabaseAdmin
-        .from("sms_otp_challenges")
-        .delete()
-        .eq("id", challenge.id);
-
+    if (!checkResponse.ok) {
+      const checkError = await checkResponse.text();
+      console.error("Twilio Verify check error:", checkError);
       return new Response(
-        JSON.stringify({ verified: false, error: "Too many attempts. Please request a new code." }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Hash the provided code
-    const encoder = new TextEncoder();
-    const data = encoder.encode(code);
-    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const codeHash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-
-    // Compare hashes
-    if (codeHash !== challenge.otp_hash) {
-      // Increment attempts
-      await supabaseAdmin
-        .from("sms_otp_challenges")
-        .update({ attempts: challenge.attempts + 1 })
-        .eq("id", challenge.id);
-
-      const remaining = challenge.max_attempts - challenge.attempts - 1;
-      return new Response(
-        JSON.stringify({
-          verified: false,
-          error: `Invalid code. ${remaining} attempt${remaining !== 1 ? "s" : ""} remaining.`,
-        }),
+        JSON.stringify({ verified: false, error: "Couldn't verify the code. Please try again." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Code matches — delete ALL challenges for this user immediately.
-    // There is no reason to keep a verified record; deleting prevents
-    // verified=true rows accumulating and eliminates replay-attack surface.
-    await supabaseAdmin
-      .from("sms_otp_challenges")
-      .delete()
-      .eq("user_id", user.id);
+    const checkResult = await checkResponse.json();
+
+    if (checkResult.status === "approved") {
+      // Clear the rate-limit ledger rows for this user.
+      await supabaseAdmin
+        .from("sms_otp_challenges")
+        .delete()
+        .eq("user_id", user.id);
+
+      return new Response(
+        JSON.stringify({ verified: true }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     return new Response(
-      JSON.stringify({ verified: true }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ verified: false, error: "Invalid code. Please try again." }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
     console.error("verify-sms-otp error:", err);

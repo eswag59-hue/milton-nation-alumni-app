@@ -134,31 +134,24 @@ serve(async (req: Request) => {
     }
     // ────────────────────────────────────────────────────────────────────────
 
-    // Generate 6-digit OTP
-    const otp = String(Math.floor(100000 + Math.random() * 900000));
-
-    // Hash the OTP with SHA-256
-    const encoder = new TextEncoder();
-    const data = encoder.encode(otp);
-    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const otpHash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-
-    // Delete any previous unexpired challenges for this user
+    // ── Rate-limit ledger ────────────────────────────────────────────────
+    // Twilio Verify now owns code generation, SMS delivery, expiry, and
+    // attempt-counting. We keep one lightweight row per send ONLY to power
+    // the 5/hour app-level rate limit above (a toll-fraud guard). No OTP is
+    // generated or stored here anymore — the code lives entirely in Verify.
     await supabaseAdmin
       .from("sms_otp_challenges")
       .delete()
       .eq("user_id", user.id)
       .eq("verified", false);
 
-    // Store the challenge (expires in 5 minutes)
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
     const { error: insertError } = await supabaseAdmin
       .from("sms_otp_challenges")
       .insert({
         user_id: user.id,
         phone: profile.phone,
-        otp_hash: otpHash,
+        otp_hash: "twilio-verify", // placeholder; the real code is held by Twilio Verify
         expires_at: expiresAt,
       });
 
@@ -169,47 +162,42 @@ serve(async (req: Request) => {
       });
     }
 
-    // Send SMS via Twilio
-    const twilioSid = Deno.env.get("TWILIO_ACCOUNT_SID") ?? "";
-    const twilioAuth = Deno.env.get("TWILIO_AUTH_TOKEN") ?? "";
-    const twilioPhone = Deno.env.get("TWILIO_PHONE_NUMBER") ?? "";
-
     // Format phone to E.164 if needed
     let toPhone = profile.phone.replace(/[\s\-\(\)]/g, "");
     if (!toPhone.startsWith("+")) {
       toPhone = "+1" + toPhone; // Default to US
     }
 
-    const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`;
-    const twilioBody = new URLSearchParams({
-      To: toPhone,
-      From: twilioPhone,
-      // SMS body must match the samples submitted to TCR for the A2P 10DLC
-      // campaign. Includes STOP / HELP language as required by US carrier rules.
-      // Changing this without also updating the TCR campaign samples risks
-      // triggering a carrier-level filter.
-      //
-      // HIPAA NOTE (2026-05-31): brand reference deliberately omitted. A
-      // phone number alone is not PHI, but a phone number + identifier of a
-      // specific Substance Use Disorder treatment program IS PHI under the
-      // HIPAA 18-identifiers rule. Keeping the OTP brand-anonymous means
-      // Twilio is not processing PHI on our behalf and no BAA is required
-      // for this OTP flow. In-app post-OTP screens remain fully branded.
-      Body: `Your verification code is ${otp}. It expires in 5 minutes. Do not share this code. Reply STOP to opt out, HELP for help.`,
-    });
+    // ── Start a Twilio Verify verification (SMS channel) ─────────────────
+    // Verify uses Twilio's pre-registered sender pool, so this path does NOT
+    // require A2P 10DLC Brand/Campaign registration — per Twilio's own docs,
+    // OTP/2FA is exempt when sent through Verify.
+    //
+    // HIPAA NOTE: the Verify SMS body is "Your <FriendlyName> verification
+    // code is: XXXXXX", where <FriendlyName> is the Verify Service name. The
+    // service is named "Milton Nation" (the brand-anonymous label already used
+    // in the welcome email) — NOT "Milton Recovery" / any SUD-program wording.
+    // A phone number + a specific SUD-treatment-program identifier would be
+    // PHI; "Milton Nation" is not. In-app post-OTP screens remain fully branded.
+    const twilioSid = Deno.env.get("TWILIO_ACCOUNT_SID") ?? "";
+    const twilioAuth = Deno.env.get("TWILIO_AUTH_TOKEN") ?? "";
+    const verifyServiceSid = Deno.env.get("TWILIO_VERIFY_SERVICE_SID") ?? "";
 
-    const twilioResponse = await fetch(twilioUrl, {
+    const verifyUrl = `https://verify.twilio.com/v2/Services/${verifyServiceSid}/Verifications`;
+    const verifyBody = new URLSearchParams({ To: toPhone, Channel: "sms" });
+
+    const twilioResponse = await fetch(verifyUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
         Authorization: "Basic " + btoa(`${twilioSid}:${twilioAuth}`),
       },
-      body: twilioBody.toString(),
+      body: verifyBody.toString(),
     });
 
     if (!twilioResponse.ok) {
       const twilioError = await twilioResponse.text();
-      console.error("Twilio error:", twilioError);
+      console.error("Twilio Verify start error:", twilioError);
       return new Response(JSON.stringify({ error: "Failed to send SMS" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
