@@ -211,7 +211,6 @@ final class SupabaseAuthService: AuthServiceProtocol {
 
         // Fire welcome email + admin push notification — non-blocking, never fail registration
         let capturedEmail = email
-        let capturedName = fullName
         let capturedId = authUser.id.uuidString
         let capturedFacility = facility?.displayName ?? "Unknown"
         Task {
@@ -224,8 +223,10 @@ final class SupabaseAuthService: AuthServiceProtocol {
                 options: .init(method: .post, body: AdminRegistrationNotifParams(
                     target: "role",
                     roles: ["admin", "super_admin"],
+                    // HIPAA: no member name in the APNs payload (Apple is not a BAA) —
+                    // admins tap in to see who, where the data is RLS-protected.
                     title: "New Member Request (\(capturedFacility))",
-                    body: "\(capturedName) has applied to join the \(capturedFacility) community.",
+                    body: "A new member has applied to join the \(capturedFacility) community. Tap to review.",
                     data: ["type": "new_registration", "userId": capturedId, "facility": facility?.rawValue ?? ""]
                 ))
             )

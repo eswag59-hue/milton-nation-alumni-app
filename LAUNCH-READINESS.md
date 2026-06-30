@@ -29,13 +29,16 @@ Legend: ✅ done · 🟡 in progress · ❌ not started · ❓ needs confirm · 
 - **Logo swatch-bar removed** — `milton_logo.png` + `_dark.png` cropped 2000×2000 → 2000×1320, verified clean. (Ships in Build 13.)
 - Verified: RLS on all tables ✅ · Privacy + Terms URLs live (200) ✅ · account delete + export present ✅ · export-compliance key set in Release.xcconfig ✅.
 - Refreshed audit checklist Section G for Verify; wrote `PROMO-BRIEF.md`.
+- **`blocked_users` table created + RLS, applied to prod** (block-list backing for Apple 1.2).
+- **Push-PHI fix:** removed the applicant's name from the new-member admin APNs push (`SupabaseAuthService`) — payloads now carry no member names. *(Note: the "I'm Struggling" notification is a local on-device notification to the user themselves — not a leak — left as-is.)*
+- Wrote **`launch-kit/APP-STORE-SUBMISSION-PACKET.md`** (App Privacy answers + reviewer notes + pre-submit gate).
 
 ---
 
 ## Remaining work — by owner
 
 ### 🤖 Claude can build (no human needed) — IN QUEUE
-1. **❌🔴 Report content + Block user** (Apple Guideline 1.2 — UGC apps are rejected without these). Insertion points: `PostCard.swift`, `PostDetailScreen.swift`, comment rows, profile. Reuse `content_flags` + `flag-content` for report; new `blocked_users` table + RLS + feed/comment/chat filters + Settings → unblock for block. **Biggest open code item.**
+1. **❌🔴 Report content + Block user** (Apple 1.2 — UGC apps rejected without these). DB is ready (`blocked_users` ✅). Remaining is **Swift only** — full turnkey spec at the bottom of this file. **Build WITH the test loop** (user-facing safety code — must be runtime-tested, not blind-committed to the launch branch).
 2. **❌ Consent / EULA acceptance gate** at first login/registration (Apple UGC + HIPAA). Currently only a terms *link*, no acceptance.
 3. **❓ Push payload PHI check** — confirm `send-push-notification` alert bodies contain no PHI (no post content / health detail / program name); genericize if needed.
 4. **App Store metadata packet** — assemble privacy "nutrition label" answers + reviewer notes from existing specs.
@@ -94,3 +97,24 @@ Legend: ✅ done · 🟡 in progress · ❌ not started · ❓ needs confirm · 
 **Compliance/ops track (Ezra + clinical, parallel):** clinical sign-off → activate Supabase BAA → **crisis-response protocol approved** → staff training → pilot cohort.
 
 **The true gate to a real patient (not the App Store checkmark):** ① Supabase BAA active · ② `DEMO_BYPASS` off · ③ human crisis-response protocol live. Do not onboard a patient until all three are true.
+
+---
+
+## 🛠 Turnkey build-spec — Report / Block / Consent (build WITH the test loop)
+
+**DB:** `blocked_users(blocker_id, blocked_id)` ✅ applied to prod (RLS: own-rows only).
+
+**Report** (reuse the existing flag → admin-queue pipeline; no new admin UI):
+- Add `reportPost(postId:reason:)` / `reportComment(commentId:reason:)` to `ContentFilterService` → invoke `flag-content` with `{ feature: "user_report", riskLevel: "low_risk", categories: ["user_reported"], redactedSummary: "user_report:post:<uuid>" }`. Routes to the existing Content Flags admin queue.
+- UI: `Menu`/`confirmationDialog` ("Report post", "Block user") in `PostCard` header (near the `Spacer()` ~line 76) + each `commentRow` + `PostDetailScreen`. Hide on the user's own content (`post.userId == currentUserId`).
+
+**Block** (client-side filter — safest, no query surgery):
+- Service: `blockUser(_:)`, `unblockUser(_:)`, `fetchBlockedUserIds() -> Set<UUID>`.
+- Filter: in `fetchPosts` (after ~line 277) and `fetchComments` (after ~397), drop rows where `userId ∈ blockedIds`; same for `fetchConversations`/`fetchMessages`. Cache the set per session; refresh on block/unblock.
+- UI: "Block user" action (same menus) + **Settings → Blocked Users** screen with Unblock.
+
+**Consent gate** (low-risk):
+- `LoginScreen` already has a `registrationForm`. Add a required "I agree to the Terms of Use & Privacy Policy" toggle (tappable links to the live URLs) gating the Register button.
+
+**Ezra's part (the test):** on Build 13 — report reaches the admin queue · blocked user's posts/comments/messages disappear · unblock restores · consent doesn't lock anyone out. Then Apple 1.2 is satisfied.
+
