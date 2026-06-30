@@ -498,58 +498,47 @@ Sign up a brand-new alumni (use second real phone if available, or modify your o
 
 ---
 
-# SECTION G — SMS (Twilio)
+# SECTION G — SMS (Twilio Verify)
 
-⚠️ **Most SMS surfaces require the 2FA campaign to be APPROVED.** Until TCR clears it, real SMS won't deliver. Use demo accounts with `000000` for everything else.
+✅ **Migrated to Twilio Verify 2026-06-21 — NO A2P 10DLC campaign required.** OTP now sends through Twilio's pre-registered sender pool, so real SMS works in production *now* (no "wait for TCR"). Code generation, expiry, and attempt-counting are owned by Twilio Verify. Verify Service: `VA1bd8349199b115f24782539798e9f70a` (Friendly Name "Milton Nation").
 
 ## G1 — Demo bypass (works always)
 
-- [ ] Sign in as Alex Demo with `000000` → bypass works, no real SMS
-- [ ] No charge on Twilio balance
+- [x] Sign in as Alex Demo (`appreviewer@miltonrecovery.com`) with `000000` → bypass works, no real SMS — ✅ verified 2026-06-21
+- [ ] Re-confirm on Build 12 once installed
+- [ ] No charge on Twilio balance for the demo path
 
-## G2 — Signup OTP (real SMS)
+## G2 — Signup OTP (real SMS via Verify)
 
-**Skip until TCR approves campaign.**
+- [ ] Verify with a real phone number on a non-test account
+- [ ] SMS arrives within ~30 sec
+- [ ] Body reads: `Your Milton Nation verification code is: NNNNNN` (Twilio may send a brandless variant on some carriers — both are acceptable)
+- [ ] Sender is a Twilio shared sender (short code / shared long code) — NOT a number you own (old +1 717-971-3757 was released)
+- [ ] Code completes signup
 
-- [ ] Sign up with your real phone number
-- [ ] SMS arrives within 30 sec
-- [ ] Body verbatim: `Your verification code is XXXXXX. It expires in 5 minutes. Do not share this code. Reply STOP to opt out, HELP for help.`
-- [ ] No "Milton Nation" prefix
-- [ ] Sender is your Twilio number (+17179713757)
-- [ ] OTP works to complete signup
+## G3 — Login OTP (real SMS via Verify)
 
-## G3 — Login OTP (real SMS)
+- [x] Sign in with a real-phone account → real SMS code → logs in — ✅ verified 2026-06-21 (`ebarish@miltonhealthgroup.com`, +1 201-747-7727)
+- [ ] Re-confirm on Build 12 once installed
+- [ ] Wrong code is rejected with a clear error; correct code logs in
 
-**Skip until TCR approves campaign.**
+## G4 — Phone number change (real SMS via Verify)
 
-- [ ] Sign out, sign back in with real phone account
-- [ ] SMS arrives within 30 sec
-- [ ] Same body format
-- [ ] OTP works
+- [ ] Settings → Change Phone Number → enter a new real number
+- [ ] SMS arrives at the NEW number
+- [ ] Code works → number updated in profile
 
-## G4 — Phone number change (real SMS)
+## G5 — Rate limiting / opt-out (Verify-managed)
 
-**Skip until TCR approves campaign.**
-
-- [ ] Settings → Change Phone Number → enter new real number
-- [ ] SMS arrives at NEW number
-- [ ] OTP works → number updated in profile
-
-## G5 — STOP keyword
-
-**Skip until TCR approves campaign.**
-
-- [ ] After receiving an OTP, reply STOP
-- [ ] Receive auto-response confirming opt-out
-- [ ] Try to login → no SMS arrives (you're opted out)
-- [ ] Twilio Console shows you on the suppression list
+- [ ] Request codes rapidly (>5 in an hour) → app-level rate limit triggers ("Too many verification code requests")
+- [ ] N/A — per-user STOP opt-out: OTP via Verify's shared pool is transactional; opt-out is handled by Twilio at the pool level, not a per-user suppression list you test here. (Old A2P STOP test retired.)
 
 ## G6 — Admin invite SMS (KILLED — verify NOT used)
 
-The Marketing campaign was deprecated. send-invite-sms function is dormant.
+Invite SMS path is dormant; admin invites go out by EMAIL at launch (SMS invites = v1.1). The marketing service `MG58c4…` / number +1 903-776-1118 still exist but have no approved campaign, so invite SMS would not deliver.
 
-- [ ] Admin panel does NOT show "Send Invite SMS" button (or it shows "Use email instead")
-- [ ] If admin somehow fires it → SMS doesn't deliver (because no approved campaign on Marketing service)
+- [ ] Admin panel does NOT show a working "Send Invite SMS" button (or it shows "Use email instead")
+- [ ] If somehow fired → SMS doesn't deliver (no approved campaign on the marketing service)
 
 ---
 
