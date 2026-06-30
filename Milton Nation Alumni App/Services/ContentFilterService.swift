@@ -177,6 +177,65 @@ final class ContentFilterService: @unchecked Sendable {
                                    detail: "escalation_failed:\(result.redactedSummary)")
         }
     }
+
+    // MARK: - User Reports (Apple Guideline 1.2)
+
+    /// File a user-initiated report of objectionable content (a post or a
+    /// comment) to the SAME `flag-content` Edge Function the moderation engine
+    /// uses. The flag lands in the existing admin Content Flags queue — no new
+    /// admin surface is needed.
+    ///
+    /// - Parameters:
+    ///   - kind: `"post"` or `"comment"` — used to build the redacted summary.
+    ///   - targetId: the UUID of the reported post/comment.
+    ///   - reporterId: the current user's id (optional; used for audit only).
+    ///   - reason: an optional short reason supplied by the reporter. NEVER
+    ///     contains the reported content itself, so it is safe to transmit.
+    /// - Throws: rethrows network/encoding errors so the caller can surface a
+    ///   failure toast. (Distinct from `escalateToServer`, which is fire-and-forget.)
+    func reportUserContent(
+        kind: String,
+        targetId: UUID,
+        reporterId: UUID?,
+        reason: String?
+    ) async throws {
+        guard SupabaseConfig.isConfigured else { return }
+
+        let session = try? await SupabaseConfig.client.auth.session
+        guard let accessToken = session?.accessToken else {
+            throw NSError(domain: "ContentFilterService.reportUserContent", code: 401,
+                          userInfo: [NSLocalizedDescriptionKey: "Not signed in."])
+        }
+
+        // Redacted summary: only the kind + target id (and a coarse reason tag).
+        // The reported *content* is never sent — admins look it up by id.
+        var summary = "user_report:\(kind):\(targetId.uuidString)"
+        if let reason, !reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            // Cap the reason so we never accidentally smuggle long text upstream.
+            summary += ":reason=\(reason.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120))"
+        }
+
+        let payload = ContentFlagPayload(
+            userId: reporterId?.uuidString,
+            riskLevel: "low_risk",
+            categories: ["user_reported"],
+            feature: ContentFeature.userReport.rawValue,
+            redactedSummary: summary,
+            isEmergency: false,
+            timestamp: ISO8601DateFormatter().string(from: Date())
+        )
+
+        let data = try JSONEncoder().encode(payload)
+
+        _ = try await SupabaseConfig.client.functions
+            .invoke("flag-content", options: .init(
+                headers: ["Authorization": "Bearer \(accessToken)"],
+                body: data
+            ))
+
+        AuditLogger.shared.log(.contentFlagged, userId: reporterId,
+                               detail: "user_report:\(kind):\(targetId.uuidString)")
+    }
 }
 
 // MARK: - Payload (sent to Edge Function — no raw text)

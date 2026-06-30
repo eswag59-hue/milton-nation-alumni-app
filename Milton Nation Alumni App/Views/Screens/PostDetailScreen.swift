@@ -21,6 +21,10 @@ struct PostDetailScreen: View {
     @State private var showEditSheet = false
     @State private var editDraft = ""
 
+    // Report / Block confirmation targets for comments (Apple Guideline 1.2)
+    @State private var commentToReport: Comment?
+    @State private var commentAuthorToBlock: Comment?
+
     // Pull the post live from the VM so it updates as likes/comments come in
     private var post: CommunityPost? {
         communityVM.posts.first(where: { $0.id == postId })
@@ -44,6 +48,13 @@ struct PostDetailScreen: View {
                             onLike: { communityVM.toggleLike(post: post) },
                             onToggleComments: {},
                             onSubmitComment: {},
+                            onReportPost: { communityVM.reportPost(post) },
+                            onBlockPost: {
+                                communityVM.blockUser(post.userId, displayName: post.userName)
+                                // The post is gone from the feed now — leave detail.
+                                dismiss()
+                            },
+                            currentUserId: appViewModel.currentUser?.id,
                             comments: [],
                             isLoadingComments: false,
                             isCommentsExpanded: false,
@@ -210,6 +221,60 @@ struct PostDetailScreen: View {
         } message: {
             Text("This will permanently remove your post and all its comments. This can't be undone.")
         }
+        // MARK: - Comment Report / Block confirmations (Apple Guideline 1.2)
+        .confirmationDialog(
+            "Report this comment?",
+            isPresented: Binding(
+                get: { commentToReport != nil },
+                set: { if !$0 { commentToReport = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Report", role: .destructive) {
+                if let c = commentToReport {
+                    communityVM.reportComment(postId: postId, commentId: c.id)
+                }
+                commentToReport = nil
+            }
+            Button("Cancel", role: .cancel) { commentToReport = nil }
+        } message: {
+            Text("Our team will review this comment. Reporting is anonymous.")
+        }
+        .confirmationDialog(
+            commentAuthorToBlock.map { "Block \($0.userName)?" } ?? "Block user?",
+            isPresented: Binding(
+                get: { commentAuthorToBlock != nil },
+                set: { if !$0 { commentAuthorToBlock = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Block", role: .destructive) {
+                if let c = commentAuthorToBlock {
+                    communityVM.blockUser(c.userId, displayName: c.userName)
+                }
+                commentAuthorToBlock = nil
+            }
+            Button("Cancel", role: .cancel) { commentAuthorToBlock = nil }
+        } message: {
+            Text("You won't see posts or comments from this person. You can unblock them anytime in Settings.")
+        }
+        // Report / Block success + failure surfaces
+        .alert("Done", isPresented: $communityVM.showActionConfirmation) {
+            Button("OK") {}
+        } message: {
+            Text(communityVM.actionConfirmationMessage)
+        }
+        .alert(
+            "Something went wrong",
+            isPresented: Binding(
+                get: { communityVM.errorMessage != nil },
+                set: { if !$0 { communityVM.errorMessage = nil } }
+            )
+        ) {
+            Button("OK") { communityVM.errorMessage = nil }
+        } message: {
+            Text(communityVM.errorMessage ?? "")
+        }
         .onAppear {
             loadComments()
         }
@@ -262,6 +327,30 @@ struct PostDetailScreen: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
+
+            // Report / Block menu for OTHER people's comments only.
+            if let me = appViewModel.currentUser?.id, comment.userId != me {
+                Menu {
+                    Button(role: .destructive) {
+                        commentToReport = comment
+                    } label: {
+                        Label("Report Comment", systemImage: "flag")
+                    }
+                    Button(role: .destructive) {
+                        commentAuthorToBlock = comment
+                    } label: {
+                        Label("Block \(comment.userName)", systemImage: "hand.raised")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.subheadline)
+                        .foregroundStyle(AppTheme.textSecondary)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 2)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel("Comment options")
+            }
 
             // Heart button on each comment — filled red when liked.
             // Tap routes to CommunityViewModel.toggleCommentLike, which does

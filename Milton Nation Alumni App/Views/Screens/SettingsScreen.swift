@@ -66,10 +66,23 @@ struct SettingsScreen: View {
             Section {
                 Toggle("Hide Sobriety Date from Peers", isOn: $hideSobrietyDate)
                 Toggle("Hide Profile Photo from Peers", isOn: $hideProfilePhoto)
+
+                NavigationLink {
+                    BlockedUsersScreen()
+                } label: {
+                    HStack {
+                        Text("Blocked Users")
+                            .foregroundStyle(AppTheme.textPrimary)
+                        Spacer()
+                        Image(systemName: "hand.raised.slash")
+                            .font(.caption)
+                            .foregroundStyle(AppTheme.textSecondary)
+                    }
+                }
             } header: {
                 Label("Privacy", systemImage: "hand.raised.fill")
             } footer: {
-                Text("These settings only affect what other alumni can see. Staff and admins can always view your full profile.")
+                Text("These settings only affect what other alumni can see. Staff and admins can always view your full profile. Blocked users won't appear in your community feed or messages.")
             }
 
             // MARK: - Legal

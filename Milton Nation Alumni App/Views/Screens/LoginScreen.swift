@@ -602,6 +602,9 @@ struct LoginScreen: View {
                     .foregroundStyle(AppTheme.textSecondary)
             }
 
+            // MARK: - Consent (Apple Guideline 1.2 — required agreement)
+            consentRow
+
             Button {
                 Task { _ = await viewModel.register() }
             } label: {
@@ -611,11 +614,12 @@ struct LoginScreen: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
-                .background(AppTheme.accent)
+                .background((viewModel.isLoading || !viewModel.regAgreedToTerms) ? AppTheme.textSecondary : AppTheme.accent)
                 .foregroundStyle(.white)
                 .clipShape(Capsule())
             }
-            .disabled(viewModel.isLoading)
+            // Register stays disabled until the user agrees to Terms + Privacy.
+            .disabled(viewModel.isLoading || !viewModel.regAgreedToTerms)
 
             Button {
                 viewModel.errorMessage = nil
@@ -628,6 +632,47 @@ struct LoginScreen: View {
         }
         .cardStyle()
         .padding(.horizontal, 4)
+    }
+
+    // MARK: - Consent Row (Apple Guideline 1.2)
+
+    /// Required agreement checkbox + tappable Terms / Privacy links. The links
+    /// open in Safari via the AttributedString markdown; tapping the checkbox
+    /// (or its label) toggles consent without following a link.
+    private var consentRow: some View {
+        // Markdown links render as tappable and open the live policy pages.
+        let agreement: AttributedString = {
+            // swiftlint:disable:next line_length
+            var s = (try? AttributedString(
+                markdown: "I agree to the [Terms of Use](https://miltonrecovery.com/app-terms-of-use/) and [Privacy Policy](https://miltonrecovery.com/milton-nation-privacy/)."
+            )) ?? AttributedString("I agree to the Terms of Use and Privacy Policy.")
+            s.foregroundColor = AppTheme.textSecondary
+            return s
+        }()
+
+        return HStack(alignment: .top, spacing: 10) {
+            Button {
+                viewModel.regAgreedToTerms.toggle()
+            } label: {
+                Image(systemName: viewModel.regAgreedToTerms ? "checkmark.square.fill" : "square")
+                    .font(.title3)
+                    .foregroundStyle(viewModel.regAgreedToTerms ? AppTheme.accent : AppTheme.textSecondary)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Agree to Terms of Use and Privacy Policy")
+            .accessibilityValue(viewModel.regAgreedToTerms ? "Checked" : "Not checked")
+            .accessibilityAddTraits(.isButton)
+
+            // tappable links live inside this Text; opens in Safari via .tint
+            Text(agreement)
+                .font(.caption)
+                .tint(AppTheme.accent)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 4)
+        .padding(.vertical, 2)
     }
 
     // MARK: - Helpers

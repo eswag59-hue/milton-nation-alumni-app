@@ -9,6 +9,19 @@ struct PostCard: View {
     /// The comment's UUID is passed so callers can route to the right row.
     var onLikeComment: (UUID) -> Void = { _ in }
 
+    // MARK: - Report / Block callbacks (Apple Guideline 1.2)
+    /// Report this post. Hidden when the post is the current user's own.
+    var onReportPost: () -> Void = {}
+    /// Block the post's author. Hidden when the post is the current user's own.
+    var onBlockPost: () -> Void = {}
+    /// Report a specific comment (passed its UUID).
+    var onReportComment: (UUID) -> Void = { _ in }
+    /// Block a specific comment's author (passed the comment's author UUID).
+    var onBlockComment: (_ authorId: UUID, _ authorName: String) -> Void = { _, _ in }
+    /// The current user's id, used to hide Report/Block on the user's OWN
+    /// content. `nil` (e.g. previews) hides the controls entirely.
+    var currentUserId: UUID? = nil
+
     /// Comments to display beneath the post.
     var comments: [Comment] = []
     /// Whether comments are currently loading.
@@ -18,6 +31,13 @@ struct PostCard: View {
     /// Binding to the draft comment text for this post.
     @Binding var commentDraft: String
 
+    // MARK: - Report / Block confirmation state
+    @State private var showReportPostConfirm = false
+    @State private var showBlockUserConfirm = false
+    /// The comment currently targeted by a report/block confirmation, if any.
+    @State private var commentToReport: Comment?
+    @State private var commentAuthorToBlock: Comment?
+
     // Convenience init for previews / callers that don't need comments yet
     init(
         post: CommunityPost,
@@ -25,6 +45,11 @@ struct PostCard: View {
         onToggleComments: @escaping () -> Void = {},
         onSubmitComment: @escaping () -> Void = {},
         onLikeComment: @escaping (UUID) -> Void = { _ in },
+        onReportPost: @escaping () -> Void = {},
+        onBlockPost: @escaping () -> Void = {},
+        onReportComment: @escaping (UUID) -> Void = { _ in },
+        onBlockComment: @escaping (_ authorId: UUID, _ authorName: String) -> Void = { _, _ in },
+        currentUserId: UUID? = nil,
         comments: [Comment] = [],
         isLoadingComments: Bool = false,
         isCommentsExpanded: Bool = false,
@@ -35,10 +60,22 @@ struct PostCard: View {
         self.onToggleComments = onToggleComments
         self.onSubmitComment = onSubmitComment
         self.onLikeComment = onLikeComment
+        self.onReportPost = onReportPost
+        self.onBlockPost = onBlockPost
+        self.onReportComment = onReportComment
+        self.onBlockComment = onBlockComment
+        self.currentUserId = currentUserId
         self.comments = comments
         self.isLoadingComments = isLoadingComments
         self.isCommentsExpanded = isCommentsExpanded
         self._commentDraft = commentDraft
+    }
+
+    /// True when the post belongs to someone other than the current user — the
+    /// only case where Report / Block should appear (never on your own content).
+    private var canModeratePost: Bool {
+        guard let me = currentUserId else { return false }
+        return post.userId != me
     }
 
     var body: some View {
@@ -76,6 +113,33 @@ struct PostCard: View {
                 Spacer()
 
                 categoryBadge
+
+                // Report / Block menu — only on OTHER people's posts.
+                if canModeratePost {
+                    Menu {
+                        Button(role: .destructive) {
+                            showReportPostConfirm = true
+                        } label: {
+                            Label("Report Post", systemImage: "flag")
+                        }
+                        Button(role: .destructive) {
+                            showBlockUserConfirm = true
+                        } label: {
+                            Label("Block \(post.userName)", systemImage: "hand.raised")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .font(.subheadline)
+                            .foregroundStyle(AppTheme.textSecondary)
+                            .padding(.leading, 6)
+                            .padding(.vertical, 4)
+                            .contentShape(Rectangle())
+                    }
+                    .accessibilityLabel("Post options")
+                    // Stop the menu tap from triggering the surrounding
+                    // NavigationLink (PostCard is wrapped in one in the feed).
+                    .buttonStyle(.plain)
+                }
             }
 
             // Content
@@ -230,6 +294,59 @@ struct PostCard: View {
         }
         .padding()
         .cardStyle()
+        // MARK: - Report / Block confirmations
+        .confirmationDialog(
+            "Report this post?",
+            isPresented: $showReportPostConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Report", role: .destructive) { onReportPost() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Our team will review this post. Reporting is anonymous.")
+        }
+        .confirmationDialog(
+            "Block \(post.userName)?",
+            isPresented: $showBlockUserConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Block", role: .destructive) { onBlockPost() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("You won't see posts or comments from \(post.userName). You can unblock them anytime in Settings.")
+        }
+        .confirmationDialog(
+            "Report this comment?",
+            isPresented: Binding(
+                get: { commentToReport != nil },
+                set: { if !$0 { commentToReport = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Report", role: .destructive) {
+                if let c = commentToReport { onReportComment(c.id) }
+                commentToReport = nil
+            }
+            Button("Cancel", role: .cancel) { commentToReport = nil }
+        } message: {
+            Text("Our team will review this comment. Reporting is anonymous.")
+        }
+        .confirmationDialog(
+            commentAuthorToBlock.map { "Block \($0.userName)?" } ?? "Block user?",
+            isPresented: Binding(
+                get: { commentAuthorToBlock != nil },
+                set: { if !$0 { commentAuthorToBlock = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Block", role: .destructive) {
+                if let c = commentAuthorToBlock { onBlockComment(c.userId, c.userName) }
+                commentAuthorToBlock = nil
+            }
+            Button("Cancel", role: .cancel) { commentAuthorToBlock = nil }
+        } message: {
+            Text("You won't see posts or comments from this person. You can unblock them anytime in Settings.")
+        }
     }
 
     // MARK: - Subviews
@@ -260,6 +377,31 @@ struct PostCard: View {
             }
 
             Spacer(minLength: 0)
+
+            // Report / Block menu for OTHER people's comments only.
+            if let me = currentUserId, comment.userId != me {
+                Menu {
+                    Button(role: .destructive) {
+                        commentToReport = comment
+                    } label: {
+                        Label("Report Comment", systemImage: "flag")
+                    }
+                    Button(role: .destructive) {
+                        commentAuthorToBlock = comment
+                    } label: {
+                        Label("Block \(comment.userName)", systemImage: "hand.raised")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.textSecondary)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 2)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel("Comment options")
+                .buttonStyle(.plain)
+            }
 
             // Heart button — filled red when the user has liked this comment.
             // Lives inline so the tap target is large enough but doesn't shift

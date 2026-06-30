@@ -78,6 +78,15 @@ struct CommunityScreen: View {
                                         onLikeComment: { commentId in
                                             viewModel.toggleCommentLike(postId: post.id, commentId: commentId)
                                         },
+                                        onReportPost: { viewModel.reportPost(post) },
+                                        onBlockPost: { viewModel.blockUser(post.userId, displayName: post.userName) },
+                                        onReportComment: { commentId in
+                                            viewModel.reportComment(postId: post.id, commentId: commentId)
+                                        },
+                                        onBlockComment: { authorId, authorName in
+                                            viewModel.blockUser(authorId, displayName: authorName)
+                                        },
+                                        currentUserId: appViewModel.currentUser?.id,
                                         comments: viewModel.commentsByPost[post.id] ?? [],
                                         isLoadingComments: viewModel.loadingCommentPostIds.contains(post.id),
                                         isCommentsExpanded: viewModel.expandedCommentPostIds.contains(post.id),
@@ -118,6 +127,24 @@ struct CommunityScreen: View {
                 Button("OK") {}
             } message: {
                 Text(viewModel.postSubmissionMessage)
+            }
+            // Report / Block success confirmation (Apple Guideline 1.2)
+            .alert("Done", isPresented: $viewModel.showActionConfirmation) {
+                Button("OK") {}
+            } message: {
+                Text(viewModel.actionConfirmationMessage)
+            }
+            // Report / Block failure surface
+            .alert(
+                "Something went wrong",
+                isPresented: Binding(
+                    get: { viewModel.errorMessage != nil },
+                    set: { if !$0 { viewModel.errorMessage = nil } }
+                )
+            ) {
+                Button("OK") { viewModel.errorMessage = nil }
+            } message: {
+                Text(viewModel.errorMessage ?? "")
             }
             .onAppear {
                 // Wire current user so post moderation thresholds apply correctly

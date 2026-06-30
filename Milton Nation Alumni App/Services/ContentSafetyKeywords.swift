@@ -92,6 +92,9 @@ enum ContentFeature: String, Codable, Sendable {
     case comment         = "comment"
     case profile         = "profile"
     case announcement    = "announcement"
+    /// A user-initiated report of someone else's post or comment (Apple
+    /// Guideline 1.2). Lands in the same admin Content Flags queue.
+    case userReport      = "user_report"
     case unknown         = "unknown"
 
     var displayName: String {
@@ -101,6 +104,7 @@ enum ContentFeature: String, Codable, Sendable {
         case .comment:       return "Comment"
         case .profile:       return "Profile"
         case .announcement:  return "Announcement"
+        case .userReport:    return "User Report"
         case .unknown:       return "Unknown"
         }
     }

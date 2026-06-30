@@ -71,6 +71,33 @@ protocol DataServiceProtocol {
 
     // Invite
     func sendInvite(phone: String, name: String?) async throws -> String
+
+    // MARK: - Block & Report (Apple Guideline 1.2 — UGC safety)
+
+    /// Block another user. Their posts, comments, conversations, and messages
+    /// are filtered out of everything this user fetches afterward.
+    func blockUser(_ userId: UUID) async throws
+    /// Remove a previously-created block.
+    func unblockUser(_ userId: UUID) async throws
+    /// The set of user IDs the current user has blocked. Used to filter feeds.
+    func fetchBlockedUserIds() async throws -> Set<UUID>
+    /// Blocked users with a display name, for the Settings → Blocked Users list.
+    func fetchBlockedUsers() async throws -> [BlockedUser]
+
+    /// Report a post for admin review (lands in the existing Content Flags queue).
+    func reportPost(_ postId: UUID, reason: String?) async throws
+    /// Report a comment for admin review.
+    func reportComment(_ commentId: UUID, reason: String?) async throws
+}
+
+// MARK: - Block DTO
+
+/// A user the current user has blocked, with a best-effort display name for the
+/// Settings → Blocked Users screen.
+struct BlockedUser: Identifiable, Sendable, Hashable {
+    /// The blocked user's profile id (used as the row identity + unblock key).
+    let id: UUID
+    let displayName: String
 }
 
 // MARK: - Admin Notification DTOs
@@ -129,11 +156,16 @@ final class MockDataService: DataServiceProtocol {
         // so a post the user just created shows up in the feed without needing
         // a real backend.
         let all = mockPostsAppended + MockData.posts
-        let filtered: [CommunityPost]
+        var filtered: [CommunityPost]
         if let category {
             filtered = all.filter { $0.category == category }
         } else {
             filtered = all
+        }
+        // Hide posts authored by blocked users (Guideline 1.2).
+        let blocked = Set(mockBlocked.keys)
+        if !blocked.isEmpty {
+            filtered = filtered.filter { !blocked.contains($0.userId) }
         }
         return filtered.sorted { lhs, rhs in
             if lhs.isPinned != rhs.isPinned { return lhs.isPinned && !rhs.isPinned }
@@ -190,7 +222,10 @@ final class MockDataService: DataServiceProtocol {
             mockComments[postId] = Self.seedComments(for: post)
         }
 
-        return (mockComments[postId] ?? []).sorted { $0.createdAt < $1.createdAt }
+        let blocked = Set(mockBlocked.keys)
+        return (mockComments[postId] ?? [])
+            .filter { blocked.isEmpty || !blocked.contains($0.userId) }
+            .sorted { $0.createdAt < $1.createdAt }
     }
 
     func addComment(postId: UUID, content: String, status: PostStatus = .approved, matchedKeywords: [String] = []) async throws -> Comment {
@@ -541,6 +576,43 @@ final class MockDataService: DataServiceProtocol {
         let lastFour = String(digits.suffix(4))
         let masked = String(repeating: "*", count: max(0, digits.count - 4)) + lastFour
         return masked
+    }
+
+    // MARK: - Block & Report (mock — in-memory)
+
+    /// In-session set of blocked user ids → display name. Lets the dev/TestFlight
+    /// mock flows for block/unblock and the Blocked Users list behave end-to-end.
+    private var mockBlocked: [UUID: String] = [:]
+
+    func blockUser(_ userId: UUID) async throws {
+        try await Task.sleep(for: .milliseconds(100))
+        // Best-effort display name from any seed/known data.
+        let name = (mockPostsAppended + MockData.posts).first(where: { $0.userId == userId })?.userName
+            ?? MockData.alumniRoster.first(where: { $0.id == userId })?.username
+            ?? "Blocked user"
+        mockBlocked[userId] = name
+    }
+
+    func unblockUser(_ userId: UUID) async throws {
+        try await Task.sleep(for: .milliseconds(100))
+        mockBlocked.removeValue(forKey: userId)
+    }
+
+    func fetchBlockedUserIds() async throws -> Set<UUID> {
+        Set(mockBlocked.keys)
+    }
+
+    func fetchBlockedUsers() async throws -> [BlockedUser] {
+        mockBlocked.map { BlockedUser(id: $0.key, displayName: $0.value) }
+            .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
+    }
+
+    func reportPost(_ postId: UUID, reason: String?) async throws {
+        try await Task.sleep(for: .milliseconds(150))
+    }
+
+    func reportComment(_ commentId: UUID, reason: String?) async throws {
+        try await Task.sleep(for: .milliseconds(150))
     }
 
     // Mock pending users for testing

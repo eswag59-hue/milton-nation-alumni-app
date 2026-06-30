@@ -16,6 +16,11 @@ final class CommunityViewModel {
     /// (e.g. delete-post network error).
     var errorMessage: String?
 
+    // MARK: - Report / Block feedback (Apple Guideline 1.2)
+    /// Drives a lightweight confirmation toast/alert after a report or block.
+    var showActionConfirmation = false
+    var actionConfirmationMessage = ""
+
     /// Reference to the current user for auto-approve threshold checks.
     var currentUser: User?
 
@@ -462,6 +467,72 @@ final class CommunityViewModel {
                 await MainActor.run {
                     errorMessage = "Couldn't update that post. Please try again."
                     completion?(false)
+                }
+            }
+        }
+    }
+
+    // MARK: - Report & Block (Apple Guideline 1.2)
+
+    /// Report a post to the admin moderation queue. Fire-and-confirm: shows a
+    /// success toast, or an error message if the network call fails.
+    func reportPost(_ post: CommunityPost, reason: String? = nil) {
+        Task {
+            do {
+                try await dataService.reportPost(post.id, reason: reason)
+                await MainActor.run {
+                    actionConfirmationMessage = "Thanks for reporting. Our team will review this post."
+                    showActionConfirmation = true
+                }
+            } catch {
+                CrashReportingService.shared.recordError(error, context: "CommunityViewModel.reportPost")
+                await MainActor.run {
+                    errorMessage = "Couldn't submit that report. Please try again."
+                }
+            }
+        }
+    }
+
+    /// Report a comment to the admin moderation queue.
+    func reportComment(postId: UUID, commentId: UUID, reason: String? = nil) {
+        Task {
+            do {
+                try await dataService.reportComment(commentId, reason: reason)
+                await MainActor.run {
+                    actionConfirmationMessage = "Thanks for reporting. Our team will review this comment."
+                    showActionConfirmation = true
+                }
+            } catch {
+                CrashReportingService.shared.recordError(error, context: "CommunityViewModel.reportComment")
+                await MainActor.run {
+                    errorMessage = "Couldn't submit that report. Please try again."
+                }
+            }
+        }
+    }
+
+    /// Block a user. Optimistically removes their posts (and any loaded
+    /// comments) from the current feed, then persists the block. On failure,
+    /// reloads the feed so nothing is left in a half-blocked state.
+    func blockUser(_ userId: UUID, displayName: String) {
+        // Optimistically purge their content from what's on screen now.
+        posts.removeAll { $0.userId == userId }
+        for (postId, list) in commentsByPost {
+            commentsByPost[postId] = list.filter { $0.userId != userId }
+        }
+        Task {
+            do {
+                try await dataService.blockUser(userId)
+                await MainActor.run {
+                    actionConfirmationMessage = "\(displayName) has been blocked. You won't see their posts or comments."
+                    showActionConfirmation = true
+                }
+            } catch {
+                CrashReportingService.shared.recordError(error, context: "CommunityViewModel.blockUser")
+                await MainActor.run {
+                    errorMessage = "Couldn't block that user. Please try again."
+                    // Reload so the optimistic removal doesn't desync from server.
+                    loadPosts()
                 }
             }
         }

@@ -226,6 +226,38 @@ nonisolated private struct UserApprovalNotifParams: Encodable, Sendable {
     let data: [String: String]
 }
 
+// MARK: - Block (blocked_users table) Param Types
+
+/// Insert payload for `blocked_users`. `blocker_id` is set explicitly even
+/// though RLS enforces `blocker_id = auth.uid()` — defense in depth.
+nonisolated private struct BlockInsertParams: Encodable, Sendable {
+    let blockerId: String
+    let blockedId: String
+    enum CodingKeys: String, CodingKey {
+        case blockerId = "blocker_id"
+        case blockedId = "blocked_id"
+    }
+}
+
+/// Row shape for reading `blocked_users` (just the blocked party's id).
+nonisolated private struct BlockedRow: Decodable, Sendable {
+    let blockedId: UUID
+    enum CodingKeys: String, CodingKey {
+        case blockedId = "blocked_id"
+    }
+}
+
+/// Minimal profile row used to resolve a blocked user's display name.
+nonisolated private struct BlockedProfileRow: Decodable, Sendable {
+    let id: UUID
+    let username: String?
+    let fullName: String?
+    enum CodingKeys: String, CodingKey {
+        case id, username
+        case fullName = "full_name"
+    }
+}
+
 /// Production data service using Supabase PostgREST + Storage.
 ///
 /// Implements all 24 `DataServiceProtocol` methods.
@@ -241,6 +273,22 @@ final class SupabaseDataService: DataServiceProtocol {
             let session = try await client.auth.session
             return session.user.id
         }
+    }
+
+    /// Per-session cache of the user IDs the current user has blocked. Populated
+    /// lazily on first feed fetch and refreshed after block/unblock. Used to
+    /// filter posts, comments, conversations, and messages client-side so we
+    /// never have to change the server query logic. `nil` = not loaded yet.
+    private var blockedUserIdsCache: Set<UUID>?
+
+    /// Returns the cached blocked-set, loading it from `blocked_users` on first
+    /// use. Failures degrade gracefully to an empty set so a transient error
+    /// never hides the whole feed.
+    private func blockedUserIds() async -> Set<UUID> {
+        if let cache = blockedUserIdsCache { return cache }
+        let set = (try? await fetchBlockedUserIds()) ?? []
+        blockedUserIdsCache = set
+        return set
     }
 
     // MARK: - Posts
@@ -265,6 +313,14 @@ final class SupabaseDataService: DataServiceProtocol {
             .limit(50)
             .execute()
             .value
+
+        // Hide posts authored by blocked users (Apple Guideline 1.2). We filter
+        // the returned array rather than touching the server query — never hide
+        // the user's OWN posts (a user can't block themselves anyway).
+        let blocked = await blockedUserIds()
+        if !blocked.isEmpty {
+            posts = posts.filter { !blocked.contains($0.userId) }
+        }
 
         // Fetch user's likes to determine isLikedByCurrentUser
         let likedPostIds: [UUID] = try await fetchLikedPostIds(userId: userId)
@@ -384,6 +440,12 @@ final class SupabaseDataService: DataServiceProtocol {
             .limit(100)
             .execute()
             .value
+
+        // Hide comments from blocked users (Apple Guideline 1.2).
+        let blocked = await blockedUserIds()
+        if !blocked.isEmpty {
+            comments = comments.filter { !blocked.contains($0.userId) }
+        }
 
         // Merge the current user's like state from `comment_likes`. We do this
         // client-side (rather than a join) so the Comment Codable shape stays
@@ -617,7 +679,11 @@ final class SupabaseDataService: DataServiceProtocol {
             .execute()
             .value
 
-        return rows.map { row in
+        // Hide conversations whose other participant has been blocked (Guideline 1.2).
+        let blocked = await blockedUserIds()
+        let visibleRows = blocked.isEmpty ? rows : rows.filter { !blocked.contains($0.staffId) }
+
+        return visibleRows.map { row in
             Conversation(
                 id: row.id,
                 userId: row.userId,
@@ -643,6 +709,13 @@ final class SupabaseDataService: DataServiceProtocol {
             .limit(200)
             .execute()
             .value
+
+        // Hide messages authored by blocked senders (Guideline 1.2). The user's
+        // own messages always pass (you can't block yourself).
+        let blocked = await blockedUserIds()
+        if !blocked.isEmpty {
+            messages = messages.filter { $0.senderId == userId || !blocked.contains($0.senderId) }
+        }
 
         // Set isFromCurrentUser for each message
         for i in messages.indices {
@@ -1153,6 +1226,94 @@ final class SupabaseDataService: DataServiceProtocol {
         }
 
         return response.phone ?? phone
+    }
+
+    // MARK: - Block & Report (Apple Guideline 1.2 — UGC safety)
+
+    func blockUser(_ userId: UUID) async throws {
+        let blockerId = try await currentUserId
+        // No-op if the user somehow tries to block themselves.
+        guard userId != blockerId else { return }
+
+        let insert = BlockInsertParams(
+            blockerId: blockerId.uuidString,
+            blockedId: userId.uuidString
+        )
+        // Upsert-style: ignore duplicate-block races. RLS scopes rows to the
+        // blocker, so this can only ever write the current user's own block.
+        try await client.from("blocked_users")
+            .insert(insert)
+            .execute()
+
+        // Refresh the per-session cache so feeds filter immediately.
+        blockedUserIdsCache = nil
+        _ = await blockedUserIds()
+    }
+
+    func unblockUser(_ userId: UUID) async throws {
+        let blockerId = try await currentUserId
+        try await client.from("blocked_users")
+            .delete()
+            .eq("blocker_id", value: blockerId.uuidString)
+            .eq("blocked_id", value: userId.uuidString)
+            .execute()
+
+        blockedUserIdsCache = nil
+        _ = await blockedUserIds()
+    }
+
+    func fetchBlockedUserIds() async throws -> Set<UUID> {
+        let blockerId = try await currentUserId
+        let rows: [BlockedRow] = try await client.from("blocked_users")
+            .select("blocked_id")
+            .eq("blocker_id", value: blockerId.uuidString)
+            .execute()
+            .value
+        let set = Set(rows.map(\.blockedId))
+        blockedUserIdsCache = set
+        return set
+    }
+
+    func fetchBlockedUsers() async throws -> [BlockedUser] {
+        let ids = try await fetchBlockedUserIds()
+        guard !ids.isEmpty else { return [] }
+
+        // Resolve display names from profiles. If a name can't be resolved
+        // (deleted profile, RLS), fall back to a generic label so the row still
+        // shows and can be unblocked.
+        let profiles: [BlockedProfileRow] = (try? await client.from("profiles")
+            .select("id, username, full_name")
+            .in("id", values: ids.map(\.uuidString))
+            .execute()
+            .value) ?? []
+
+        let nameById = Dictionary(uniqueKeysWithValues: profiles.map {
+            ($0.id, $0.username ?? $0.fullName ?? "Blocked user")
+        })
+
+        return ids
+            .map { BlockedUser(id: $0, displayName: nameById[$0] ?? "Blocked user") }
+            .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
+    }
+
+    func reportPost(_ postId: UUID, reason: String?) async throws {
+        let reporterId = try? await currentUserId
+        try await ContentFilterService.shared.reportUserContent(
+            kind: "post",
+            targetId: postId,
+            reporterId: reporterId,
+            reason: reason
+        )
+    }
+
+    func reportComment(_ commentId: UUID, reason: String?) async throws {
+        let reporterId = try? await currentUserId
+        try await ContentFilterService.shared.reportUserContent(
+            kind: "comment",
+            targetId: commentId,
+            reporterId: reporterId,
+            reason: reason
+        )
     }
 
     // MARK: - Private Helpers

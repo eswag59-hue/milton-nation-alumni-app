@@ -64,6 +64,9 @@ final class LoginViewModel {
     var regDischargeDate = Date()
     var regRecoveryProgram: RecoveryProgram = .residential
     var regFacility: Facility? = nil
+    /// Required consent to Terms of Use + Privacy Policy (Apple Guideline 1.2 /
+    /// EULA acceptance). The Register button stays disabled until this is true.
+    var regAgreedToTerms = false
     var showRegistrationSuccess = false
 
     private let authService: AuthServiceProtocol
@@ -210,6 +213,14 @@ final class LoginViewModel {
             return nil
         }
 
+        // Apple Guideline 1.2: explicit agreement to Terms + Privacy is required
+        // before an account can be created. The Register button is disabled
+        // until this is true; this guard is defense-in-depth.
+        guard regAgreedToTerms else {
+            errorMessage = "Please agree to the Terms of Use and Privacy Policy to continue."
+            return nil
+        }
+
         // Validate username doesn't contain real name
         let nameParts = regFullName.lowercased().components(separatedBy: " ").filter { !$0.isEmpty }
         let usernameLower = regUsername.lowercased()
@@ -332,6 +343,8 @@ final class LoginViewModel {
         pendingUser = nil
         failedAttempts = 0
         lockoutEndDate = nil
+        // Clear the consent checkbox so a fresh registration starts unchecked.
+        regAgreedToTerms = false
         UserDefaults.standard.removeObject(forKey: lockoutEndKey)
         UserDefaults.standard.removeObject(forKey: failedAttemptsKey)
     }
