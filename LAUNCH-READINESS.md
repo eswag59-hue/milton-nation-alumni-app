@@ -32,6 +32,17 @@ Legend: ✅ done · 🟡 in progress · ❌ not started · ❓ needs confirm · 
 - **`blocked_users` table created + RLS, applied to prod** (block-list backing for Apple 1.2).
 - **Push-PHI fix:** removed the applicant's name from the new-member admin APNs push (`SupabaseAuthService`) — payloads now carry no member names. *(Note: the "I'm Struggling" notification is a local on-device notification to the user themselves — not a leak — left as-is.)*
 - Wrote **`launch-kit/APP-STORE-SUBMISSION-PACKET.md`** (App Privacy answers + reviewer notes + pre-submit gate).
+- **Report / Block / Consent BUILT + merged to `main`** (compile-clean, commit `27da160`). Real runtime test happens on TestFlight / Build 13.
+- **Legal URLs reconciled** — consent gate + Settings now both use the app-specific `app-terms-of-use/` + `milton-nation-privacy/` (the other pair was the general treatment-center website's).
+- **Crisis-response protocol DEFAULT drafted** — `launch-kit/CRISIS-RESPONSE-PROTOCOL.md` (clinical fills the `[SET BY CLINICAL]` blanks + signs).
+
+### Decisions locked (2026-06-22)
+1. Merge report/block/consent → **merged to `main`** ✅
+2. Canonical legal URLs → **app-specific pair** (reconciled) ✅
+3. Supabase HIPAA BAA → **defer to a ~5-min go-live flip** (Ezra has it signed; don't pay before real patients) — moved to Go-Live.
+4. Crisis protocol → **Claude drafted a default**; clinical to adjust + sign.
+5. Demo bypass (`000000`) → **flip OFF right after Apple approval** (bundled with the BAA), before the first patient.
+6. Screenshots → **Ezra shoots off Build 13** (Alex Demo, 90-day account); Claude provides the shot list.
 
 ---
 

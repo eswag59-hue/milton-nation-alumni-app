@@ -87,8 +87,8 @@ struct SettingsScreen: View {
 
             // MARK: - Legal
             Section {
-                legalLink("Terms of Service",    urlString: "https://miltonrecovery.com/app-terms-conditions/")
-                legalLink("Privacy Policy",       urlString: "https://miltonrecovery.com/app-privacy-policy/")
+                legalLink("Terms of Service",    urlString: "https://miltonrecovery.com/app-terms-of-use/")
+                legalLink("Privacy Policy",       urlString: "https://miltonrecovery.com/milton-nation-privacy/")
                 legalLink("Support",              urlString: "https://miltonrecovery.com/app-support/")
             } header: {
                 Label("Legal", systemImage: "doc.text.fill")
