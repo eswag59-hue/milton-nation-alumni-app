@@ -2,7 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Bundle identity -->
 	<key>CFBundleDisplayName</key>
 	<string>Milton</string>
 	<key>CFBundleExecutable</key>
@@ -19,22 +18,16 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
-
-	<!-- App Store category -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.healthcare-fitness</string>
-
-	<!-- URL schemes we query (required for canOpenURL to return true for waze://) -->
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>waze</string>
 	</array>
-
-	<!-- iOS requirement -->
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-
-	<!-- Privacy usage descriptions -->
 	<key>NSCalendarsFullAccessUsageDescription</key>
 	<string>Milton Alumni uses your calendar to save meeting events so you never miss a session.</string>
 	<key>NSCameraUsageDescription</key>
@@ -43,16 +36,12 @@
 	<string>Milton Alumni uses Face ID to securely sign you in.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Milton Alumni uses your location to find nearby support meetings in your area.</string>
-<key>NSPhotoLibraryUsageDescription</key>
+	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Milton Alumni lets you share photos from your library in community posts and chat messages.</string>
-
-	<!-- Supabase config (injected from xcconfig at build time) -->
 	<key>SUPABASE_ANON_KEY</key>
 	<string>$(SUPABASE_ANON_KEY)</string>
 	<key>SUPABASE_URL</key>
 	<string>$(SUPABASE_URL)</string>
-
-	<!-- UI configuration -->
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -68,7 +57,7 @@
 	<array>
 		<string>arm64</string>
 	</array>
-<key>UISupportedInterfaceOrientations</key>
+	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 	</array>
