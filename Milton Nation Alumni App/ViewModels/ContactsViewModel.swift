@@ -2,8 +2,8 @@ import SwiftUI
 
 @Observable
 final class ContactsViewModel {
-    var crisisResources: [CrisisResource] = MockData.crisisResources
-    var companyContacts: [CompanyContact] = MockData.companyContacts
+    var crisisResources: [CrisisResource] = AppContacts.crisisResources
+    var companyContacts: [CompanyContact] = AppContacts.companyContacts
     var sponsorName: String = ""
     var sponsorPhone: String = ""
     var isEditingSponsor = false

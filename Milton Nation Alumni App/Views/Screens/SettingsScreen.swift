@@ -142,12 +142,12 @@ struct SettingsScreen: View {
                     Button("Cancel", role: .cancel) {}
                     Button("Continue") { showDeleteConfirmation = true }
                 } message: {
-                    Text("This will start a 30-day deletion process. Download your data first if you want a copy.")
+                    Text("This starts a 30-day deletion process. Download your data first if you want a copy.")
                 }
             } header: {
                 Label("Account", systemImage: "person.circle.fill")
             } footer: {
-                Text("Deleting your account begins a 30-day grace period. Your data will be permanently removed after 30 days. This action cannot be undone.")
+                Text("Deleting your account begins a 30-day grace period, after which your personal data — profile, posts, comments, and messages — is permanently removed. Records we're clinically or legally required to keep are retained per HIPAA. This cannot be undone.")
             }
 
             // MARK: - About
@@ -180,7 +180,7 @@ struct SettingsScreen: View {
                 appViewModel.deleteAccount()
             }
         } message: {
-            Text("Your account, posts, and messages will be permanently deleted after 30 days. You will be logged out immediately.")
+            Text("After a 30-day grace period, your personal data — profile, posts, comments, and messages — is permanently removed. Records we're clinically or legally required to keep are retained per HIPAA. You'll be logged out immediately.")
         }
         .sheet(isPresented: $showDataExportSheet) {
             if let url = exportedDataURL {

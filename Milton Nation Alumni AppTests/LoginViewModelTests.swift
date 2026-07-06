@@ -117,9 +117,26 @@ struct LoginViewModelTests {
         vm.regPassword = "password123"
         vm.regConfirmPassword = "password123"
         vm.regFacility = .florida
+        vm.regAgreedToTerms = true
         let result = await vm.register()
         #expect(result == nil)
         #expect(vm.errorMessage == "Username cannot contain your real name.")
+    }
+
+    @Test("register fails when Terms not agreed")
+    func registerRequiresConsent() async {
+        let vm = LoginViewModel()
+        vm.regFullName = "Test User"
+        vm.regUsername = "recovery_hero"
+        vm.regEmail = "test@example.com"
+        vm.regPhone = "(555) 123-4567"
+        vm.regPassword = "password123"
+        vm.regConfirmPassword = "password123"
+        vm.regFacility = .florida
+        vm.regAgreedToTerms = false
+        let result = await vm.register()
+        #expect(result == nil)
+        #expect(vm.errorMessage == "Please agree to the Terms of Use and Privacy Policy to continue.")
     }
 
     @Test("register fails when username contains last name")
@@ -132,6 +149,7 @@ struct LoginViewModelTests {
         vm.regPassword = "password123"
         vm.regConfirmPassword = "password123"
         vm.regFacility = .florida
+        vm.regAgreedToTerms = true
         let result = await vm.register()
         #expect(result == nil)
         #expect(vm.errorMessage == "Username cannot contain your real name.")
@@ -147,6 +165,7 @@ struct LoginViewModelTests {
         vm.regPassword = "password123"
         vm.regConfirmPassword = "password123"
         vm.regFacility = .florida
+        vm.regAgreedToTerms = true
         let result = await vm.register()
         #expect(result != nil)
     }
@@ -161,6 +180,7 @@ struct LoginViewModelTests {
         vm.regPassword = "password123"
         vm.regConfirmPassword = "different456"
         vm.regFacility = .florida
+        vm.regAgreedToTerms = true
         let result = await vm.register()
         #expect(result == nil)
         #expect(vm.errorMessage == "Passwords do not match.")
@@ -176,6 +196,7 @@ struct LoginViewModelTests {
         vm.regPassword = "short"
         vm.regConfirmPassword = "short"
         vm.regFacility = .florida
+        vm.regAgreedToTerms = true
         let result = await vm.register()
         #expect(result == nil)
         #expect(vm.errorMessage == "Password must be at least 8 characters.")
@@ -191,6 +212,7 @@ struct LoginViewModelTests {
         vm.regPassword = "password123"
         vm.regConfirmPassword = "password123"
         vm.regFacility = .florida
+        vm.regAgreedToTerms = true
         let result = await vm.register()
         #expect(result != nil)
         #expect(vm.showRegistrationSuccess == true)

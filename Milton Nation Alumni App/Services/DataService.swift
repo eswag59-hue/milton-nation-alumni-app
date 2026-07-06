@@ -37,6 +37,10 @@ protocol DataServiceProtocol {
     // User
     func fetchAssignedStaff() async throws -> [User]
     func updateProfile(user: User) async throws -> User
+    /// Begin account deletion: mark the profile `deactivated` and stamp
+    /// `deactivated_at = now()`. A scheduled server job hard-deletes the
+    /// personal data 30 days later (see `purge_deactivated_accounts()`).
+    func deactivateAccount(userId: UUID) async throws
 
     // Quotes
     func fetchDailyQuote() async throws -> DailyQuote
@@ -401,6 +405,16 @@ final class MockDataService: DataServiceProtocol {
             mockProfilePhotoURLByUserId[user.id] = url
         }
         return user
+    }
+
+    func deactivateAccount(userId: UUID) async throws {
+        try await Task.sleep(for: .milliseconds(200))
+        // Mock mode: reflect the deactivation in the in-session override so the
+        // login-block behavior can be exercised in dev/TestFlight.
+        if var u = mockUserOverride, u.id == userId {
+            u.status = .deactivated
+            mockUserOverride = u
+        }
     }
 
     func fetchDailyQuote() async throws -> DailyQuote {

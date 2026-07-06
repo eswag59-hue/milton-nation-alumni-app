@@ -150,33 +150,7 @@ async function notifyAdmins(
 ): Promise<number> {
 
   try {
-    // Fetch device tokens for ALL admins and super_admins
-    const { data: adminProfiles } = await supabase
-      .from("profiles")
-      .select("id")
-      .in("role", ["admin", "super_admin"])
-      .eq("status", "active");
-
-    if (!adminProfiles || adminProfiles.length === 0) {
-      console.warn("flag-content: no active admins found to notify");
-      return 0;
-    }
-
-    const adminIds = adminProfiles.map((p: { id: string }) => p.id);
-
-    const { data: tokens } = await supabase
-      .from("device_tokens")
-      .select("token")
-      .in("user_id", adminIds);
-
-    const deviceTokens: string[] = tokens?.map((t: { token: string }) => t.token) ?? [];
-
-    if (deviceTokens.length === 0) {
-      console.warn("flag-content: admins found but no registered device tokens");
-      return 0;
-    }
-
-    // Build notification content.
+    // Build notification content (already PHI-safe — no raw text, no member name).
     // High-risk gets distinct, urgent copy that won't be skimmed past in a
     // crowded notification tray. Medium and low keep the descriptive format
     // since they're less time-sensitive and admins benefit from knowing the
@@ -205,22 +179,26 @@ async function notifyAdmins(
       body  = `${categoryStr} detected in ${featureStr}. Tap to review.`;
     }
 
-    // Send via Supabase Push API
-    const supabaseUrl       = Deno.env.get("SUPABASE_URL") ?? "";
-    const serviceRoleKey    = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    // Deliver via the direct-APNs `send-push-notification` Edge Function — the
+    // same mechanism the rest of the app uses — instead of the old unverified
+    // `/push/v1/send` beta endpoint (which never actually delivered). We invoke
+    // it as a trusted service-to-service call by passing the service-role key as
+    // the bearer; that path lets us target roles without an admin end-user JWT.
+    const supabaseUrl    = Deno.env.get("SUPABASE_URL") ?? "";
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
-    const pushResponse = await fetch(`${supabaseUrl}/push/v1/send`, {
+    const pushResponse = await fetch(`${supabaseUrl}/functions/v1/send-push-notification`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${serviceRoleKey}`,
+        "apikey": serviceRoleKey,
       },
       body: JSON.stringify({
-        recipients: deviceTokens.map((token) => ({
-          device_token: token,
-          provider: "apns",
-        })),
-        notification: { title, body },
+        target: "role",
+        roles: ["admin", "super_admin"],
+        title,
+        body,
         data: {
           type:       "content_flag",
           flagId:     params.flagId,
@@ -238,7 +216,10 @@ async function notifyAdmins(
       return 0;
     }
 
-    return deviceTokens.length;
+    // send-push-notification returns { sent, failed, total } for role targets.
+    const result = await pushResponse.json().catch(() => ({}));
+    const sent = typeof result?.sent === "number" ? result.sent : 0;
+    return sent;
 
   } catch (err) {
     console.error("flag-content: notifyAdmins error:", err);

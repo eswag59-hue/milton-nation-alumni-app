@@ -127,18 +127,40 @@ serve(async (req: Request) => {
       });
     }
 
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(
-      authHeader.replace("Bearer ", "")
-    );
+    // Trusted server-to-server calls (e.g. from the flag-content function) pass
+    // the service-role key as the bearer. The service role is never exposed to
+    // clients, so treating it as a trusted caller is safe — it bypasses the
+    // user-role / rate-limit checks that gate untrusted end-user callers.
+    const bearer = authHeader.replace("Bearer ", "").trim();
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const isServiceCall = serviceRoleKey.length > 0 && bearer === serviceRoleKey;
 
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: "Invalid token" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    let user: { id: string } | null = null;
+    if (!isServiceCall) {
+      const { data: { user: authedUser }, error: authError } = await supabaseAdmin.auth.getUser(bearer);
+      if (authError || !authedUser) {
+        return new Response(JSON.stringify({ error: "Invalid token" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      user = authedUser;
     }
 
-    const { target, userId, roles, title, body, data: notifData } = await req.json();
+    const reqBody = await req.json();
+    const { target, userId, roles, data: notifData } = reqBody;
+    // title/body are `let` (not const) so the care_team branch can force a
+    // PHI-safe message regardless of what the member's client sent.
+    let title: string | undefined = reqBody.title;
+    let body: string | undefined = reqBody.body;
+
+    // care_team alerts are member-initiated — force a fixed PHI-safe message so
+    // a member can never inject their own name (or anything else) into a
+    // notification delivered to staff.
+    if (target === "care_team") {
+      title = "Member needs support";
+      body = "A member has requested care team support. Tap to review.";
+    }
 
     if (!title || !body) {
       return new Response(JSON.stringify({ error: "title and body are required" }), {
@@ -150,15 +172,19 @@ serve(async (req: Request) => {
     let deviceTokens: string[] = [];
 
     if (target === "user" && userId) {
-      // Sending to a specific user — caller must be admin or the user themselves
-      const { data: callerProfile } = await supabaseAdmin
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-
-      const isAdmin = callerProfile?.role === "admin" || callerProfile?.role === "super_admin";
-      const isSelf = user.id === userId;
+      // Sending to a specific user — caller must be a service call, an admin, or
+      // the user themselves.
+      const isAdmin = isServiceCall
+        ? true
+        : await (async () => {
+            const { data: callerProfile } = await supabaseAdmin
+              .from("profiles")
+              .select("role")
+              .eq("id", user!.id)
+              .single();
+            return callerProfile?.role === "admin" || callerProfile?.role === "super_admin";
+          })();
+      const isSelf = !isServiceCall && user!.id === userId;
 
       if (!isAdmin && !isSelf) {
         return new Response(JSON.stringify({ error: "Forbidden" }), {
@@ -177,7 +203,7 @@ serve(async (req: Request) => {
         const { count: recentCount } = await supabaseAdmin
           .from("push_notification_log")
           .select("id", { count: "exact", head: true })
-          .eq("sent_by", user.id)
+          .eq("sent_by", user!.id)
           .eq("target_user_id", userId)
           .gte("created_at", windowStart);
 
@@ -206,71 +232,75 @@ serve(async (req: Request) => {
       deviceTokens = tokens?.map((t: { token: string }) => t.token) ?? [];
 
     } else if (target === "role" && roles && Array.isArray(roles)) {
-      // Role-targeted notifications — ADMIN ONLY: only admins/super_admins may notify a role
-      const { data: callerProfile, error: callerError } = await supabaseAdmin
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
+      // Role-targeted notifications. Allowed for: trusted service calls (e.g. the
+      // flag-content crisis-alert path) OR admins/super_admins. End-user callers
+      // must be admins and are rate-limited; service calls skip both checks.
+      if (!isServiceCall) {
+        const { data: callerProfile, error: callerError } = await supabaseAdmin
+          .from("profiles")
+          .select("role")
+          .eq("id", user!.id)
+          .single();
 
-      if (callerError || !callerProfile) {
-        return new Response(JSON.stringify({ error: "Could not verify caller role" }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+        if (callerError || !callerProfile) {
+          return new Response(JSON.stringify({ error: "Could not verify caller role" }), {
+            status: 403,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
 
-      const isAdmin = callerProfile.role === "admin" || callerProfile.role === "super_admin";
-      if (!isAdmin) {
-        return new Response(JSON.stringify({ error: "Forbidden: only admins can send role-targeted notifications" }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+        const isAdmin = callerProfile.role === "admin" || callerProfile.role === "super_admin";
+        if (!isAdmin) {
+          return new Response(JSON.stringify({ error: "Forbidden: only admins can send role-targeted notifications" }), {
+            status: 403,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
 
-      // ── Rate limit: max 5 role notifications per user per hour ────────────
-      const windowStart = new Date(
-        Date.now() - ROLE_NOTIFY_WINDOW_MINUTES * 60 * 1000
-      ).toISOString();
+        // ── Rate limit: max 5 role notifications per user per hour ──────────
+        const windowStart = new Date(
+          Date.now() - ROLE_NOTIFY_WINDOW_MINUTES * 60 * 1000
+        ).toISOString();
 
-      const { count: recentNotifs, error: rateError } = await supabaseAdmin
-        .from("audit_logs")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .eq("action", "send_push_notification")
-        .gte("timestamp", windowStart);
+        const { count: recentNotifs, error: rateError } = await supabaseAdmin
+          .from("audit_logs")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user!.id)
+          .eq("action", "send_push_notification")
+          .gte("timestamp", windowStart);
 
-      // Fail-closed: if the rate-limit query itself errors, refuse the request
-      // rather than letting the notification through unchecked.
-      if (rateError) {
-        console.error("[send-push-notification] Rate-limit check failed:", rateError);
-        return new Response(
-          JSON.stringify({ error: "Rate limit check unavailable. Please try again shortly." }),
-          {
-            status: 429,
-            headers: {
-              ...corsHeaders,
-              "Content-Type": "application/json",
-              "Retry-After": "60",
-            },
-          }
-        );
-      }
+        // Fail-closed: if the rate-limit query itself errors, refuse the request
+        // rather than letting the notification through unchecked.
+        if (rateError) {
+          console.error("[send-push-notification] Rate-limit check failed:", rateError);
+          return new Response(
+            JSON.stringify({ error: "Rate limit check unavailable. Please try again shortly." }),
+            {
+              status: 429,
+              headers: {
+                ...corsHeaders,
+                "Content-Type": "application/json",
+                "Retry-After": "60",
+              },
+            }
+          );
+        }
 
-      if ((recentNotifs ?? 0) >= ROLE_NOTIFY_RATE_LIMIT) {
-        return new Response(
-          JSON.stringify({
-            error: `Notification rate limit reached. Maximum ${ROLE_NOTIFY_RATE_LIMIT} role notifications per hour.`,
-          }),
-          {
-            status: 429,
-            headers: {
-              ...corsHeaders,
-              "Content-Type": "application/json",
-              "Retry-After": String(ROLE_NOTIFY_WINDOW_MINUTES * 60),
-            },
-          }
-        );
+        if ((recentNotifs ?? 0) >= ROLE_NOTIFY_RATE_LIMIT) {
+          return new Response(
+            JSON.stringify({
+              error: `Notification rate limit reached. Maximum ${ROLE_NOTIFY_RATE_LIMIT} role notifications per hour.`,
+            }),
+            {
+              status: 429,
+              headers: {
+                ...corsHeaders,
+                "Content-Type": "application/json",
+                "Retry-After": String(ROLE_NOTIFY_WINDOW_MINUTES * 60),
+              },
+            }
+          );
+        }
       }
       // ─────────────────────────────────────────────────────────────────────
 
@@ -291,11 +321,110 @@ serve(async (req: Request) => {
         deviceTokens = tokens?.map((t: { token: string }) => t.token) ?? [];
       }
 
-      // Log this role-targeted notification for rate limiting
+      // Log this role-targeted notification (rate-limit key for end users; audit
+      // trail for service calls). Service calls have no user id.
       await supabaseAdmin.from("audit_logs").insert({
         action: "send_push_notification",
-        user_id: user.id,
+        user_id: user?.id ?? null,
         detail: `Role-targeted push to: ${roles.join(", ")} — ${title}`,
+        timestamp: new Date().toISOString(),
+      });
+
+    } else if (target === "care_team") {
+      // ── Member-initiated care-team alert ──────────────────────────────────
+      // ANY authenticated member may fire this (e.g. "Notify care team" in the
+      // Struggling modal). It notifies the member's OWN-facility clinical staff
+      // (case_manager / therapist / counselor) + admins/super_admins. The body
+      // is forced PHI-safe above (no member name). Rate-limited per member.
+      // Requires a real end-user caller (never a service call).
+      if (!user) {
+        return new Response(JSON.stringify({ error: "care_team target requires an end-user token" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { data: callerProfile } = await supabaseAdmin
+        .from("profiles")
+        .select("role, facility, admin_facility")
+        .eq("id", user.id)
+        .single();
+
+      // Resolve the member's facility (alumni use `facility`).
+      const memberFacility: string | null =
+        (callerProfile?.facility as string | null) ??
+        (callerProfile?.admin_facility as string | null) ??
+        null;
+
+      // Rate limit: reuse the role-notify window/limit keyed on this member.
+      const windowStart = new Date(
+        Date.now() - ROLE_NOTIFY_WINDOW_MINUTES * 60 * 1000
+      ).toISOString();
+
+      const { count: recentAlerts, error: rateError } = await supabaseAdmin
+        .from("audit_logs")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("action", "care_team_alert")
+        .gte("timestamp", windowStart);
+
+      if (rateError) {
+        console.error("[send-push-notification] care_team rate-limit check failed:", rateError);
+        return new Response(
+          JSON.stringify({ error: "Rate limit check unavailable. Please try again shortly." }),
+          {
+            status: 429,
+            headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "60" },
+          }
+        );
+      }
+
+      if ((recentAlerts ?? 0) >= ROLE_NOTIFY_RATE_LIMIT) {
+        return new Response(
+          JSON.stringify({
+            error: `Care-team alert rate limit reached. Maximum ${ROLE_NOTIFY_RATE_LIMIT} per hour.`,
+          }),
+          {
+            status: 429,
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "application/json",
+              "Retry-After": String(ROLE_NOTIFY_WINDOW_MINUTES * 60),
+            },
+          }
+        );
+      }
+
+      const careRoles = ["case_manager", "therapist", "counselor", "admin", "super_admin"];
+
+      // Fetch active recipients. Clinical staff use `admin_facility`; if the
+      // member has no facility yet, notify all active staff/admins (fail open on
+      // reachability so a struggling member is never left unheard).
+      const { data: careProfiles } = await supabaseAdmin
+        .from("profiles")
+        .select("id, admin_facility")
+        .in("role", careRoles)
+        .eq("status", "active");
+
+      const recipientIds = (careProfiles ?? [])
+        .filter((p: { admin_facility: string | null }) =>
+          memberFacility === null || p.admin_facility === null || p.admin_facility === memberFacility
+        )
+        .map((p: { id: string }) => p.id);
+
+      if (recipientIds.length > 0) {
+        const { data: tokens } = await supabaseAdmin
+          .from("device_tokens")
+          .select("token")
+          .in("user_id", recipientIds);
+
+        deviceTokens = tokens?.map((t: { token: string }) => t.token) ?? [];
+      }
+
+      // Log for rate limiting + audit trail (no PHI in detail).
+      await supabaseAdmin.from("audit_logs").insert({
+        action: "care_team_alert",
+        user_id: user.id,
+        detail: `Member-initiated care-team alert (facility: ${memberFacility ?? "unassigned"})`,
         timestamp: new Date().toISOString(),
       });
 

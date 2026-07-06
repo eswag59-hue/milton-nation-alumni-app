@@ -44,6 +44,10 @@ struct CommunityPost: Identifiable, Codable {
     var matchedKeywords: [String] = []
     var createdAt: Date
     var approvedAt: Date?
+    /// The facility (florida / ohio) this post belongs to. `nil` for legacy rows
+    /// created before facility isolation shipped — those are treated as visible
+    /// to all facilities. Set to the author's facility on create.
+    var facility: Facility? = nil
 
     enum MediaType: String, Codable {
         case image, video
@@ -56,7 +60,7 @@ struct CommunityPost: Identifiable, Codable {
     // `isLikedByCurrentUser` is INTENTIONALLY excluded — it's client-side UI state
     // populated by the data service after decode (see comment above).
     enum CodingKeys: String, CodingKey {
-        case id, category, content, status
+        case id, category, content, status, facility
         case userId             // "user_id"          → "userId"
         case userName           // "user_name"        → "userName"
         case userPhotoURL = "userPhotoUrl"  // "user_photo_url"  → "userPhotoUrl"

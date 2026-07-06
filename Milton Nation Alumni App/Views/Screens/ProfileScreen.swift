@@ -333,10 +333,11 @@ struct ProfileScreen: View {
         .alert("Delete Account?", isPresented: $showDeleteConfirmation) {
             Button("Cancel", role: .cancel) {}
             Button("Delete", role: .destructive) {
+                AuditLogger.shared.log(.accountDeletionRequested, userId: appViewModel.currentUser?.id)
                 appViewModel.deleteAccount()
             }
         } message: {
-            Text("Your account will be deactivated for 30 days and then permanently deleted. Chat history will be retained per HIPAA requirements.")
+            Text("This starts a 30-day grace period, after which your personal data — profile, posts, comments, and messages — is permanently removed. Records we're clinically or legally required to keep are retained per HIPAA. You'll be logged out now.")
         }
         .onAppear {
             viewModel.loadBadges()

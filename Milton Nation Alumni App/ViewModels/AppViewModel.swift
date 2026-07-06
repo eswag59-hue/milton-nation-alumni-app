@@ -194,11 +194,12 @@ final class AppViewModel {
         guard let user = currentUser else { return }
         Task {
             do {
-                // Set status to deactivated (30-day grace period before permanent deletion)
-                var deactivatedUser = user
-                deactivatedUser.status = .deactivated
-                _ = try await dataService.updateProfile(user: deactivatedUser)
-                AuditLogger.shared.log(.logout, userId: user.id, detail: "Account deactivated — pending deletion")
+                // Mark deactivated AND stamp deactivated_at = now() so the 30-day
+                // purge clock starts. (updateProfile does NOT persist status, so
+                // this dedicated path is required — otherwise the account was
+                // never actually flagged for deletion.)
+                try await dataService.deactivateAccount(userId: user.id)
+                AuditLogger.shared.log(.accountDeletionRequested, userId: user.id, detail: "Account deactivated — 30-day purge scheduled")
             } catch {
                 CrashReportingService.shared.recordError(error, context: "AppViewModel.deleteAccount")
                 #if DEBUG

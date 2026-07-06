@@ -405,38 +405,69 @@ struct AdminViewModelTests {
         #expect(vm.companyContacts.isEmpty)
     }
 
-    // MARK: - Smart Chat Flagging (Feature #4)
+    // MARK: - Chat Monitoring (real flagged messages)
 
-    @Test("loadChatMonitorEntries auto-flags entries with crisis keywords")
-    func chatMonitorAutoFlagsCrisis() async throws {
-        let vm = AdminViewModel()
-        vm.loadData()
-        // Wait for async Task inside loadData to complete
-        try await Task.sleep(for: .milliseconds(800))
+    /// The chat monitor is now built from REAL flagged/crisis messages fetched
+    /// from Supabase (no fabricated fake crisis lines — that mock data was
+    /// removed as a launch blocker). This tests the pure builder that maps real
+    /// `ChatMessage` rows into monitor entries.
+    @Test("buildChatMonitorEntries maps real flagged messages and marks crisis as denied")
+    func chatMonitorBuildsFromRealMessages() {
+        let member = User.placeholder(id: UUID(), fullName: "Real Member")
+        let convId = UUID()
 
-        // The mock entry with "relapsed" and "hopeless" should be flagged
-        let flaggedEntries = vm.chatMonitorEntries.filter { $0.flagged }
-        #expect(!flaggedEntries.isEmpty, "At least one entry should be auto-flagged")
+        let flagged = ChatMessage(
+            id: UUID(), conversationId: convId, senderId: member.id,
+            messageType: .text, content: "I'm really struggling today",
+            status: .flagged, createdAt: Date()
+        )
+        let crisis = ChatMessage(
+            id: UUID(), conversationId: convId, senderId: member.id,
+            messageType: .text, content: "crisis content",
+            status: .flaggedForCrisis, createdAt: Date()
+        )
 
-        // Clean entries should not be flagged
-        let cleanEntries = vm.chatMonitorEntries.filter { !$0.flagged }
-        for entry in cleanEntries {
-            let result = ContentFilterService.shared.localFilter(entry.lastMessagePreview)
-            #expect(result.status == .clean, "Non-flagged entries should have clean content")
-        }
+        let entries = AdminViewModel.buildChatMonitorEntries(
+            from: [flagged, crisis],
+            alumni: [member],
+            staff: []
+        )
+
+        // Every entry from fetchFlaggedMessages is, by definition, flagged.
+        #expect(entries.count == 2)
+        #expect(entries.allSatisfy { $0.flagged })
+        // Crisis-status messages surface as denied; plain flagged as flagged.
+        #expect(entries.contains { $0.moderationStatus == .denied })
+        #expect(entries.contains { $0.moderationStatus == .flagged })
+        // Sender name resolves from the roster.
+        #expect(entries.allSatisfy { $0.alumniName == "Real Member" })
+    }
+
+    @Test("buildChatMonitorEntries returns empty for no flagged messages")
+    func chatMonitorEmptyWhenNoneFlagged() {
+        let entries = AdminViewModel.buildChatMonitorEntries(from: [], alumni: [], staff: [])
+        #expect(entries.isEmpty)
     }
 
     @Test("showFlaggedChatOnly toggle filters chat entries correctly")
-    func showFlaggedChatOnlyFilters() async throws {
+    func showFlaggedChatOnlyFilters() {
         let vm = AdminViewModel()
-        vm.loadData()
-        try await Task.sleep(for: .milliseconds(800))
+        // Seed entries directly (no dependency on network/mock fetch).
+        let member = User.placeholder(id: UUID(), fullName: "Member")
+        let msg = ChatMessage(
+            id: UUID(), conversationId: UUID(), senderId: member.id,
+            messageType: .text, content: "flagged content",
+            status: .flagged, createdAt: Date()
+        )
+        vm.chatMonitorEntries = AdminViewModel.buildChatMonitorEntries(
+            from: [msg], alumni: [member], staff: []
+        )
 
         let totalCount = vm.chatMonitorEntries.count
         let flaggedCount = vm.chatMonitorEntries.filter { $0.flagged }.count
 
         vm.showFlaggedChatOnly = true
-        let filteredEntries = vm.chatMonitorEntries.filter { $0.flagged }
+        let filteredEntries = vm.filteredChatEntries
         #expect(filteredEntries.count == flaggedCount)
         #expect(filteredEntries.count <= totalCount)
     }

@@ -33,6 +33,9 @@ struct AdminDashboardScreen: View {
                 } else {
                     viewModel.adminFacilityFilter = appViewModel.currentUser?.adminFacility
                 }
+                // Real signed-in admin id so meetings are stamped with a real
+                // created_by (never a fabricated mock user id).
+                viewModel.currentAdminUserId = appViewModel.currentUser?.id
                 viewModel.loadData()
                 viewModel.subscribeToAdminPostUpdates()
             }
@@ -71,6 +74,19 @@ struct AdminDashboardScreen: View {
                     }
                     staffPhotoItem = nil
                 }
+            }
+            // Surface admin action failures (e.g. staff-photo upload) instead of
+            // failing silently.
+            .alert(
+                "Something went wrong",
+                isPresented: Binding(
+                    get: { viewModel.adminActionError != nil },
+                    set: { if !$0 { viewModel.adminActionError = nil } }
+                )
+            ) {
+                Button("OK", role: .cancel) { viewModel.adminActionError = nil }
+            } message: {
+                Text(viewModel.adminActionError ?? "")
             }
             .alert("Promote User", isPresented: $viewModel.showPromoteConfirmation) {
                 Button("Cancel", role: .cancel) {

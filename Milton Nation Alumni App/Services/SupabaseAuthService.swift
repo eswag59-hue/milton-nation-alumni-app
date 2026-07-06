@@ -65,6 +65,20 @@ final class SupabaseAuthService: AuthServiceProtocol {
             }
         }
 
+        // Block sign-in for accounts that requested deletion (deactivated) or
+        // that have been purged (deleted). This applies to non-admin roles;
+        // admins/super_admins are already gated to `.active` above. Without this
+        // a member could "delete" their account and immediately log back in,
+        // silently cancelling the 30-day purge.
+        if profile.status == .deactivated || profile.status == .deleted {
+            try await client.auth.signOut()
+            throw NSError(
+                domain: "auth",
+                code: 403,
+                userInfo: [NSLocalizedDescriptionKey: "This account has been deactivated."]
+            )
+        }
+
         // Update last login
         _ = try? await client.from("profiles")
             .update(["last_login": ISO8601DateFormatter().string(from: Date())])

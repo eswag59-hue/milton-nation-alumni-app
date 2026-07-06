@@ -111,6 +111,12 @@ final class AdminViewModel {
     var pendingUserNotifications: [PendingUserNotification] = []
     /// Admin's own facility — set by AdminDashboardScreen on appear. Nil = super_admin (sees all).
     var adminFacilityFilter: Facility? = nil
+    /// The signed-in admin's own user id — set by AdminDashboardScreen on appear.
+    /// Used for `created_by` on meetings so we never write a fabricated author id.
+    var currentAdminUserId: UUID? = nil
+    /// Surfaced to the admin UI when a staff-photo upload (or similar admin
+    /// action) fails, so failures are visible rather than silently swallowed.
+    var adminActionError: String? = nil
     /// Per-user facility overrides: admin can change a user's claimed facility before approving.
     var facilityOverrides: [UUID: Facility] = [:]
     var unreadPendingUserCount: Int {
@@ -425,6 +431,8 @@ final class AdminViewModel {
             let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
             async let sobrietyChanges = try? dataService.fetchSobrietyChanges(since: thirtyDaysAgo, facility: adminFacilityFilter)
             async let badgeAwards = try? dataService.fetchRecentBadgeAwards(limit: 20, facility: adminFacilityFilter)
+            async let flaggedMessages = try? dataService.fetchFlaggedMessages(limit: 50, facility: adminFacilityFilter)
+            async let announcementsResult = try? dataService.fetchAnnouncements()
 
             let pendingResult = await pending ?? []
             let allResult = await allPosts ?? []
@@ -435,6 +443,8 @@ final class AdminViewModel {
             let assignmentsData = await assignmentsResult ?? []
             let sobrietyChangesData = await sobrietyChanges ?? []
             let badgeAwardsData = await badgeAwards ?? []
+            let flaggedMessagesData = await flaggedMessages ?? []
+            let announcementsData = await announcementsResult ?? []
 
             await MainActor.run {
                 pendingPosts = pendingResult
@@ -446,69 +456,75 @@ final class AdminViewModel {
                     PendingUserNotification(user: user, requestedAt: user.createdAt)
                 }
 
-                // Real staff + alumni rosters (no more MockData.*)
-                staffMembers = staffData.isEmpty ? [MockData.caseManager, MockData.therapist] : staffData
-                alumniUsers = alumniData.isEmpty ? MockData.alumniRoster : alumniData
+                // Real staff + alumni rosters. On a fresh/empty DB we show the real
+                // (empty) result + a clean empty state — never inject fake alumni,
+                // staff, or assignments (Apple reject + patient-safety risk).
+                staffMembers = staffData
+                alumniUsers = alumniData
                 allUsers = alumniUsers + staffMembers
 
-                // Real staff assignments
+                // Real staff assignments (empty stays empty — no mock fallback)
                 staffAssignments = [:]
-                let assignments = assignmentsData.isEmpty
-                    ? MockData.staffAssignments.map { (userId: $0.userId, staffId: $0.staffId) }
-                    : assignmentsData
-                for assignment in assignments {
+                for assignment in assignmentsData {
                     staffAssignments[assignment.userId, default: []].append(assignment.staffId)
                 }
 
-                // Real sobriety notifications from sobriety_change_log
-                if !sobrietyChangesData.isEmpty {
-                    sobrietyNotifications = sobrietyChangesData.map { row in
-                        SobrietyChangeNotification(
-                            user: alumniUsers.first(where: { $0.id == row.userId })
-                                ?? User.placeholder(id: row.userId, fullName: row.userName),
-                            previousDate: row.previousDate ?? row.newDate,
-                            newDate: row.newDate,
-                            changedAt: row.changedAt,
-                            isRead: false
-                        )
-                    }
-                } else {
-                    loadSobrietyNotifications() // mock fallback
+                // Real sobriety notifications from sobriety_change_log. Empty DB →
+                // no notifications (no mock fallback).
+                sobrietyNotifications = sobrietyChangesData.map { row in
+                    SobrietyChangeNotification(
+                        user: alumniUsers.first(where: { $0.id == row.userId })
+                            ?? User.placeholder(id: row.userId, fullName: row.userName),
+                        previousDate: row.previousDate ?? row.newDate,
+                        newDate: row.newDate,
+                        changedAt: row.changedAt,
+                        isRead: false
+                    )
                 }
 
-                // Real badge notifications from user_badges
-                if !badgeAwardsData.isEmpty, let fallbackBadge = MockData.badges.first {
-                    badgeNotifications = badgeAwardsData.map { row in
-                        BadgeEarnedNotification(
-                            user: alumniUsers.first(where: { $0.id == row.userId })
-                                ?? User.placeholder(id: row.userId, fullName: row.userName),
-                            badge: MockData.badges.first(where: { $0.id == row.badgeId })
-                                ?? fallbackBadge,
-                            earnedAt: row.earnedAt,
-                            isRead: false
-                        )
-                    }
-                } else {
-                    loadBadgeNotifications() // mock fallback
+                // Real badge notifications from user_badges. We resolve badge
+                // metadata from the row itself (name/emoji) so we don't depend on
+                // any seeded mock badge. Empty DB → no notifications.
+                badgeNotifications = badgeAwardsData.map { row in
+                    BadgeEarnedNotification(
+                        user: alumniUsers.first(where: { $0.id == row.userId })
+                            ?? User.placeholder(id: row.userId, fullName: row.userName),
+                        badge: Badge(
+                            id: row.badgeId,
+                            name: row.badgeName,
+                            description: "",
+                            emoji: row.badgeEmoji,
+                            pointsRequired: 0,
+                            sortOrder: 0
+                        ),
+                        earnedAt: row.earnedAt,
+                        isRead: false
+                    )
                 }
 
                 checkNewBadgeNotifications()
 
-                // Content items
-                loadContentItems()
+                // Admin content items (reflections / news) have no backend yet —
+                // start empty and show the empty state rather than fabricating
+                // sample reflections that would ship in Release.
+                contentItems = []
 
-                // Contacts (production hardcoded values, no mock dependency)
-                companyContacts = MockData.companyContacts
-                crisisResources = MockData.crisisResources
+                // Crisis hotlines + Milton support numbers are fixed app config
+                // (988, SAMHSA, Crisis Text Line, Milton line) — NOT fabricated
+                // patient data. Sourced from AppContacts, shared with ContactsScreen.
+                companyContacts = AppContacts.companyContacts
+                crisisResources = AppContacts.crisisResources
 
-                // Chat monitor (still mock — production hookup pending)
-                loadChatMonitorEntries()
+                // Real flagged/crisis chat messages from Supabase (no fake crisis
+                // lines). Empty result → the Chat Monitor shows its empty state.
+                chatMonitorEntries = Self.buildChatMonitorEntries(from: flaggedMessagesData, alumni: alumniUsers, staff: staffMembers)
 
                 meetings = meetingsData
 
                 loadGamificationData()
 
-                announcements = MockData.announcements
+                // Real announcements from Supabase (facility-filtered server-side).
+                announcements = announcementsData
 
                 isLoading = false
             }
@@ -516,26 +532,6 @@ final class AdminViewModel {
     }
 
     // MARK: - Sobriety Tracking
-
-    private func loadSobrietyNotifications() {
-        // Mock notifications for sobriety date changes
-        sobrietyNotifications = [
-            SobrietyChangeNotification(
-                user: MockData.alumniRoster[0],
-                previousDate: Calendar.current.date(byAdding: .day, value: -365, to: Date()) ?? Date(),
-                newDate: Calendar.current.date(byAdding: .day, value: -3, to: Date()) ?? Date(),
-                changedAt: Calendar.current.date(byAdding: .hour, value: -6, to: Date()) ?? Date(),
-                isRead: false
-            ),
-            SobrietyChangeNotification(
-                user: MockData.alumniRoster[1],
-                previousDate: Calendar.current.date(byAdding: .day, value: -200, to: Date()) ?? Date(),
-                newDate: Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date(),
-                changedAt: Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date(),
-                isRead: true
-            ),
-        ]
-    }
 
     func markNotificationRead(_ id: UUID) {
         if let index = sobrietyNotifications.firstIndex(where: { $0.id == id }) {
@@ -616,31 +612,6 @@ final class AdminViewModel {
 
     // MARK: - Badge Notifications
 
-    private func loadBadgeNotifications() {
-        // Mock notifications for badge earnings
-        let badges = MockData.badges
-        badgeNotifications = [
-            BadgeEarnedNotification(
-                user: MockData.alumniRoster[3],
-                badge: badges[0],
-                earnedAt: Calendar.current.date(byAdding: .hour, value: -2, to: Date()) ?? Date(),
-                isRead: false
-            ),
-            BadgeEarnedNotification(
-                user: MockData.alumniRoster[1],
-                badge: badges[2],
-                earnedAt: Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date(),
-                isRead: false
-            ),
-            BadgeEarnedNotification(
-                user: MockData.alumniRoster[5],
-                badge: badges[4],
-                earnedAt: Calendar.current.date(byAdding: .day, value: -2, to: Date()) ?? Date(),
-                isRead: true
-            ),
-        ]
-    }
-
     func markBadgeNotificationRead(_ id: UUID) {
         if let index = badgeNotifications.firstIndex(where: { $0.id == id }) {
             badgeNotifications[index].isRead = true
@@ -718,29 +689,11 @@ final class AdminViewModel {
     }
 
     // MARK: - Content Management (CRUD)
-
-    private func loadContentItems() {
-        contentItems = [
-            AdminContentItem(
-                id: UUID(), title: "Morning Meditation Reminder",
-                body: "Take 10 minutes each morning to center yourself. Focus on your breath and set an intention for the day.",
-                type: .reflection, isPinned: false,
-                createdAt: Calendar.current.date(byAdding: .day, value: -2, to: Date()) ?? Date()
-            ),
-            AdminContentItem(
-                id: UUID(), title: "New Group Session Starting",
-                body: "We are launching a new alumni support group every Wednesday at 6pm. All are welcome!",
-                type: .news, isPinned: true,
-                createdAt: Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
-            ),
-            AdminContentItem(
-                id: UUID(), title: "Holiday Hours Update",
-                body: "Our offices will be closed Dec 25-26. Emergency support line remains available 24/7.",
-                type: .pinnedUpdate, isPinned: true,
-                createdAt: Date()
-            ),
-        ]
-    }
+    //
+    // Admin content items (reflections / news) are held in-memory for the current
+    // session only — there is no backend table for them yet. `loadData()` seeds
+    // this to an empty array so a fresh install shows the empty state instead of
+    // fabricated sample reflections in Release.
 
     func beginCreateContent() {
         editingContentItem = nil
@@ -899,41 +852,43 @@ final class AdminViewModel {
 
     // MARK: - Chat Monitoring
 
-    private func loadChatMonitorEntries() {
-        let rawEntries: [(alumni: String, staff: String, role: UserRole, message: String, hoursAgo: Int, isDays: Bool, count: Int)] = [
-            (MockData.alumniRoster[0].fullName, MockData.caseManager.fullName, .caseManager,
-             "I used the breathing exercises from our last session and called my sponsor.", -2, false, 5),
-            (MockData.alumniRoster[1].fullName, MockData.therapist.fullName, .therapist,
-             "I relapsed last night and I'm feeling hopeless about everything.", -1, false, 12),
-            (MockData.alumniRoster[2].fullName, MockData.counselor.fullName, .counselor,
-             "Thank you for checking in! Feeling great this week.", -24, true, 8),
-            (MockData.alumniRoster[3].fullName, MockData.caseManager.fullName, .caseManager,
-             "Can we schedule a call for tomorrow?", -5, false, 3),
-        ]
+    /// Build the admin Chat Monitor list from REAL flagged/crisis messages
+    /// fetched from Supabase (`fetchFlaggedMessages`). No fabricated messages or
+    /// fake crisis lines — an empty result yields an empty list and the UI shows
+    /// its empty state. Sender names are resolved from the real alumni/staff
+    /// rosters; unresolved senders fall back to a generic "Member" label.
+    static func buildChatMonitorEntries(
+        from messages: [ChatMessage],
+        alumni: [User],
+        staff: [User]
+    ) -> [ChatMonitorEntry] {
+        let byId: [UUID: User] = Dictionary(
+            (alumni + staff).map { ($0.id, $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
 
-        chatMonitorEntries = rawEntries.map { entry in
-            let filterResult = ContentFilterService.shared.localFilter(entry.message)
-            let isFlagged = filterResult.status != .clean
-            let modStatus: ChatModerationStatus = {
-                switch filterResult.status {
-                case .crisis: return .denied
-                case .flagged: return .flagged
-                case .clean: return .none
-                }
-            }()
-            let date = entry.isDays
-                ? Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
-                : Calendar.current.date(byAdding: .hour, value: entry.hoursAgo, to: Date()) ?? Date()
+        return messages.map { message in
+            let sender = byId[message.senderId]
+            let senderIsStaff = sender?.role.isStaff ?? false
+            // The flagged message is authored by `senderId`. If a staff member,
+            // surface it in the staff column; otherwise treat the author as the
+            // member being monitored.
+            let alumniName = senderIsStaff ? "Member" : (sender?.fullName ?? "Member")
+            let staffName = senderIsStaff ? (sender?.fullName ?? "Staff") : "—"
+            let staffRole = sender?.role ?? .caseManager
+
+            let modStatus: ChatModerationStatus = message.status == .flaggedForCrisis
+                || message.status == .denied ? .denied : .flagged
 
             return ChatMonitorEntry(
-                alumniName: entry.alumni,
-                staffName: entry.staff,
-                staffRole: entry.role,
-                lastMessagePreview: entry.message,
-                lastMessageAt: date,
-                flagged: isFlagged,
+                alumniName: alumniName,
+                staffName: staffName,
+                staffRole: staffRole,
+                lastMessagePreview: message.content ?? message.messageType.rawValue.capitalized,
+                lastMessageAt: message.createdAt,
+                flagged: true,
                 moderationStatus: modStatus,
-                messageCount: entry.count
+                messageCount: 1
             )
         }
     }
@@ -1059,7 +1014,10 @@ final class AdminViewModel {
                 recurrencePattern: meetingIsRecurring ? meetingRecurrence : nil,
                 recurrenceEndDate: nil,
                 parentMeetingId: nil,
-                createdBy: MockData.currentUser.id,
+                // Real signed-in admin id (set by AdminDashboardScreen.onAppear).
+                // Falls back to the existing editing meeting's author, then to a
+                // zero UUID only if somehow unset — never a fabricated mock user.
+                createdBy: currentAdminUserId ?? editingMeeting?.createdBy ?? UUID(uuidString: "00000000-0000-0000-0000-000000000000")!,
                 createdAt: Date()
             )
         }
@@ -1138,8 +1096,17 @@ final class AdminViewModel {
     }
 
     /// Upload staff photo to Supabase Storage and persist the URL to the profiles table.
+    /// Surfaces failures to the admin via `adminActionError` (bound to an alert in
+    /// the dashboard) instead of failing silently.
     func uploadStaffPhoto(data: Data, staffId: UUID) async {
-        guard SupabaseConfig.isConfigured else { return }
+        guard SupabaseConfig.isConfigured else {
+            await MainActor.run {
+                adminActionError = "Photo upload is unavailable in this build."
+                staffPhotoUploadId = nil
+                showStaffPhotoPicker = false
+            }
+            return
+        }
         let path = "staff-photos/\(staffId.uuidString).jpg"
         do {
             try await SupabaseConfig.client.storage
@@ -1155,14 +1122,17 @@ final class AdminViewModel {
             // Update in-memory model
             await MainActor.run { completePhotoUpload(photoURL: urlString) }
 
-            // Persist to profiles table
-            _ = try? await SupabaseConfig.client.from("profiles")
+            // Persist to profiles table — surface a failure here too (previously
+            // this used try? and swallowed DB errors, so the photo could look
+            // saved locally but never persist).
+            try await SupabaseConfig.client.from("profiles")
                 .update(["profile_photo_url": urlString])
                 .eq("id", value: staffId.uuidString)
                 .execute()
         } catch {
             CrashReportingService.shared.recordError(error, context: "AdminViewModel.uploadStaffPhoto")
             await MainActor.run {
+                adminActionError = "Couldn't upload the staff photo. Please try again.\n\(error.localizedDescription)"
                 staffPhotoUploadId = nil
                 showStaffPhotoPicker = false
             }
@@ -1175,13 +1145,21 @@ final class AdminViewModel {
     // MARK: - Gamification Admin Controls
 
     private func loadGamificationData() {
-        editableBadges = MockData.badges
+        // Point values are real app config (the PointAction enum), not fabricated
+        // data — safe to show in Release.
         editablePointActions = [
             .dailyLogin: PointAction.dailyLogin.points,
             .postCreated: PointAction.postCreated.points,
             .postLiked: PointAction.postLiked.points,
             .milestoneReached: PointAction.milestoneReached.points,
         ]
+        // Badges load from the real `badges` table. Empty DB → empty editor
+        // (no mock badge ladder shipped in Release).
+        editableBadges = []
+        Task {
+            let badges = (try? await dataService.fetchBadges()) ?? []
+            await MainActor.run { editableBadges = badges }
+        }
     }
 
     func beginEditBadge(_ badge: Badge) {

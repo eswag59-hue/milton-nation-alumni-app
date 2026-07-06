@@ -15,7 +15,7 @@ struct CrisisResourceCard: View {
                 .font(.subheadline)
                 .foregroundStyle(AppTheme.textPrimary)
 
-            ForEach(MockData.crisisResources) { resource in
+            ForEach(AppContacts.crisisResources) { resource in
                 Button {
                     contactResource(resource)
                 } label: {

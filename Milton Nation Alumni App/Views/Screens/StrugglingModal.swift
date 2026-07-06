@@ -1,4 +1,15 @@
 import SwiftUI
+import Supabase
+
+/// Body for the member-initiated care-team alert. PHI-safe: no member name is
+/// sent — the edge function forces a fixed generic message and resolves
+/// recipients (the member's own-facility clinical staff + admins) server-side.
+private struct CareTeamAlertParams: Encodable {
+    let target: String
+    let title: String
+    let body: String
+    let data: [String: String]
+}
 
 struct StrugglingModal: View {
     @Environment(\.dismiss) private var dismiss
@@ -175,20 +186,38 @@ struct StrugglingModal: View {
     /// Sends a real alert to the care team when the user toggles "Notify care team".
     private func notifyCareTeamNow() {
         let userId = appViewModel.currentUser?.id
-        let userName = appViewModel.currentUser?.fullName ?? "A member"
 
         // 1. Audit log — creates a server-side record staff can review
         AuditLogger.shared.log(.contentEscalated, userId: userId, detail: "User triggered Notify Care Team in StrugglingModal")
 
-        // 2. Local notification fires immediately on this device (visible on simulator)
-        //    In production, the Supabase send-push-notification Edge Function pushes to
-        //    all staff in the user's facility via APNs.
+        // 2. Local notification fires immediately on THIS device (visible on
+        //    simulator + reassures the member it went through).
         PushNotificationService.shared.scheduleLocalNotification(
-            title: "⚠️ Member Needs Support",
-            body: "\(userName) has requested care team support right now.",
-            userInfo: ["type": "care_team_alert", "userId": userId?.uuidString ?? ""]
+            title: "Care team notified",
+            body: "Your care team has been alerted and will reach out to you.",
+            userInfo: ["type": "care_team_alert_sent", "userId": userId?.uuidString ?? ""]
         )
 
+        // 3. Push the actual alert to the care team (clinical staff + admins in
+        //    the member's facility) via the send-push-notification Edge Function.
+        //    PHI-safe: NO member name in the payload — the function forces a fixed
+        //    generic message and resolves recipients server-side. Fire-and-forget
+        //    so a network hiccup never blocks the member's help flow.
+        guard SupabaseConfig.isConfigured else { return }
+        Task {
+            _ = try? await SupabaseConfig.client.functions.invoke(
+                "send-push-notification",
+                options: .init(
+                    method: .post,
+                    body: CareTeamAlertParams(
+                        target: "care_team",
+                        title: "Member needs support",
+                        body: "A member has requested care team support. Tap to review.",
+                        data: ["type": "care_team_alert"]
+                    )
+                )
+            )
+        }
     }
 
     // MARK: - Phone call row (opens native Phone app via tel:)

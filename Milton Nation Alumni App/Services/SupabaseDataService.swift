@@ -71,6 +71,11 @@ nonisolated private struct PostInsertParams: Encodable, Sendable {
     let mediaType: String?
     let status: String
     let matchedKeywords: [String]
+    /// The author's facility (florida / ohio). Without this, posts insert NULL
+    /// and become visible cross-facility (FL <-> OH data leak — PHI). `nil` only
+    /// if the author has no facility assigned yet (pending), in which case the
+    /// column is omitted and the row stays legacy-visible until re-migrated.
+    let facility: String?
     enum CodingKeys: String, CodingKey {
         case userId = "user_id"
         case userName = "user_name"
@@ -80,6 +85,23 @@ nonisolated private struct PostInsertParams: Encodable, Sendable {
         case mediaType = "media_type"
         case status
         case matchedKeywords = "matched_keywords"
+        case facility
+    }
+}
+
+/// Minimal profile row used when creating a post / announcement: just the
+/// display fields plus the author's facility. Decoding into this instead of the
+/// full `User` avoids keyNotFound on the many NOT-NULL `User` fields we don't
+/// select, and gives us the facility needed for cross-facility isolation.
+nonisolated private struct PostAuthorProfile: Decodable, Sendable {
+    let id: UUID
+    let username: String
+    let profilePhotoUrl: String?
+    /// Raw facility string ("florida" / "ohio") or nil if unassigned.
+    let facility: String?
+    enum CodingKeys: String, CodingKey {
+        case id, username, facility
+        case profilePhotoUrl = "profile_photo_url"
     }
 }
 
@@ -139,6 +161,33 @@ nonisolated private struct ProfileUpdateParams: Encodable, Sendable {
 nonisolated private struct AnnouncementInsertParams: Encodable, Sendable {
     let title: String
     let description: String
+    /// Target facility ("florida" / "ohio"). nil = global (super_admin) or legacy.
+    let facility: String?
+}
+
+/// Row used to resolve the caller's effective facility for RLS-style filtering.
+/// Mirrors the SQL `current_user_facility()` helper: admins/staff use
+/// `admin_facility`, alumni/pending use `facility`, super_admin resolves to nil.
+nonisolated private struct CallerFacilityRow: Decodable, Sendable {
+    let role: UserRole
+    let facility: String?
+    let adminFacility: String?
+    enum CodingKeys: String, CodingKey {
+        case role, facility
+        case adminFacility = "admin_facility"
+    }
+    /// The facility to scope this caller's reads/writes to. nil = see/act on all
+    /// (super_admin) or unassigned.
+    var effectiveFacility: String? {
+        switch role {
+        case .superAdmin:
+            return nil
+        case .admin, .caseManager, .therapist, .counselor:
+            return adminFacility
+        case .alumni:
+            return facility
+        }
+    }
 }
 
 nonisolated private struct MilestoneInsertParams: Encodable, Sendable {
@@ -275,6 +324,31 @@ final class SupabaseDataService: DataServiceProtocol {
         }
     }
 
+    /// Per-session cache of the current caller's effective facility. `nil` means
+    /// "not loaded yet"; a loaded value of `.some(nil)` means super_admin / no
+    /// facility. Loaded lazily and reused so we don't re-query per fetch.
+    private var callerFacilityCache: String??
+
+    /// Returns the caller's effective facility (super_admin / unassigned = nil),
+    /// used to filter feeds client-side so FL never sees OH and vice versa.
+    /// Failures degrade to `nil` (see-all) rather than hiding the whole feed —
+    /// server-side RLS remains the authoritative isolation boundary.
+    private func currentUserFacility() async -> String? {
+        if let cached = callerFacilityCache { return cached }
+        let resolved: String? = await {
+            guard let userId = try? await currentUserId else { return nil }
+            let row: CallerFacilityRow? = try? await client.from("profiles")
+                .select("role, facility, admin_facility")
+                .eq("id", value: userId.uuidString)
+                .single()
+                .execute()
+                .value
+            return row?.effectiveFacility
+        }()
+        callerFacilityCache = .some(resolved)
+        return resolved
+    }
+
     /// Per-session cache of the user IDs the current user has blocked. Populated
     /// lazily on first feed fetch and refreshed after block/unblock. Used to
     /// filter posts, comments, conversations, and messages client-side so we
@@ -314,6 +388,19 @@ final class SupabaseDataService: DataServiceProtocol {
             .execute()
             .value
 
+        // Facility isolation (PHI): a user only sees their own facility's posts.
+        // super_admin (facility == nil) sees all. Legacy rows with a nil facility
+        // stay visible to everyone until re-migrated. The user's OWN posts always
+        // pass so they can see their submissions even if unstamped. This mirrors
+        // the server-side RLS `posts_select_facility` policy — defense in depth.
+        if let myFacilityRaw = await currentUserFacility() {
+            posts = posts.filter { post in
+                post.userId == userId
+                    || post.facility == nil
+                    || post.facility?.rawValue == myFacilityRaw
+            }
+        }
+
         // Hide posts authored by blocked users (Apple Guideline 1.2). We filter
         // the returned array rather than touching the server query — never hide
         // the user's OWN posts (a user can't block themselves anyway).
@@ -343,9 +430,11 @@ final class SupabaseDataService: DataServiceProtocol {
     ) async throws -> CommunityPost {
         let userId = try await currentUserId
 
-        // Fetch the user's profile for display name
-        let profile: User = try await client.from("profiles")
-            .select("id, username, profile_photo_url")
+        // Fetch the user's profile for display name + facility. We decode into a
+        // minimal struct (not the full `User`) so a partial column select can't
+        // throw keyNotFound on the many NOT-NULL User fields we don't select here.
+        let profile: PostAuthorProfile = try await client.from("profiles")
+            .select("id, username, profile_photo_url, facility")
             .eq("id", value: userId.uuidString)
             .single()
             .execute()
@@ -372,17 +461,19 @@ final class SupabaseDataService: DataServiceProtocol {
                 .absoluteString
         }
 
-        // Insert the post
+        // Insert the post — stamp it with the author's facility so RLS + the
+        // client-side filter keep FL and OH content separate (PHI isolation).
         let insert = PostInsertParams(
             userId: userId,
             userName: profile.username,
-            userPhotoUrl: profile.profilePhotoURL,
+            userPhotoUrl: profile.profilePhotoUrl,
             category: category.rawValue,
             content: content,
             mediaUrl: mediaURL,
             mediaType: mediaType?.rawValue,
             status: status.rawValue,
-            matchedKeywords: matchedKeywords
+            matchedKeywords: matchedKeywords,
+            facility: profile.facility
         )
 
         // supabase-swift 2.41.1 has a bug where `.insert(...).select().single()`
@@ -811,6 +902,29 @@ final class SupabaseDataService: DataServiceProtocol {
         return updated
     }
 
+    func deactivateAccount(userId: UUID) async throws {
+        // Mark deactivated + stamp the 30-day clock. `updateProfile` intentionally
+        // does NOT write `status`/`deactivated_at`, so account deletion goes
+        // through this dedicated path. The daily `purge_deactivated_accounts()`
+        // job hard-deletes personal data once deactivated_at is >30 days old.
+        struct DeactivateParams: Encodable {
+            let status: String
+            let deactivatedAt: String
+            enum CodingKeys: String, CodingKey {
+                case status
+                case deactivatedAt = "deactivated_at"
+            }
+        }
+        let params = DeactivateParams(
+            status: "deactivated",
+            deactivatedAt: ISO8601DateFormatter().string(from: Date())
+        )
+        try await client.from("profiles")
+            .update(params)
+            .eq("id", value: userId.uuidString)
+            .execute()
+    }
+
     // MARK: - Quotes
 
     func fetchDailyQuote() async throws -> DailyQuote {
@@ -851,19 +965,34 @@ final class SupabaseDataService: DataServiceProtocol {
     // MARK: - Announcements
 
     func fetchAnnouncements() async throws -> [Announcement] {
-        let announcements: [Announcement] = try await client.from("announcements")
+        var announcements: [Announcement] = try await client.from("announcements")
             .select()
             .order("created_at", ascending: false)
             .execute()
             .value
 
+        // Facility isolation (PHI): only show announcements for the caller's
+        // facility. super_admin (facility == nil) sees all; legacy rows with a
+        // nil facility stay visible to everyone. Mirrors the server-side RLS
+        // `announcements_select_facility` policy — defense in depth.
+        if let myFacilityRaw = await currentUserFacility() {
+            announcements = announcements.filter { ann in
+                ann.facility == nil || ann.facility?.rawValue == myFacilityRaw
+            }
+        }
+
         return announcements
     }
 
     func createAnnouncement(title: String, description: String) async throws -> Announcement {
+        // Stamp the announcement with the author's facility so FL and OH members
+        // only see announcements meant for them. super_admin resolves to nil =
+        // a global announcement visible to all facilities.
+        let facility = await currentUserFacility()
+
         // See createPost comment re: supabase-swift 2.41.1 insert+single bug.
         let inserted: [Announcement] = try await client.from("announcements")
-            .insert(AnnouncementInsertParams(title: title, description: description))
+            .insert(AnnouncementInsertParams(title: title, description: description, facility: facility))
             .select()
             .execute()
             .value
