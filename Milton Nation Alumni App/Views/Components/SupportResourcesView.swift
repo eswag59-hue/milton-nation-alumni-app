@@ -76,6 +76,18 @@ struct SupportResourcesView: View {
 
     private var resourcesList: some View {
         VStack(spacing: 12) {
+            // After-hours disclaimer (patient safety): this app is not an
+            // emergency service and is not monitored around the clock.
+            Text("Milton Nation is a peer-support community, not an emergency service, and is not monitored 24/7. If you are in danger right now, call or text 988 or call 911.")
+                .font(.footnote.weight(.medium))
+                .foregroundStyle(AppTheme.textSecondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .frame(maxWidth: .infinity)
+                .background(AppTheme.accent.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+
             // Crisis resources listed with highest priority first
             ResourceCard(resource: .suicideCrisisLifeline,  isPrimary: showCrisisFirst)
             ResourceCard(resource: .crisisTextLine,          isPrimary: false)

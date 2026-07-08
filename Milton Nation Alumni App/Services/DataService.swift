@@ -92,6 +92,36 @@ protocol DataServiceProtocol {
     func reportPost(_ postId: UUID, reason: String?) async throws
     /// Report a comment for admin review.
     func reportComment(_ commentId: UUID, reason: String?) async throws
+
+    // MARK: - Data Export (HIPAA Right of Access)
+
+    /// Everything the current user authored — posts, comments, and chat
+    /// messages they sent — for the Settings → "Download My Data" JSON export.
+    func fetchMyContentForExport() async throws -> UserContentExport
+}
+
+// MARK: - Data Export DTO
+
+/// A snapshot of the current user's own authored content, returned by
+/// `fetchMyContentForExport()` for the HIPAA "Download My Data" export.
+/// Deliberately minimal — content + timestamps only, no other users' data.
+struct UserContentExport: Sendable {
+    struct ExportPost: Sendable {
+        let content: String
+        let category: String
+        let createdAt: Date
+    }
+    struct ExportComment: Sendable {
+        let content: String
+        let createdAt: Date
+    }
+    struct ExportMessage: Sendable {
+        let content: String
+        let createdAt: Date
+    }
+    let posts: [ExportPost]
+    let comments: [ExportComment]
+    let messages: [ExportMessage]
 }
 
 // MARK: - Block DTO
@@ -627,6 +657,32 @@ final class MockDataService: DataServiceProtocol {
 
     func reportComment(_ commentId: UUID, reason: String?) async throws {
         try await Task.sleep(for: .milliseconds(150))
+    }
+
+    // MARK: - Data Export (mock — mirrors the in-session stores)
+
+    func fetchMyContentForExport() async throws -> UserContentExport {
+        try await Task.sleep(for: .milliseconds(200))
+        let me = currentMockUser
+
+        let posts = (mockPostsAppended + MockData.posts)
+            .filter { $0.userId == me.id }
+            .map { UserContentExport.ExportPost(content: $0.content, category: $0.category.rawValue, createdAt: $0.createdAt) }
+
+        let comments = mockComments.values.flatMap { $0 }
+            .filter { $0.userId == me.id }
+            .map { UserContentExport.ExportComment(content: $0.content, createdAt: $0.createdAt) }
+
+        // Every in-session appended message was sent by the current user.
+        let messages = mockMessagesAppended.values.flatMap { $0 }
+            .filter { $0.senderId == me.id }
+            .map { UserContentExport.ExportMessage(content: $0.content ?? "", createdAt: $0.createdAt) }
+
+        return UserContentExport(
+            posts: posts.sorted { $0.createdAt < $1.createdAt },
+            comments: comments.sorted { $0.createdAt < $1.createdAt },
+            messages: messages.sorted { $0.createdAt < $1.createdAt }
+        )
     }
 
     // Mock pending users for testing

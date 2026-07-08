@@ -307,6 +307,40 @@ nonisolated private struct BlockedProfileRow: Decodable, Sendable {
     }
 }
 
+// MARK: - Data Export Row Types (HIPAA Right of Access)
+
+/// Minimal post row for the "Download My Data" export — content only, no ids.
+nonisolated private struct ExportPostRow: Decodable, Sendable {
+    let content: String
+    let category: String
+    let createdAt: Date
+    enum CodingKeys: String, CodingKey {
+        case content, category
+        case createdAt = "created_at"
+    }
+}
+
+/// Minimal comment row for the "Download My Data" export.
+nonisolated private struct ExportCommentRow: Decodable, Sendable {
+    let content: String
+    let createdAt: Date
+    enum CodingKeys: String, CodingKey {
+        case content
+        case createdAt = "created_at"
+    }
+}
+
+/// Minimal message row for the "Download My Data" export. `content` is
+/// nullable in the schema (media-only messages), so it decodes as optional.
+nonisolated private struct ExportMessageRow: Decodable, Sendable {
+    let content: String?
+    let createdAt: Date
+    enum CodingKeys: String, CodingKey {
+        case content
+        case createdAt = "created_at"
+    }
+}
+
 /// Production data service using Supabase PostgREST + Storage.
 ///
 /// Implements all 24 `DataServiceProtocol` methods.
@@ -1442,6 +1476,49 @@ final class SupabaseDataService: DataServiceProtocol {
             targetId: commentId,
             reporterId: reporterId,
             reason: reason
+        )
+    }
+
+    // MARK: - Data Export (HIPAA Right of Access)
+
+    /// Fetch everything the current user authored — posts, comments, and chat
+    /// messages they sent — for the Settings → "Download My Data" export.
+    /// Scoped to the caller's own rows via `user_id` / `sender_id` filters
+    /// (RLS enforces the same boundary server-side — defense in depth).
+    func fetchMyContentForExport() async throws -> UserContentExport {
+        let userId = try await currentUserId
+
+        let postRows: [ExportPostRow] = try await client.from("posts")
+            .select("content, category, created_at")
+            .eq("user_id", value: userId.uuidString)
+            .order("created_at", ascending: true)
+            .execute()
+            .value
+
+        let commentRows: [ExportCommentRow] = try await client.from("comments")
+            .select("content, created_at")
+            .eq("user_id", value: userId.uuidString)
+            .order("created_at", ascending: true)
+            .execute()
+            .value
+
+        let messageRows: [ExportMessageRow] = try await client.from("messages")
+            .select("content, created_at")
+            .eq("sender_id", value: userId.uuidString)
+            .order("created_at", ascending: true)
+            .execute()
+            .value
+
+        return UserContentExport(
+            posts: postRows.map {
+                UserContentExport.ExportPost(content: $0.content, category: $0.category, createdAt: $0.createdAt)
+            },
+            comments: commentRows.map {
+                UserContentExport.ExportComment(content: $0.content, createdAt: $0.createdAt)
+            },
+            messages: messageRows.map {
+                UserContentExport.ExportMessage(content: $0.content ?? "", createdAt: $0.createdAt)
+            }
         )
     }
 

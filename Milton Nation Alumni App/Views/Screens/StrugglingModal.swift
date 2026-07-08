@@ -38,6 +38,18 @@ struct StrugglingModal: View {
                     }
                     .padding(.top)
 
+                    // After-hours disclaimer (patient safety): this app is not
+                    // an emergency service and is not monitored around the clock.
+                    Text("Milton Nation is a peer-support community, not an emergency service, and is not monitored 24/7. If you are in danger right now, call or text 988 or call 911.")
+                        .font(.footnote.weight(.medium))
+                        .foregroundStyle(AppTheme.struggling)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .frame(maxWidth: .infinity)
+                        .background(AppTheme.strugglingLight)
+                        .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSmall))
+
                     // Crisis Hotlines
                     VStack(spacing: 12) {
                         // 988 — Phone call

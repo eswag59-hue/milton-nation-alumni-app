@@ -37,22 +37,31 @@ struct CommunityScreen: View {
                 // Posts
                 if viewModel.posts.isEmpty && !viewModel.isLoading {
                     Spacer()
+                    // Empty state: a warm welcome when the whole feed is empty
+                    // (real possibility at launch), a category-specific nudge
+                    // when only the selected filter has no posts.
                     VStack(spacing: 12) {
-                        Image(systemName: "person.2.slash")
+                        Image(systemName: viewModel.selectedCategory == nil ? "heart.text.square" : "person.2.slash")
                             .font(.system(size: 48))
-                            .foregroundStyle(AppTheme.textSecondary.opacity(0.4))
-                        Text("No posts yet")
+                            .foregroundStyle(viewModel.selectedCategory == nil
+                                             ? AppTheme.accent.opacity(0.6)
+                                             : AppTheme.textSecondary.opacity(0.4))
+                        Text(viewModel.selectedCategory == nil ? "Welcome to Milton Nation!" : "No posts yet")
                             .font(.title3.bold())
                             .foregroundStyle(AppTheme.textPrimary)
-                        Text("Be the first to share in this category")
+                        Text(viewModel.selectedCategory == nil
+                             ? "Be the first to share — a win, a milestone, or how you're doing today."
+                             : "Be the first to share in this category")
                             .font(.subheadline)
                             .foregroundStyle(AppTheme.textSecondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 32)
                         Button {
                             viewModel.showCreatePost = true
                         } label: {
                             HStack {
                                 Image(systemName: "plus")
-                                Text("Create Post")
+                                Text(viewModel.selectedCategory == nil ? "Share Your First Post" : "Create Post")
                             }
                             .font(.subheadline.bold())
                             .padding(.horizontal, 24)

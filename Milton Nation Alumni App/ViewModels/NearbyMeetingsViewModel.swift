@@ -8,6 +8,11 @@ final class NearbyMeetingsViewModel {
     var errorMessage: String?
     var hasRequestedLocation = false
 
+    /// Handle to the in-flight fetch task. Lets tests `await` the actual fetch
+    /// instead of sleeping for a fixed duration (which is flaky under CPU
+    /// contention). Not observed — it's a test seam, not UI state.
+    @ObservationIgnored private(set) var fetchTask: Task<Void, Never>?
+
     let locationService: LocationService
     private let meetingService: BMTLMeetingServiceProtocol
     private let radiusMiles: Double = 10
@@ -55,7 +60,7 @@ final class NearbyMeetingsViewModel {
     /// All `@Observable` mutations are hopped to MainActor so SwiftUI never
     /// renders from a background thread.
     func fetchMeetings(for location: CLLocation) {
-        Task {
+        fetchTask = Task {
             await MainActor.run {
                 isLoading = true
                 errorMessage = nil

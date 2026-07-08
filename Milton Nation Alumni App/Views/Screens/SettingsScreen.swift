@@ -16,6 +16,7 @@ struct SettingsScreen: View {
     @State private var showDataExportSheet = false
     @State private var exportedDataURL: URL?
     @State private var isExportingData = false
+    @State private var showExportErrorAlert = false
 
     var body: some View {
         List {
@@ -120,10 +121,18 @@ struct SettingsScreen: View {
                     }
                 }
                 .disabled(isExportingData)
+                // Attached to the Button (not the List) so it doesn't conflict
+                // with the other alerts in this screen — two .alert on the same
+                // view causes only the last to fire.
+                .alert("Export Failed", isPresented: $showExportErrorAlert) {
+                    Button("OK") {}
+                } message: {
+                    Text("We couldn't prepare your data export. Please check your connection and try again.")
+                }
             } header: {
                 Label("Data", systemImage: "externaldrive.fill")
             } footer: {
-                Text("Clears cached meetings, contacts, and quotes. Data will be re-downloaded on next use. Download My Data exports your profile, posts, and account info as a JSON file.")
+                Text("Clears cached meetings, contacts, and quotes. Data will be re-downloaded on next use. Download My Data exports your profile, posts, comments, messages, and account info as a JSON file.")
             }
 
             // MARK: - Account
@@ -214,43 +223,69 @@ struct SettingsScreen: View {
         isExportingData = true
 
         Task {
-            let exportDict: [String: Any] = [
-                "exported_at": ISO8601DateFormatter().string(from: Date()),
-                "profile": [
-                    "id": user.id.uuidString,
-                    "full_name": user.fullName,
-                    "username": user.username,
-                    "email": user.email,
-                    "phone": user.phone,
-                    "recovery_program": user.recoveryProgram,
-                    "sobriety_date": user.sobrietyDate.formatted(date: .abbreviated, time: .omitted),
-                    "discharge_date": user.dischargeDate.formatted(date: .abbreviated, time: .omitted),
-                    "total_points": user.totalPoints,
-                    "role": user.role.rawValue,
-                    "status": user.status.rawValue
-                ],
-                "note": "To request a full copy of all messages and posts, contact media@miltonhealthgroup.com"
-            ]
+            do {
+                // Fetch the user's OWN authored content (posts, comments, chat
+                // messages) so the export honors the HIPAA Right of Access —
+                // profile fields alone are not the user's full data.
+                let content = try await appViewModel.dataService.fetchMyContentForExport()
+                let timestampFormatter = ISO8601DateFormatter()
 
-            if let jsonData = try? JSONSerialization.data(withJSONObject: exportDict, options: .prettyPrinted) {
+                let exportDict: [String: Any] = [
+                    "exported_at": timestampFormatter.string(from: Date()),
+                    "profile": [
+                        "id": user.id.uuidString,
+                        "full_name": user.fullName,
+                        "username": user.username,
+                        "email": user.email,
+                        "phone": user.phone,
+                        "recovery_program": user.recoveryProgram,
+                        "sobriety_date": user.sobrietyDate.formatted(date: .abbreviated, time: .omitted),
+                        "discharge_date": user.dischargeDate.formatted(date: .abbreviated, time: .omitted),
+                        "total_points": user.totalPoints,
+                        "role": user.role.rawValue,
+                        "status": user.status.rawValue
+                    ],
+                    "posts": content.posts.map { post in
+                        [
+                            "content": post.content,
+                            "category": post.category,
+                            "created_at": timestampFormatter.string(from: post.createdAt)
+                        ]
+                    },
+                    "comments": content.comments.map { comment in
+                        [
+                            "content": comment.content,
+                            "created_at": timestampFormatter.string(from: comment.createdAt)
+                        ]
+                    },
+                    "messages": content.messages.map { message in
+                        [
+                            "content": message.content,
+                            "created_at": timestampFormatter.string(from: message.createdAt)
+                        ]
+                    },
+                    "note": "For questions about this export or additional records, contact media@miltonhealthgroup.com"
+                ]
+
+                let jsonData = try JSONSerialization.data(withJSONObject: exportDict, options: .prettyPrinted)
                 // ":" is illegal in iOS export filenames — would break Files.app and AirDrop
                 let stamp = DateFormatter()
                 stamp.dateFormat = "yyyy-MM-dd-HHmmss"
                 let fileName = "MiltonAlumni_MyData_\(stamp.string(from: Date())).json"
                 let url = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
-                do {
-                    try jsonData.write(to: url)
-                    AuditLogger.shared.log(.exportUserData, userId: user.id, detail: "User requested data export")
-                    await MainActor.run {
-                        exportedDataURL = url
-                        isExportingData = false
-                        showDataExportSheet = true
-                    }
-                } catch {
-                    await MainActor.run { isExportingData = false }
+                try jsonData.write(to: url)
+                AuditLogger.shared.log(.exportUserData, userId: user.id, detail: "User requested data export")
+                await MainActor.run {
+                    exportedDataURL = url
+                    isExportingData = false
+                    showDataExportSheet = true
                 }
-            } else {
-                await MainActor.run { isExportingData = false }
+            } catch {
+                CrashReportingService.shared.recordError(error, context: "SettingsScreen.exportMyData")
+                await MainActor.run {
+                    isExportingData = false
+                    showExportErrorAlert = true
+                }
             }
         }
     }

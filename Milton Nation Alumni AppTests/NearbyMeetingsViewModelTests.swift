@@ -40,8 +40,8 @@ struct NearbyMeetingsViewModelTests {
         let vm = NearbyMeetingsViewModel(meetingService: MockBMTLMeetingService())
         let location = CLLocation(latitude: 40.89, longitude: -74.01)
         vm.fetchMeetings(for: location)
-        // MockBMTLMeetingService has 800ms simulated delay
-        try await Task.sleep(for: .milliseconds(1200))
+        // Await the actual in-flight fetch (deterministic — no fixed sleeps).
+        await vm.fetchTask?.value
         #expect(vm.meetings.count == 10)
         #expect(!vm.isLoading)
         #expect(vm.errorMessage == nil)
@@ -52,7 +52,7 @@ struct NearbyMeetingsViewModelTests {
         let vm = NearbyMeetingsViewModel(meetingService: FailingMeetingService())
         let location = CLLocation(latitude: 40.89, longitude: -74.01)
         vm.fetchMeetings(for: location)
-        try await Task.sleep(for: .milliseconds(200))
+        await vm.fetchTask?.value
         #expect(vm.errorMessage != nil)
         #expect(vm.meetings.isEmpty)
         #expect(!vm.isLoading)
@@ -63,7 +63,7 @@ struct NearbyMeetingsViewModelTests {
         let vm = NearbyMeetingsViewModel(meetingService: EmptyMeetingService())
         let location = CLLocation(latitude: 40.89, longitude: -74.01)
         vm.fetchMeetings(for: location)
-        try await Task.sleep(for: .milliseconds(200))
+        await vm.fetchTask?.value
         #expect(vm.errorMessage != nil)
         #expect(vm.meetings.isEmpty)
     }
@@ -75,7 +75,7 @@ struct NearbyMeetingsViewModelTests {
 
         // First call — sets error
         vm.fetchMeetings(for: location)
-        try await Task.sleep(for: .milliseconds(200))
+        await vm.fetchTask?.value
         #expect(vm.errorMessage != nil)
 
         // errorMessage should be nil while the next fetch is in-flight
