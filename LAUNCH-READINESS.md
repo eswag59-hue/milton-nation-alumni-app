@@ -1,7 +1,16 @@
 # Launch Readiness — Milton Nation (single source of truth)
 
 **Goal:** App Store live → 10 clients + staff + alumni onboarded and using it well, safely.
-**Last updated:** 2026-06-22 · **Overall: ~58%** (build ahead; compliance-activation + crisis-ops are the lagging half).
+**Last updated:** 2026-07-06 (autonomous session) · **Overall: ~75%** — all known code work DONE through Build 16; remaining = device testing, screenshots, submit, clinical sign-off, go-live flips.
+
+## 2026-07-06 autonomous session — everything done without Ezra
+- **All 6 audit launch-blockers fixed, merged, deployed** (Build 15 commit `6dc603b`): facility isolation (FL/OH), real admin data (no fabricated content in Release), real 30-day account purge, care-team alerts reach staff, crisis push on working APNs path, consent-gate tests.
+- **Prod DB bug found + fixed live:** `profiles.status` CHECK omitted `'rejected'` → every admin rejection failed. Fixed in prod + migration `20260706_fix_status_check_rejected.sql` (commit `713b6d1`).
+- **pg_cron ENABLED + daily purge scheduled** (3:30am UTC) — was on Ezra's list, done. Purge migration applied; `deactivated_at` + `purge_deactivated_accounts()` verified in prod.
+- **3 edge functions deployed** (`send-push-notification`, `flag-content`, `purge-accounts`) + security smoke-tested: all reject unauthenticated calls (401).
+- **Polish batch built + merged** (commit `8e0d234`): Download-My-Data now includes posts/comments/messages + failure alert (HIPAA right-to-access complete); crisis "not 24/7 → 988/911" disclaimers in StrugglingModal + SupportResourcesView; "— Unknown" quote attribution hidden; NearbyMeetings tests made deterministic (3× green); empty-feed welcome + first-post CTA.
+- **249/249 tests pass**; Build 16 (`99d794d`) archived and waiting in Xcode Organizer.
+- Confirmed prod `posts` table empty → no historical cross-facility exposure existed.
 
 Legend: ✅ done · 🟡 in progress · ❌ not started · ❓ needs confirm · 🔴 gate (blocks real patients)
 
