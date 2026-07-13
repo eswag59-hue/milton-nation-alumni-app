@@ -9,15 +9,15 @@ nonisolated private struct ToggleLikeRPCParams: Encodable, Sendable {
     let pPostId: UUID
     let pUserId: UUID
     enum CodingKeys: String, CodingKey {
-        case pPostId = "p_post_id"
-        case pUserId = "p_user_id"
+        case pPostId
+        case pUserId
     }
 }
 
 nonisolated private struct IncrementCommentRPCParams: Encodable, Sendable {
     let pPostId: UUID
     enum CodingKeys: String, CodingKey {
-        case pPostId = "p_post_id"
+        case pPostId
     }
 }
 
@@ -27,8 +27,8 @@ nonisolated private struct ToggleCommentLikeRPCParams: Encodable, Sendable {
     let pCommentId: UUID
     let pUserId: UUID
     enum CodingKeys: String, CodingKey {
-        case pCommentId = "p_comment_id"
-        case pUserId = "p_user_id"
+        case pCommentId
+        case pUserId
     }
 }
 
@@ -42,8 +42,8 @@ nonisolated private struct PostUpdateParams: Encodable, Sendable {
     let status: String
     enum CodingKeys: String, CodingKey {
         case content
-        case mediaUrl = "media_url"
-        case mediaType = "media_type"
+        case mediaUrl
+        case mediaType
         case status
     }
 }
@@ -53,9 +53,9 @@ nonisolated private struct AwardPointsRPCParams: Encodable, Sendable {
     let pPoints: Int
     let pAction: String
     enum CodingKeys: String, CodingKey {
-        case pUserId = "p_user_id"
-        case pPoints = "p_points"
-        case pAction = "p_action"
+        case pUserId
+        case pPoints
+        case pAction
     }
 }
 
@@ -77,14 +77,14 @@ nonisolated private struct PostInsertParams: Encodable, Sendable {
     /// column is omitted and the row stays legacy-visible until re-migrated.
     let facility: String?
     enum CodingKeys: String, CodingKey {
-        case userId = "user_id"
-        case userName = "user_name"
-        case userPhotoUrl = "user_photo_url"
+        case userId
+        case userName
+        case userPhotoUrl
         case category, content
-        case mediaUrl = "media_url"
-        case mediaType = "media_type"
+        case mediaUrl
+        case mediaType
         case status
-        case matchedKeywords = "matched_keywords"
+        case matchedKeywords
         case facility
     }
 }
@@ -101,7 +101,7 @@ nonisolated private struct PostAuthorProfile: Decodable, Sendable {
     let facility: String?
     enum CodingKeys: String, CodingKey {
         case id, username, facility
-        case profilePhotoUrl = "profile_photo_url"
+        case profilePhotoUrl
     }
 }
 
@@ -114,12 +114,12 @@ nonisolated private struct CommentInsertParams: Encodable, Sendable {
     let matchedKeywords: [String]
     let status: String
     enum CodingKeys: String, CodingKey {
-        case postId = "post_id"
-        case userId = "user_id"
-        case userName = "user_name"
-        case userPhotoUrl = "user_photo_url"
+        case postId
+        case userId
+        case userName
+        case userPhotoUrl
         case content
-        case matchedKeywords = "matched_keywords"
+        case matchedKeywords
         case status
     }
 }
@@ -132,11 +132,11 @@ nonisolated private struct MessageInsertParams: Encodable, Sendable {
     let status: String
     let matchedKeywords: [String]
     enum CodingKeys: String, CodingKey {
-        case conversationId = "conversation_id"
-        case senderId = "sender_id"
-        case messageType = "message_type"
+        case conversationId
+        case senderId
+        case messageType
         case content, status
-        case matchedKeywords = "matched_keywords"
+        case matchedKeywords
     }
 }
 
@@ -149,12 +149,12 @@ nonisolated private struct ProfileUpdateParams: Encodable, Sendable {
     let recoveryProgram: String
     let updatedAt: Date
     enum CodingKeys: String, CodingKey {
-        case fullName = "full_name"
+        case fullName
         case phone, username
-        case profilePhotoUrl = "profile_photo_url"
-        case sobrietyDate = "sobriety_date"
-        case recoveryProgram = "recovery_program"
-        case updatedAt = "updated_at"
+        case profilePhotoUrl
+        case sobrietyDate
+        case recoveryProgram
+        case updatedAt
     }
 }
 
@@ -174,7 +174,7 @@ nonisolated private struct CallerFacilityRow: Decodable, Sendable {
     let adminFacility: String?
     enum CodingKeys: String, CodingKey {
         case role, facility
-        case adminFacility = "admin_facility"
+        case adminFacility
     }
     /// The facility to scope this caller's reads/writes to. nil = see/act on all
     /// (super_admin) or unassigned.
@@ -196,10 +196,10 @@ nonisolated private struct MilestoneInsertParams: Encodable, Sendable {
     let milestoneDate: String
     let pointsAwarded: Int
     enum CodingKeys: String, CodingKey {
-        case userId = "user_id"
-        case milestoneType = "milestone_type"
-        case milestoneDate = "milestone_date"
-        case pointsAwarded = "points_awarded"
+        case userId
+        case milestoneType
+        case milestoneDate
+        case pointsAwarded
     }
 }
 
@@ -225,12 +225,12 @@ nonisolated private struct ConversationRow: Decodable, Sendable {
     let staffProfile: StaffProfileRow?
     enum CodingKeys: String, CodingKey {
         case id
-        case userId = "user_id"
-        case staffId = "staff_id"
-        case lastMessage = "last_message"
-        case lastMessageAt = "last_message_at"
-        case unreadCount = "unread_count"
-        case createdAt = "created_at"
+        case userId
+        case staffId
+        case lastMessage
+        case lastMessageAt
+        case unreadCount
+        case createdAt
         case staffProfile = "staff"
     }
 }
@@ -240,9 +240,9 @@ nonisolated private struct StaffProfileRow: Decodable, Sendable {
     let role: UserRole
     let profilePhotoUrl: String?
     enum CodingKeys: String, CodingKey {
-        case fullName = "full_name"
+        case fullName
         case role
-        case profilePhotoUrl = "profile_photo_url"
+        case profilePhotoUrl
     }
 }
 
@@ -256,14 +256,14 @@ nonisolated private struct AssignmentRow: Decodable, Sendable {
 nonisolated private struct LikeRow: Decodable, Sendable {
     let postId: UUID
     enum CodingKeys: String, CodingKey {
-        case postId = "post_id"
+        case postId
     }
 }
 
 nonisolated private struct CommentLikeRow: Decodable, Sendable {
     let commentId: UUID
     enum CodingKeys: String, CodingKey {
-        case commentId = "comment_id"
+        case commentId
     }
 }
 
@@ -283,8 +283,8 @@ nonisolated private struct BlockInsertParams: Encodable, Sendable {
     let blockerId: String
     let blockedId: String
     enum CodingKeys: String, CodingKey {
-        case blockerId = "blocker_id"
-        case blockedId = "blocked_id"
+        case blockerId
+        case blockedId
     }
 }
 
@@ -292,7 +292,7 @@ nonisolated private struct BlockInsertParams: Encodable, Sendable {
 nonisolated private struct BlockedRow: Decodable, Sendable {
     let blockedId: UUID
     enum CodingKeys: String, CodingKey {
-        case blockedId = "blocked_id"
+        case blockedId
     }
 }
 
@@ -303,7 +303,7 @@ nonisolated private struct BlockedProfileRow: Decodable, Sendable {
     let fullName: String?
     enum CodingKeys: String, CodingKey {
         case id, username
-        case fullName = "full_name"
+        case fullName
     }
 }
 
@@ -316,7 +316,7 @@ nonisolated private struct ExportPostRow: Decodable, Sendable {
     let createdAt: Date
     enum CodingKeys: String, CodingKey {
         case content, category
-        case createdAt = "created_at"
+        case createdAt
     }
 }
 
@@ -326,7 +326,7 @@ nonisolated private struct ExportCommentRow: Decodable, Sendable {
     let createdAt: Date
     enum CodingKeys: String, CodingKey {
         case content
-        case createdAt = "created_at"
+        case createdAt
     }
 }
 
@@ -337,7 +337,7 @@ nonisolated private struct ExportMessageRow: Decodable, Sendable {
     let createdAt: Date
     enum CodingKeys: String, CodingKey {
         case content
-        case createdAt = "created_at"
+        case createdAt
     }
 }
 
@@ -713,7 +713,7 @@ final class SupabaseDataService: DataServiceProtocol {
         if action == .approved {
             struct ApprovedCountRow: Decodable {
                 let approvedPostCount: Int
-                enum CodingKeys: String, CodingKey { case approvedPostCount = "approved_post_count" }
+                enum CodingKeys: String, CodingKey { case approvedPostCount }
             }
             if let row = try? await (client.from("profiles")
                 .select("approved_post_count")
@@ -946,7 +946,7 @@ final class SupabaseDataService: DataServiceProtocol {
             let deactivatedAt: String
             enum CodingKeys: String, CodingKey {
                 case status
-                case deactivatedAt = "deactivated_at"
+                case deactivatedAt
             }
         }
         let params = DeactivateParams(
@@ -1245,8 +1245,8 @@ final class SupabaseDataService: DataServiceProtocol {
         let userId: UUID
         let staffId: UUID
         enum CodingKeys: String, CodingKey {
-            case userId = "user_id"
-            case staffId = "staff_id"
+            case userId
+            case staffId
         }
     }
 
@@ -1272,16 +1272,16 @@ final class SupabaseDataService: DataServiceProtocol {
             let fullName: String
             let facility: String?
             enum CodingKeys: String, CodingKey {
-                case fullName = "full_name"
+                case fullName
                 case facility
             }
         }
         enum CodingKeys: String, CodingKey {
             case id, userId = "user_id"
-            case previousDate = "previous_date"
-            case newDate = "new_date"
-            case changedAt = "changed_at"
-            case isReset = "is_reset"
+            case previousDate
+            case newDate
+            case changedAt
+            case isReset
             case userProfile = "user_profile:profiles!user_id"
         }
     }
@@ -1321,7 +1321,7 @@ final class SupabaseDataService: DataServiceProtocol {
             let fullName: String
             let facility: String?
             enum CodingKeys: String, CodingKey {
-                case fullName = "full_name"
+                case fullName
                 case facility
             }
         }
@@ -1331,9 +1331,9 @@ final class SupabaseDataService: DataServiceProtocol {
         }
         enum CodingKeys: String, CodingKey {
             case id
-            case userId = "user_id"
-            case badgeId = "badge_id"
-            case earnedAt = "earned_at"
+            case userId
+            case badgeId
+            case earnedAt
             case userProfile = "user_profile:profiles!user_id"
             case badge = "badge:badges!badge_id"
         }

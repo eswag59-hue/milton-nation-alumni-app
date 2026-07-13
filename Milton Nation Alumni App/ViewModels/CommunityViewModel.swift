@@ -76,7 +76,17 @@ final class CommunityViewModel {
         loadPostsTask?.cancel()
         loadPostsTask = Task {
             await MainActor.run { isLoading = true }
-            let fetched = (try? await dataService.fetchPosts(category: selectedCategory)) ?? []
+            // Surface feed-load failures instead of silently showing an empty
+            // feed (a decode bug hid behind `try?` here for weeks — never again).
+            var fetched: [CommunityPost] = []
+            do {
+                fetched = try await dataService.fetchPosts(category: selectedCategory)
+            } catch {
+                CrashReportingService.shared.recordError(error, context: "CommunityViewModel.loadPosts")
+                await MainActor.run {
+                    errorMessage = "Couldn't load the community feed. Pull down to try again."
+                }
+            }
             guard !Task.isCancelled else { return }
             await MainActor.run {
                 posts = fetched
