@@ -151,7 +151,7 @@ final class ContentFilterService: @unchecked Sendable {
             guard let accessToken = session?.accessToken else { return }
 
             let payload = ContentFlagPayload(
-                userId: userId?.uuidString,
+                userId: userId?.uuidString.lowercased(),
                 riskLevel: result.riskLevel.rawValue,
                 categories: result.categories.map(\.rawValue).sorted(),
                 feature: feature.rawValue,
@@ -216,7 +216,7 @@ final class ContentFilterService: @unchecked Sendable {
         }
 
         let payload = ContentFlagPayload(
-            userId: reporterId?.uuidString,
+            userId: reporterId?.uuidString.lowercased(),
             riskLevel: "low_risk",
             categories: ["user_reported"],
             feature: ContentFeature.userReport.rawValue,

@@ -69,7 +69,9 @@ serve(async (req: Request) => {
 
     // ── Verify payload userId matches JWT (or is null for anonymous) ─────────
     // Prevents a user from flagging content on behalf of a different user.
-    if (payload.userId && payload.userId !== user.id) {
+    // UUID case differs between clients (Swift uppercases, GoTrue lowercases) —
+    // compare case-insensitively so legitimate reporters aren't rejected.
+    if (payload.userId && payload.userId.toLowerCase() !== user.id.toLowerCase()) {
       return new Response(JSON.stringify({ error: "userId mismatch" }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
