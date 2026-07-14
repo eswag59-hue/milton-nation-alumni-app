@@ -211,3 +211,17 @@ COMMIT;
 --   conversations: "Admins read all conversations" USING (is_admin());
 --   messages: "Admins read all messages" USING (is_admin());
 -- ============================================================================
+
+-- ── 2026-07-14 follow-up: profiles UPDATE policies ──────────────────────────
+-- The admin "Approve" action failed with 42P17 (recursion) because
+-- profiles_admin_update_facility inline-sub-selected profiles, and
+-- "Admins update any profile" (is_admin(), no facility scope) was a
+-- cross-facility WRITE leak. Replaced with a helper-based, facility-scoped policy.
+DROP POLICY IF EXISTS "profiles_admin_update_facility" ON public.profiles;
+DROP POLICY IF EXISTS "Admins update any profile"      ON public.profiles;
+CREATE POLICY "profiles_admin_update_facility" ON public.profiles
+FOR UPDATE USING (
+  is_super_admin()
+  OR (is_admin() AND (facility IS NULL OR facility = current_user_facility()))
+  OR id = auth.uid()
+);
