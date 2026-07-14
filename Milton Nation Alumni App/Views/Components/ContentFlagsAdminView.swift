@@ -408,6 +408,9 @@ struct ContentFlagsAdminView: View {
         case .violence:         return "Violence"
         case .eatingDisorder:   return "Eating Disorder"
         case .domesticViolence: return "Domestic Violence"
+        case .crisis:           return "Crisis"
+        case .userReported:     return "Member Report"
+        case .other:            return "Other"
         }
     }
 }

@@ -61,6 +61,18 @@ enum ContentCategory: String, Codable, CaseIterable, Sendable {
     case violence         = "violence"
     case eatingDisorder   = "eating_disorder"
     case domesticViolence = "domestic_violence"
+    case crisis           = "crisis"
+    case userReported     = "user_reported"
+    case other            = "other"
+
+    /// Lenient decode: an unrecognized category in a `content_flags` row must
+    /// not kill the whole admin queue (one "crisis" row blanked the entire
+    /// Content Flags screen). Unknown values map to `.other`.
+    init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        self = ContentCategory(rawValue: raw)
+            ?? (raw == "user_report" ? .userReported : .other)
+    }
 
     var displayName: String {
         switch self {
@@ -70,6 +82,9 @@ enum ContentCategory: String, Codable, CaseIterable, Sendable {
         case .violence:         return "Violence / Threat"
         case .eatingDisorder:   return "Eating Disorder"
         case .domesticViolence: return "Domestic Violence"
+        case .crisis:           return "Crisis"
+        case .userReported:     return "Member Report"
+        case .other:            return "Other"
         }
     }
 
@@ -81,6 +96,9 @@ enum ContentCategory: String, Codable, CaseIterable, Sendable {
         case .violence:         return "exclamationmark.shield.fill"
         case .eatingDisorder:   return "fork.knife.circle.fill"
         case .domesticViolence: return "house.lodge.fill"
+        case .crisis:           return "exclamationmark.triangle.fill"
+        case .userReported:     return "flag.fill"
+        case .other:            return "questionmark.circle.fill"
         }
     }
 }
