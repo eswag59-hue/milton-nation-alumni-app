@@ -50,6 +50,12 @@ final class AppViewModel {
     func login(user: User) {
         currentUser = user
         isAuthenticated = true
+        // Default the admin dashboard's facility filter to the admin's OWN
+        // facility (super_admin has none → keep Florida as the initial view).
+        // Without this an Ohio admin's dashboard opened filtered to Florida.
+        if let ownFacility = user.adminFacility {
+            activeFacility = ownFacility
+        }
         selectedTab = .home
         showSobrietyCheck = true
         awardDailyLoginPoints()

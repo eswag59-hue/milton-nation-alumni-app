@@ -100,7 +100,22 @@ serve(async (req: Request) => {
       .eq("id", user.id)
       .single();
 
-    if (profileError || !profile?.phone) {
+    const normalisePhone = (p: string | null | undefined) =>
+      (p ?? "").replace(/\D/g, "");
+
+    // Two recognition paths (mirror verify-sms-otp):
+    //  1. user_metadata.is_test_account == true  (new — any test account)
+    //  2. profile.phone matches DEMO_PHONE       (legacy reviewer account)
+    const isTestAccount =
+      (user.user_metadata as Record<string, unknown> | null)?.is_test_account === true;
+    const phoneMatch = normalisePhone(profile?.phone) === normalisePhone(DEMO_PHONE);
+
+    // A missing phone only blocks REAL Twilio sends. Test/demo accounts under
+    // the bypass must still be allowed through even with a null phone —
+    // otherwise a demo admin with no phone (e.g. the OH admin) can never log in
+    // and the app surfaces it as a generic "invalid email or password".
+    const usingDemoBypass = DEMO_BYPASS_ENABLED && (isTestAccount || phoneMatch);
+    if (!usingDemoBypass && (profileError || !profile?.phone)) {
       return new Response(JSON.stringify({ error: "No phone number on file" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -111,19 +126,11 @@ serve(async (req: Request) => {
     // If the user's phone matches the demo phone AND DEMO_BYPASS_ENABLED is on,
     // skip Twilio entirely. The reviewer enters OTP "000000" which is bypassed
     // server-side in verify-sms-otp. No real SMS is sent.
-    const normalisePhone = (p: string | null | undefined) =>
-      (p ?? "").replace(/\D/g, "");
-
-    // Two recognition paths (mirror verify-sms-otp):
-    //  1. user_metadata.is_test_account == true  (new — any test account)
-    //  2. profile.phone matches DEMO_PHONE       (legacy reviewer account)
-    const isTestAccount =
-      (user.user_metadata as Record<string, unknown> | null)?.is_test_account === true;
-    const phoneMatch = normalisePhone(profile.phone) === normalisePhone(DEMO_PHONE);
-
-    if (DEMO_BYPASS_ENABLED && (isTestAccount || phoneMatch)) {
+    if (usingDemoBypass) {
       console.log("[send-sms-otp] Demo bypass — skipping Twilio", { isTestAccount, phoneMatch });
-      let toPhoneDemo = profile.phone.replace(/[\s\-\(\)]/g, "");
+      // Phone may be null for a demo account — fall back to the demo number for
+      // the masked display only (no SMS is actually sent under the bypass).
+      let toPhoneDemo = (profile?.phone ?? DEMO_PHONE).replace(/[\s\-\(\)]/g, "");
       if (!toPhoneDemo.startsWith("+")) toPhoneDemo = "+" + normalisePhone(toPhoneDemo);
       const maskedPhoneDemo =
         toPhoneDemo.slice(0, -4).replace(/./g, "*") + toPhoneDemo.slice(-4);
