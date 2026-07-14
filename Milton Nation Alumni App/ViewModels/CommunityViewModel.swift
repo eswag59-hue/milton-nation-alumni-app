@@ -117,8 +117,11 @@ final class CommunityViewModel {
             // Run content through moderation pipeline
             let safetyResult = await ContentFilterService.shared.analyzeAndEscalate(content, feature: .communityPost)
             let moderationResult = ModerationResult(
-                status: safetyResult.riskLevel == .highRisk ? .crisis
-                      : safetyResult.riskLevel == .safe     ? .clean : .flagged,
+                // Low risk (negated phrases, incidental keyword hits) posts
+                // normally — the server-side flag still reaches admins, so
+                // nothing is lost, but a benign milestone post isn't held.
+                status: safetyResult.riskLevel == .highRisk   ? .crisis
+                      : safetyResult.riskLevel == .mediumRisk ? .flagged : .clean,
                 matchedKeywords: safetyResult.matches.map(\.keyword)
             )
             let postStatus = ContentFilterService.shared.postStatus(
@@ -273,9 +276,11 @@ final class CommunityViewModel {
             )
             let commentStatus: PostStatus
             switch safetyResult.riskLevel {
-            case .highRisk: commentStatus = .flaggedForCrisis
-            case .mediumRisk, .lowRisk: commentStatus = .pendingReview
-            case .safe:     commentStatus = .approved
+            case .highRisk:   commentStatus = .flaggedForCrisis
+            case .mediumRisk: commentStatus = .pendingReview
+            case .lowRisk, .safe: commentStatus = .approved
+                // lowRisk (e.g. negated phrases) posts normally; the server
+                // flag from analyzeAndEscalate still reaches the admin queue.
             }
 
             do {

@@ -2,12 +2,13 @@
 -- 20260713 — Enforce facility isolation at the DATABASE layer (RLS)
 -- ============================================================================
 --
--- STATUS: PROPOSED — NOT APPLIED to production. Apply on a Supabase BRANCH
---         first, run the verification block, then merge. See the recursion
---         warning below — a naive version of this migration was tried live on
---         2026-07-13 and caused "infinite recursion detected in policy for
---         relation profiles" (42P17), which breaks ALL reads app-wide. It was
---         rolled back within the minute. This file is the corrected version.
+-- STATUS: ✅ APPLIED to production 2026-07-13 and VERIFIED with real JWTs for
+--         all 5 roles (OH/FL alumni, OH/FL admins, super_admin): posts,
+--         profiles, comments, content_flags, conversations, and messages all
+--         partition cleanly by facility; participants keep chat access;
+--         super_admin sees both facilities. (An earlier naive version hit
+--         42P17 infinite recursion — a profiles policy must never sub-SELECT
+--         profiles; this version uses SECURITY DEFINER helpers instead.)
 --
 -- WHY THIS EXISTS
 -- ---------------

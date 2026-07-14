@@ -291,7 +291,10 @@ struct ContentSafetyOverlay: ViewModifier {
                     try? await Task.sleep(for: .milliseconds(600))
                     guard !Task.isCancelled else { return }
                     let result = ContentFilterService.shared.analyzeLocal(newValue)
-                    if result.riskLevel != .safe || result.isEmergency {
+                    // Low risk (e.g. a negated phrase like "I have NOT relapsed")
+                    // must not interrupt composing with a crisis sheet — the
+                    // server-side flag below still fires so admins stay aware.
+                    if result.riskLevel == .mediumRisk || result.riskLevel == .highRisk || result.isEmergency {
                         currentRisk = result.riskLevel
                         showResources = true
                         // Full escalation (async, server notification) runs separately
