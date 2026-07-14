@@ -127,6 +127,11 @@ struct PostDetailScreen: View {
                         .padding(.vertical, 10)
                         .background(AppTheme.background)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .contentSafetyOverlay(
+                            text: $commentDraft,
+                            userId: appViewModel.currentUser?.id,
+                            feature: .communityPost
+                        )
                     Button {
                         submitComment()
                     } label: {

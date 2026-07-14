@@ -5,12 +5,13 @@ import Supabase
 // Must be Sendable + Encodable and defined at file scope
 // to avoid MainActor isolation issues with Supabase RPC calls.
 
+/// Params for `toggle_like(p_post_id uuid)` RPC. The function derives the
+/// caller from auth.uid() server-side — do NOT pass a user id; an extra
+/// param makes PostgREST fail to resolve the function (silent like failure).
 nonisolated private struct ToggleLikeRPCParams: Encodable, Sendable {
     let pPostId: UUID
-    let pUserId: UUID
     enum CodingKeys: String, CodingKey {
         case pPostId
-        case pUserId
     }
 }
 
@@ -21,14 +22,13 @@ nonisolated private struct IncrementCommentRPCParams: Encodable, Sendable {
     }
 }
 
-/// Params for `toggle_comment_like(p_comment_id uuid, p_user_id uuid)` RPC.
+/// Params for `toggle_comment_like(p_comment_id uuid)` RPC — auth.uid() is
+/// derived server-side (same contract as `toggle_like`).
 /// Returns the new like state (true if just-liked, false if just-unliked).
 nonisolated private struct ToggleCommentLikeRPCParams: Encodable, Sendable {
     let pCommentId: UUID
-    let pUserId: UUID
     enum CodingKeys: String, CodingKey {
         case pCommentId
-        case pUserId
     }
 }
 
@@ -531,11 +531,11 @@ final class SupabaseDataService: DataServiceProtocol {
     }
 
     func toggleLike(postId: UUID) async throws -> Bool {
-        let userId = try await currentUserId
+        _ = try await currentUserId  // auth guard — throws if signed out
 
         let result: Bool = try await client.rpc(
             "toggle_like",
-            params: ToggleLikeRPCParams(pPostId: postId, pUserId: userId)
+            params: ToggleLikeRPCParams(pPostId: postId)
         )
         .execute()
         .value
@@ -637,11 +637,11 @@ final class SupabaseDataService: DataServiceProtocol {
     /// inserts/deletes the comment_likes row AND maintains likes_count via
     /// trigger. Returns the new isLiked state.
     func toggleCommentLike(commentId: UUID) async throws -> Bool {
-        let userId = try await currentUserId
+        _ = try await currentUserId  // auth guard — throws if signed out
 
         let result: Bool = try await client.rpc(
             "toggle_comment_like",
-            params: ToggleCommentLikeRPCParams(pCommentId: commentId, pUserId: userId)
+            params: ToggleCommentLikeRPCParams(pCommentId: commentId)
         )
         .execute()
         .value
