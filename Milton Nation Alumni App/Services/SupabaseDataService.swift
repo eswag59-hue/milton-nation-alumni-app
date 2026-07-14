@@ -246,8 +246,56 @@ nonisolated private struct StaffProfileRow: Decodable, Sendable {
     }
 }
 
+/// Staff profiles can have NULL phone / mfa_method / sobriety dates (staff
+/// never log sobriety). Decoding them as a full `User` (which requires those
+/// fields) threw valueNotFound and silently killed the chat screen — so we
+/// decode a null-tolerant row and map to `User` with safe defaults.
+nonisolated private struct StaffLiteRow: Decodable, Sendable {
+    let id: UUID
+    let email: String?
+    let phone: String?
+    let fullName: String
+    let username: String?
+    let profilePhotoUrl: String?
+    let sobrietyDate: Date?
+    let dischargeDate: Date?
+    let recoveryProgram: String?
+    let role: UserRole
+    let status: UserStatus
+    let mfaMethod: MFAMethod?
+    let totalPoints: Int?
+    let lastLogin: Date?
+    let createdAt: Date
+    let updatedAt: Date?
+    let facility: Facility?
+
+    func toUser() -> User {
+        var u = User(
+            id: id,
+            email: email ?? "",
+            phone: phone ?? "",
+            fullName: fullName,
+            username: username ?? fullName.lowercased().replacingOccurrences(of: " ", with: "_"),
+            profilePhotoURL: profilePhotoUrl,
+            sobrietyDate: sobrietyDate ?? createdAt,
+            dischargeDate: dischargeDate ?? createdAt,
+            recoveryProgram: recoveryProgram ?? "",
+            role: role,
+            status: status,
+            mfaMethod: mfaMethod ?? .sms,
+            totalPoints: totalPoints ?? 0,
+            lastLogin: lastLogin ?? createdAt,
+            lastPointsAwarded: nil,
+            createdAt: createdAt,
+            updatedAt: updatedAt ?? createdAt
+        )
+        u.facility = facility
+        return u
+    }
+}
+
 nonisolated private struct AssignmentRow: Decodable, Sendable {
-    let staffProfile: User
+    let staffProfile: StaffLiteRow
     enum CodingKeys: String, CodingKey {
         case staffProfile = "staff"
     }
@@ -911,7 +959,7 @@ final class SupabaseDataService: DataServiceProtocol {
             .execute()
             .value
 
-        return rows.map(\.staffProfile)
+        return rows.map { $0.staffProfile.toUser() }
     }
 
     func updateProfile(user: User) async throws -> User {

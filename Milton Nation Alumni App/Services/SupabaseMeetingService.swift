@@ -61,51 +61,54 @@ final class SupabaseMeetingService: MeetingServiceProtocol {
 
 // MARK: - Row Types (snake_case ↔ camelCase mapping)
 
+// Property names MUST be camelCase: the shared decoder uses
+// .convertFromSnakeCase, so JSON "meeting_type" arrives as "meetingType".
+// snake_case property names here would be keyNotFound on every fetch.
 private struct MeetingRow: Decodable {
     let id: UUID
     let title: String
     let description: String?
-    let meeting_type: String
+    let meetingType: String
     let date: String            // "YYYY-MM-DD" (Postgres DATE)
-    let start_time: Date        // TIMESTAMPTZ
-    let end_time: Date          // TIMESTAMPTZ
-    let location_address: String?
-    let location_lat: Double?
-    let location_lng: Double?
-    let virtual_link: String?
-    let is_recurring: Bool
-    let recurrence_pattern: String?
-    let recurrence_end_date: String?  // "YYYY-MM-DD"
-    let parent_meeting_id: UUID?
-    let created_by: UUID
-    let created_at: Date
+    let startTime: Date         // TIMESTAMPTZ
+    let endTime: Date           // TIMESTAMPTZ
+    let locationAddress: String?
+    let locationLat: Double?
+    let locationLng: Double?
+    let virtualLink: String?
+    let isRecurring: Bool
+    let recurrencePattern: String?
+    let recurrenceEndDate: String?  // "YYYY-MM-DD"
+    let parentMeetingId: UUID?
+    let createdBy: UUID
+    let createdAt: Date
 
     func toMeeting() -> Meeting {
         let df = DateFormatter()
         df.dateFormat = "yyyy-MM-dd"
         df.timeZone = TimeZone(identifier: "UTC")
 
-        let parsedDate = df.date(from: date) ?? start_time
-        let recurrenceEnd = recurrence_end_date.flatMap { df.date(from: $0) }
+        let parsedDate = df.date(from: date) ?? startTime
+        let recurrenceEnd = recurrenceEndDate.flatMap { df.date(from: $0) }
 
         return Meeting(
             id: id,
             title: title,
             description: description,
-            meetingType: MeetingType(rawValue: meeting_type) ?? .inPerson,
+            meetingType: MeetingType(rawValue: meetingType) ?? .inPerson,
             date: parsedDate,
-            startTime: start_time,
-            endTime: end_time,
-            locationAddress: location_address,
-            locationLat: location_lat,
-            locationLng: location_lng,
-            virtualLink: virtual_link,
-            isRecurring: is_recurring,
-            recurrencePattern: recurrence_pattern.flatMap { RecurrencePattern(rawValue: $0) },
+            startTime: startTime,
+            endTime: endTime,
+            locationAddress: locationAddress,
+            locationLat: locationLat,
+            locationLng: locationLng,
+            virtualLink: virtualLink,
+            isRecurring: isRecurring,
+            recurrencePattern: recurrencePattern.flatMap { RecurrencePattern(rawValue: $0) },
             recurrenceEndDate: recurrenceEnd,
-            parentMeetingId: parent_meeting_id,
-            createdBy: created_by,
-            createdAt: created_at
+            parentMeetingId: parentMeetingId,
+            createdBy: createdBy,
+            createdAt: createdAt
         )
     }
 }

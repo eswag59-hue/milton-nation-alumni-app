@@ -142,6 +142,7 @@ struct User: Identifiable, Codable, Hashable {
         case updatedAt          // "updated_at"       → "updatedAt"
     }
 
+
     var firstName: String {
         fullName.components(separatedBy: " ").first ?? fullName
     }
@@ -198,4 +199,39 @@ struct StaffAssignment: Identifiable, Codable {
     let staffId: UUID
     let roleType: UserRole
     var assignedAt: Date
+}
+
+// Decode kept in an extension so the compiler-provided memberwise init survives.
+extension User {
+    /// Custom decode with DB-realistic defaults. Several columns are nullable
+    /// in `profiles` (phone for pending registrants, sobriety/discharge dates
+    /// and program for staff rows) — a synthesized decode would throw
+    /// valueNotFound on the FIRST such row and silently blank the whole list
+    /// (this broke chat + admin pending-approvals). Never require here what
+    /// the schema does not.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        fullName = try c.decode(String.self, forKey: .fullName)
+        role = try c.decode(UserRole.self, forKey: .role)
+        status = try c.decode(UserStatus.self, forKey: .status)
+        createdAt = try c.decode(Date.self, forKey: .createdAt)
+
+        email = try c.decodeIfPresent(String.self, forKey: .email) ?? ""
+        phone = try c.decodeIfPresent(String.self, forKey: .phone) ?? ""
+        username = try c.decodeIfPresent(String.self, forKey: .username)
+            ?? fullName.lowercased().replacingOccurrences(of: " ", with: "_")
+        profilePhotoURL = try c.decodeIfPresent(String.self, forKey: .profilePhotoURL)
+        sobrietyDate = try c.decodeIfPresent(Date.self, forKey: .sobrietyDate) ?? createdAt
+        dischargeDate = try c.decodeIfPresent(Date.self, forKey: .dischargeDate) ?? createdAt
+        recoveryProgram = try c.decodeIfPresent(String.self, forKey: .recoveryProgram) ?? ""
+        mfaMethod = try c.decodeIfPresent(MFAMethod.self, forKey: .mfaMethod)
+        totalPoints = try c.decodeIfPresent(Int.self, forKey: .totalPoints) ?? 0
+        approvedPostCount = try c.decodeIfPresent(Int.self, forKey: .approvedPostCount) ?? 0
+        facility = try c.decodeIfPresent(Facility.self, forKey: .facility)
+        adminFacility = try c.decodeIfPresent(Facility.self, forKey: .adminFacility)
+        lastLogin = try c.decodeIfPresent(Date.self, forKey: .lastLogin)
+        lastPointsAwarded = try c.decodeIfPresent(Date.self, forKey: .lastPointsAwarded)
+        updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt) ?? createdAt
+    }
 }
