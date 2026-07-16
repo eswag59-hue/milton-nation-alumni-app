@@ -141,6 +141,16 @@ final class LoginViewModel {
             }
             return user
         } catch {
+            // A network failure (airplane mode / no signal) is NOT a wrong
+            // password — show a connection message and don't count it as a
+            // failed attempt (otherwise being offline can trigger the lockout).
+            if Self.isNetworkError(error) {
+                await MainActor.run {
+                    errorMessage = "No internet connection. Please connect and try again."
+                    isLoading = false
+                }
+                return nil
+            }
             await MainActor.run {
                 failedAttempts += 1
                 AuditLogger.shared.log(.loginFailed, detail: "Email-hash: \(Self.hashEmail(email)), attempt: \(failedAttempts)")
@@ -336,6 +346,27 @@ final class LoginViewModel {
     /// exposing the email plaintext. Per HIPAA's minimum necessary rule we don't
     /// need the literal email in audit_logs to identify a lockout — a stable
     /// hash plus user_id (filled in by AuditLogger) is enough to correlate.
+    /// True when an error is a connectivity failure (offline / no signal),
+    /// as opposed to a real auth rejection. Covers URLError and the wrapped
+    /// URLErrors that Supabase/GoTrue surface.
+    static func isNetworkError(_ error: Error) -> Bool {
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            case .notConnectedToInternet, .networkConnectionLost, .timedOut,
+                 .cannotConnectToHost, .cannotFindHost, .dataNotAllowed,
+                 .internationalRoamingOff:
+                return true
+            default: break
+            }
+        }
+        let text = error.localizedDescription.lowercased()
+        return text.contains("offline")
+            || text.contains("internet connection")
+            || text.contains("network connection")
+            || text.contains("could not connect")
+            || text.contains("appears to be offline")
+    }
+
     static func hashEmail(_ email: String) -> String {
         let normalised = email.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         let data = Data(normalised.utf8)

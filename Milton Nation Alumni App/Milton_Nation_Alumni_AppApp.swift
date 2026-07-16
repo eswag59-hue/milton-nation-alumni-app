@@ -1,4 +1,5 @@
 import SwiftUI
+import LocalAuthentication
 
 @main
 struct Milton_Nation_Alumni_AppApp: App {
@@ -9,7 +10,26 @@ struct Milton_Nation_Alumni_AppApp: App {
     @State private var isRestoringSession = false
     @State private var deviceSecurityViolation: DeviceSecurityService.SecurityViolation?
     @AppStorage("appearance_mode") private var appearanceMode: AppearanceMode = .system
+    /// When on, the app requires Face ID / passcode to re-open after backgrounding.
+    @AppStorage("app_lock_enabled") private var appLockEnabled = false
+    @State private var isAppLocked = false
     @Environment(\.scenePhase) private var scenePhase
+
+    /// Prompt Face ID / device passcode to unlock. On success clears the lock;
+    /// failure keeps the lock screen so the user can retry or sign out.
+    private func unlockWithBiometrics() {
+        let context = LAContext()
+        var error: NSError?
+        guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {
+            // No biometrics/passcode available — don't trap the user.
+            isAppLocked = false
+            return
+        }
+        context.evaluatePolicy(.deviceOwnerAuthentication,
+                               localizedReason: "Unlock Milton Nation") { success, _ in
+            Task { @MainActor in if success { isAppLocked = false } }
+        }
+    }
 
     init() {
         // Service switching: use real Supabase services when configured,
@@ -71,6 +91,38 @@ struct Milton_Nation_Alumni_AppApp: App {
                         }
                 }
 
+                // App Lock — Face ID gate on re-open when enabled in Settings.
+                if isAppLocked && appViewModel.isAuthenticated {
+                    AppTheme.background
+                        .ignoresSafeArea()
+                        .overlay {
+                            VStack(spacing: 20) {
+                                Image(systemName: "faceid")
+                                    .font(.system(size: 48))
+                                    .foregroundStyle(AppTheme.accent)
+                                Text("Milton Nation is locked")
+                                    .font(.headline)
+                                    .foregroundStyle(AppTheme.textPrimary)
+                                Button {
+                                    unlockWithBiometrics()
+                                } label: {
+                                    Text("Unlock with Face ID")
+                                        .fontWeight(.semibold)
+                                        .padding(.horizontal, 24).padding(.vertical, 12)
+                                        .background(AppTheme.accent)
+                                        .foregroundStyle(.white)
+                                        .clipShape(Capsule())
+                                }
+                                Button("Sign Out") {
+                                    isAppLocked = false
+                                    appViewModel.logout()
+                                }
+                                .font(.subheadline)
+                                .foregroundStyle(AppTheme.textSecondary)
+                            }
+                        }
+                }
+
                 // Session restoration / launch screen
                 if isRestoringSession {
                     AppTheme.background
@@ -126,6 +178,14 @@ struct Milton_Nation_Alumni_AppApp: App {
             .interactiveDismissDisabled(deviceSecurityViolation != nil)
             .onChange(of: scenePhase) {
                 sessionManager.handleScenePhase(scenePhase)
+
+                // App Lock: arm on background, prompt Face ID on return.
+                if scenePhase == .background, appLockEnabled, appViewModel.isAuthenticated {
+                    isAppLocked = true
+                }
+                if scenePhase == .active, isAppLocked, appViewModel.isAuthenticated {
+                    unlockWithBiometrics()
+                }
 
                 if scenePhase == .active {
                     // Sync any pending audit entries when app comes to foreground

@@ -10,6 +10,7 @@ struct SettingsScreen: View {
     @AppStorage("appearance_mode") private var appearanceMode: AppearanceMode = .system
     @AppStorage("privacy_hide_sobriety") private var hideSobrietyDate = false
     @AppStorage("privacy_hide_profile_photo") private var hideProfilePhoto = false
+    @AppStorage("app_lock_enabled") private var appLockEnabled = false
 
     @State private var showDeleteAccountAlert = false
     @State private var showDeleteConfirmation = false
@@ -61,6 +62,15 @@ struct SettingsScreen: View {
                 Label("Appearance", systemImage: "paintbrush.fill")
             } footer: {
                 Text("Choose how the app looks. System follows your device setting.")
+            }
+
+            // MARK: - Security
+            Section {
+                Toggle("Require Face ID to Open", isOn: $appLockEnabled)
+            } header: {
+                Label("Security", systemImage: "faceid")
+            } footer: {
+                Text("When on, Milton Nation asks for Face ID (or your device passcode) each time you re-open the app.")
             }
 
             // MARK: - Privacy
