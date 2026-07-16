@@ -75,7 +75,11 @@ final class ProfileViewModel {
                     // Prefixing with "profiles/" makes the first folder literally
                     // "profiles" → policy fails → upload returns "Failed to upload
                     // photo." Path must be `{user.id}/avatar.jpg` only.
-                    let storagePath = "\(user.id.uuidString)/avatar.jpg"
+                    // Path folder MUST be the LOWERCASE uuid: the storage RLS
+                    // policy compares (foldername)[1] to auth.uid()::text, which
+                    // is lowercase. Swift's uuidString is UPPERCASE, so an
+                    // uppercase folder fails the policy → "Failed to upload photo".
+                    let storagePath = "\(user.id.uuidString.lowercased())/avatar.jpg"
 
                     // Compress image for upload
                     let compressedData: Data

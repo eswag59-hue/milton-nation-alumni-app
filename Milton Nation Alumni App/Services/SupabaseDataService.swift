@@ -550,7 +550,10 @@ final class SupabaseDataService: DataServiceProtocol {
         var mediaURL: String?
         if let mediaData {
             let fileExt = mediaType == .video ? "mp4" : "jpg"
-            let filePath = "\(userId.uuidString)/\(UUID().uuidString).\(fileExt)"
+            // Lowercase uuid: the post-media storage policy compares the first
+            // path folder to auth.uid()::text (lowercase). Uppercase → upload
+            // denied and the post silently loses its image.
+            let filePath = "\(userId.uuidString.lowercased())/\(UUID().uuidString).\(fileExt)"
 
             try await client.storage
                 .from(SupabaseConfig.postMediaBucket)

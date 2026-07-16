@@ -57,7 +57,45 @@ final class SupabaseMeetingService: MeetingServiceProtocol {
             .eq("id", value: meetingId.uuidString)
             .execute()
     }
+
+    // MARK: - RSVP (persisted in meeting_rsvps)
+
+    func fetchMyRSVPs() async throws -> Set<UUID> {
+        let userId = try await SupabaseConfig.client.auth.session.user.id
+        let rows: [RSVPRow] = try await client
+            .from("meeting_rsvps")
+            .select("meeting_id")
+            .eq("user_id", value: userId.uuidString)
+            .execute()
+            .value
+        return Set(rows.map(\.meetingId))
+    }
+
+    func setRSVP(meetingId: UUID, attending: Bool) async throws {
+        let userId = try await SupabaseConfig.client.auth.session.user.id
+        if attending {
+            // Idempotent: ignore a duplicate (already RSVP'd) instead of erroring.
+            try await client
+                .from("meeting_rsvps")
+                .upsert(
+                    RSVPInsert(meetingId: meetingId.uuidString.lowercased(),
+                               userId: userId.uuidString.lowercased()),
+                    onConflict: "meeting_id,user_id"
+                )
+                .execute()
+        } else {
+            try await client
+                .from("meeting_rsvps")
+                .delete()
+                .eq("meeting_id", value: meetingId.uuidString)
+                .eq("user_id", value: userId.uuidString)
+                .execute()
+        }
+    }
 }
+
+private struct RSVPRow: Decodable { let meetingId: UUID }
+private struct RSVPInsert: Encodable { let meetingId: String; let userId: String }
 
 // MARK: - Row Types (snake_case ↔ camelCase mapping)
 

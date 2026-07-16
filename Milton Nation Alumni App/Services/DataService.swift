@@ -744,6 +744,10 @@ protocol MeetingServiceProtocol: Sendable {
     func createMeeting(_ meeting: Meeting) async throws -> Meeting
     func updateMeeting(_ meeting: Meeting) async throws -> Meeting
     func deleteMeeting(meetingId: UUID) async throws
+    /// Meeting ids the current user has RSVP'd to (persisted server-side).
+    func fetchMyRSVPs() async throws -> Set<UUID>
+    /// Persist or remove an RSVP for the current user.
+    func setRSVP(meetingId: UUID, attending: Bool) async throws
 }
 
 // MARK: - Mock Meeting Service
@@ -773,5 +777,11 @@ final class MockMeetingService: MeetingServiceProtocol {
     func deleteMeeting(meetingId: UUID) async throws {
         try await Task.sleep(for: .milliseconds(200))
         meetings.removeAll { $0.id == meetingId }
+    }
+
+    private var mockRSVPs: Set<UUID> = []
+    func fetchMyRSVPs() async throws -> Set<UUID> { mockRSVPs }
+    func setRSVP(meetingId: UUID, attending: Bool) async throws {
+        if attending { mockRSVPs.insert(meetingId) } else { mockRSVPs.remove(meetingId) }
     }
 }

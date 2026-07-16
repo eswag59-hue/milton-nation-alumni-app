@@ -188,7 +188,12 @@ final class ChatViewModel {
             if SupabaseConfig.isConfigured {
                 do {
                     let fileExt = type == .image ? "jpg" : fileName.components(separatedBy: ".").last ?? "dat"
-                    let storagePath = "chat/\(conversationId.uuidString)/\(UUID().uuidString).\(fileExt)"
+                    // The chat-media policy requires the FIRST path folder to be
+                    // the uploader's auth.uid() (lowercase). The old "chat/…"
+                    // prefix never matched, so every chat attachment upload
+                    // failed. Use {senderId}/{conversationId}/{file}.
+                    let senderFolder = (currentUserId ?? conversationId).uuidString.lowercased()
+                    let storagePath = "\(senderFolder)/\(conversationId.uuidString.lowercased())/\(UUID().uuidString).\(fileExt)"
 
                     try await SupabaseConfig.client.storage
                         .from("chat-media")

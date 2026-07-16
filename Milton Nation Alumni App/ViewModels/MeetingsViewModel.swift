@@ -65,6 +65,7 @@ final class MeetingsViewModel {
                     isLoading = false
                     cache.cacheMeetings(fetched)
                 }
+                loadRSVPs()   // refresh RSVPs from the server alongside meetings
             } catch {
                 guard !Task.isCancelled else { return }
                 CrashReportingService.shared.recordError(error, context: "MeetingsViewModel.fetchMeetings")
@@ -145,10 +146,34 @@ final class MeetingsViewModel {
     // MARK: - RSVP
 
     func toggleRSVP(for meetingId: UUID) {
-        if rsvpMeetingIds.contains(meetingId) {
-            rsvpMeetingIds.remove(meetingId)
-        } else {
-            rsvpMeetingIds.insert(meetingId)
+        let willAttend = !rsvpMeetingIds.contains(meetingId)
+        // Optimistic UI (also caches to UserDefaults via didSet for offline).
+        if willAttend { rsvpMeetingIds.insert(meetingId) } else { rsvpMeetingIds.remove(meetingId) }
+        // Persist to the server (meeting_rsvps). Roll back on failure.
+        Task {
+            do {
+                try await meetingService.setRSVP(meetingId: meetingId, attending: willAttend)
+            } catch {
+                CrashReportingService.shared.recordError(error, context: "MeetingsViewModel.toggleRSVP")
+                await MainActor.run {
+                    if willAttend { rsvpMeetingIds.remove(meetingId) } else { rsvpMeetingIds.insert(meetingId) }
+                    errorMessage = "Couldn't save your RSVP. Please try again."
+                }
+            }
+        }
+    }
+
+    /// Load the user's RSVPs from the server so they persist across launches
+    /// and devices. Falls back silently to the UserDefaults cache on failure.
+    func loadRSVPs() {
+        Task {
+            do {
+                let server = try await meetingService.fetchMyRSVPs()
+                await MainActor.run { rsvpMeetingIds = server }
+            } catch {
+                // Keep the locally-cached set; not worth surfacing an error.
+                CrashReportingService.shared.recordError(error, context: "MeetingsViewModel.loadRSVPs")
+            }
         }
     }
 

@@ -138,22 +138,35 @@ struct CreatePostSheet: View {
                         }
                     }
 
-                    // Media preview
+                    // Media preview — show the ACTUAL selected photo as a
+                    // thumbnail so the member can see what they attached (and
+                    // remove/replace it), not just a generic "Photo attached" label.
                     if viewModel.selectedMediaType != nil {
                         HStack(spacing: 8) {
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(AppTheme.background)
-                                .frame(width: 60, height: 60)
-                                .overlay {
-                                    Image(systemName: viewModel.selectedMediaType == .video ? "video.fill" : "photo.fill")
-                                        .foregroundStyle(AppTheme.accent)
+                            Group {
+                                if viewModel.selectedMediaType == .image,
+                                   let data = viewModel.selectedMediaData,
+                                   let uiImage = UIImage(data: data) {
+                                    Image(uiImage: uiImage)
+                                        .resizable()
+                                        .scaledToFill()
+                                } else {
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(AppTheme.background)
+                                        .overlay {
+                                            Image(systemName: "video.fill")
+                                                .foregroundStyle(AppTheme.accent)
+                                        }
                                 }
+                            }
+                            .frame(width: 60, height: 60)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
 
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(viewModel.selectedMediaType == .video ? "Video attached" : "Photo attached")
                                     .font(.caption.bold())
                                     .foregroundStyle(AppTheme.textPrimary)
-                                Text("Ready to upload")
+                                Text("Tap ✕ to remove or re-pick to replace")
                                     .font(.caption2)
                                     .foregroundStyle(AppTheme.textSecondary)
                             }
