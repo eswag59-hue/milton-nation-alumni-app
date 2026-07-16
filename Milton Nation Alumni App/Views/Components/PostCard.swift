@@ -82,6 +82,47 @@ struct PostCard: View {
         return post.userId != me
     }
 
+    /// One post image. `width == nil` → full-width single image; a value → fixed
+    /// width for the horizontal multi-photo gallery. Tapping opens fullscreen.
+    @ViewBuilder
+    private func postImage(_ url: URL, width: CGFloat?) -> some View {
+        AsyncImage(url: url) { phase in
+            switch phase {
+            case .success(let image):
+                image
+                    .resizable()
+                    .scaledToFill()
+                    .frame(maxWidth: width == nil ? .infinity : nil)
+                    .frame(width: width, height: 200)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .contentShape(RoundedRectangle(cornerRadius: 12))
+                    .onTapGesture { fullScreenImageURL = IdentifiableURL(url: url) }
+            case .failure:
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(AppTheme.background)
+                    .frame(maxWidth: width == nil ? .infinity : nil)
+                    .frame(width: width, height: 200)
+                    .overlay {
+                        VStack(spacing: 4) {
+                            Image(systemName: "exclamationmark.triangle")
+                                .foregroundStyle(AppTheme.textSecondary)
+                            Text("Image unavailable")
+                                .font(.caption)
+                                .foregroundStyle(AppTheme.textSecondary)
+                        }
+                    }
+            case .empty:
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(AppTheme.background.opacity(0.5))
+                    .frame(maxWidth: width == nil ? .infinity : nil)
+                    .frame(width: width, height: 200)
+                    .overlay { ProgressView() }
+            @unknown default:
+                EmptyView()
+            }
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Pinned indicator
@@ -153,59 +194,42 @@ struct PostCard: View {
                 .lineLimit(5)
 
             // Media preview
-            if let mediaURLString = post.mediaURL, let mediaURL = URL(string: mediaURLString) {
-                if post.mediaType == .video {
-                    // Video — show thumbnail placeholder with play icon
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(AppTheme.background)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 200)
-                        .overlay {
-                            VStack(spacing: 4) {
-                                Image(systemName: "play.circle.fill")
-                                    .font(.largeTitle)
-                                    .foregroundStyle(AppTheme.textSecondary.opacity(0.5))
-                                Text("Video")
-                                    .font(.caption)
-                                    .foregroundStyle(AppTheme.textSecondary)
+            if post.mediaType == .video, post.mediaURL != nil {
+                // Video — show thumbnail placeholder with play icon
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(AppTheme.background)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 200)
+                    .overlay {
+                        VStack(spacing: 4) {
+                            Image(systemName: "play.circle.fill")
+                                .font(.largeTitle)
+                                .foregroundStyle(AppTheme.textSecondary.opacity(0.5))
+                            Text("Video")
+                                .font(.caption)
+                                .foregroundStyle(AppTheme.textSecondary)
+                        }
+                    }
+            } else {
+                let imageURLs = post.allImageURLs.compactMap { URL(string: $0) }
+                if imageURLs.count == 1 {
+                    postImage(imageURLs[0], width: nil)   // full width single image
+                } else if imageURLs.count > 1 {
+                    // Multi-photo — horizontal gallery with a counter.
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(Array(imageURLs.enumerated()), id: \.offset) { _, url in
+                                postImage(url, width: 260)
                             }
                         }
-                } else {
-                    // Image — load from URL with AsyncImage
-                    AsyncImage(url: mediaURL) { phase in
-                        switch phase {
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .scaledToFill()
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 200)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                                .contentShape(RoundedRectangle(cornerRadius: 12))
-                                .onTapGesture { fullScreenImageURL = IdentifiableURL(url: mediaURL) }
-                        case .failure:
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(AppTheme.background)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 200)
-                                .overlay {
-                                    VStack(spacing: 4) {
-                                        Image(systemName: "exclamationmark.triangle")
-                                            .foregroundStyle(AppTheme.textSecondary)
-                                        Text("Image unavailable")
-                                            .font(.caption)
-                                            .foregroundStyle(AppTheme.textSecondary)
-                                    }
-                                }
-                        case .empty:
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(AppTheme.background.opacity(0.5))
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 200)
-                                .overlay { ProgressView() }
-                        @unknown default:
-                            EmptyView()
-                        }
+                    }
+                    .overlay(alignment: .topTrailing) {
+                        Text("1–\(imageURLs.count)")
+                            .font(.caption2.bold())
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 8).padding(.vertical, 3)
+                            .background(Capsule().fill(.black.opacity(0.55)))
+                            .padding(8)
                     }
                 }
             }

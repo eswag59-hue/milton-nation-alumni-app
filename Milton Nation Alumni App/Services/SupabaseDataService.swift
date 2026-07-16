@@ -68,6 +68,7 @@ nonisolated private struct PostInsertParams: Encodable, Sendable {
     let category: String
     let content: String
     let mediaUrl: String?
+    let mediaUrls: [String]?
     let mediaType: String?
     let status: String
     let matchedKeywords: [String]
@@ -82,6 +83,7 @@ nonisolated private struct PostInsertParams: Encodable, Sendable {
         case userPhotoUrl
         case category, content
         case mediaUrl
+        case mediaUrls
         case mediaType
         case status
         case matchedKeywords
@@ -531,6 +533,7 @@ final class SupabaseDataService: DataServiceProtocol {
         category: PostCategory,
         mediaData: Data? = nil,
         mediaType: CommunityPost.MediaType? = nil,
+        additionalImageDatas: [Data] = [],
         status: PostStatus = .pending,
         matchedKeywords: [String] = []
     ) async throws -> CommunityPost {
@@ -546,28 +549,36 @@ final class SupabaseDataService: DataServiceProtocol {
             .execute()
             .value
 
-        // Upload media if provided
-        var mediaURL: String?
-        if let mediaData {
-            let fileExt = mediaType == .video ? "mp4" : "jpg"
-            // Lowercase uuid: the post-media storage policy compares the first
-            // path folder to auth.uid()::text (lowercase). Uppercase → upload
-            // denied and the post silently loses its image.
+        // Upload media if provided. A single helper uploads one blob and returns
+        // its signed URL (7-day expiry so post images don't go dark).
+        // Lowercase uuid: the post-media storage policy compares the first path
+        // folder to auth.uid()::text (lowercase); uppercase → upload denied.
+        func uploadBlob(_ data: Data, isVideo: Bool) async throws -> String {
+            let fileExt = isVideo ? "mp4" : "jpg"
             let filePath = "\(userId.uuidString.lowercased())/\(UUID().uuidString).\(fileExt)"
-
             try await client.storage
                 .from(SupabaseConfig.postMediaBucket)
-                .upload(
-                    filePath,
-                    data: mediaData,
-                    options: .init(contentType: mediaType == .video ? "video/mp4" : "image/jpeg")
-                )
-
-            // Generate a signed URL (7-day expiry so post images don't go dark)
-            mediaURL = try await client.storage
+                .upload(filePath, data: data,
+                        options: .init(contentType: isVideo ? "video/mp4" : "image/jpeg"))
+            return try await client.storage
                 .from(SupabaseConfig.postMediaBucket)
                 .createSignedURL(path: filePath, expiresIn: 604_800)
                 .absoluteString
+        }
+
+        var mediaURL: String?
+        var mediaURLs: [String] = []
+        if let mediaData {
+            let isVideo = mediaType == .video
+            let first = try await uploadBlob(mediaData, isVideo: isVideo)
+            mediaURL = first
+            if !isVideo {
+                mediaURLs.append(first)
+                // Upload any additional photos for a multi-photo post.
+                for extra in additionalImageDatas {
+                    mediaURLs.append(try await uploadBlob(extra, isVideo: false))
+                }
+            }
         }
 
         // Insert the post — stamp it with the author's facility so RLS + the
@@ -579,6 +590,7 @@ final class SupabaseDataService: DataServiceProtocol {
             category: category.rawValue,
             content: content,
             mediaUrl: mediaURL,
+            mediaUrls: mediaURLs.isEmpty ? nil : mediaURLs,
             mediaType: mediaType?.rawValue,
             status: status.rawValue,
             matchedKeywords: matchedKeywords,

@@ -40,6 +40,9 @@ final class CommunityViewModel {
     // Media attachment state
     var selectedMediaData: Data?
     var selectedMediaType: CommunityPost.MediaType?
+    /// Photos selected for a multi-photo post, in order. When non-empty this is
+    /// the source of truth for images; `selectedMediaData` is used only for video.
+    var selectedImageDatas: [Data] = []
     var showMediaPicker = false
 
     // MARK: - Comment State
@@ -116,8 +119,11 @@ final class CommunityViewModel {
         isPostingInFlight = true
         let content = newPostContent
         let category = newPostCategory
-        let mediaData = selectedMediaData
-        let mediaType = selectedMediaType
+        // Photos take precedence (multi-photo); fall back to a single video/photo.
+        let images = selectedImageDatas
+        let mediaData: Data? = images.first ?? selectedMediaData
+        let mediaType: CommunityPost.MediaType? = images.isEmpty ? selectedMediaType : .image
+        let extraImages: [Data] = images.isEmpty ? [] : Array(images.dropFirst())
         let approvedCount = currentUser?.approvedPostCount ?? 0
 
         Task {
@@ -142,6 +148,7 @@ final class CommunityViewModel {
                     category: category,
                     mediaData: mediaData,
                     mediaType: mediaType,
+                    additionalImageDatas: extraImages,
                     status: postStatus,
                     matchedKeywords: moderationResult.matchedKeywords
                 )
@@ -151,6 +158,7 @@ final class CommunityViewModel {
                     newPostCategory = .general
                     selectedMediaData = nil
                     selectedMediaType = nil
+                    selectedImageDatas = []
                     showCreatePost = false
 
                     // Set appropriate user feedback

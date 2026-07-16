@@ -32,6 +32,9 @@ struct CommunityPost: Identifiable, Codable {
     var category: PostCategory
     var content: String
     var mediaURL: String?
+    /// Full ordered list of image URLs for multi-photo posts. `media_url` above
+    /// holds the first one for backward compatibility with older single-image rows.
+    var mediaURLs: [String]? = nil
     var mediaType: MediaType?
     var status: PostStatus
     var isPinned: Bool = false
@@ -53,6 +56,15 @@ struct CommunityPost: Identifiable, Codable {
         case image, video
     }
 
+    /// All image URLs to display, in order — the multi-photo list if present,
+    /// otherwise the single `mediaURL` (or empty). Videos are excluded here.
+    var allImageURLs: [String] {
+        if mediaType == .video { return [] }
+        if let urls = mediaURLs, !urls.isEmpty { return urls }
+        if let single = mediaURL { return [single] }
+        return []
+    }
+
     // Explicit keys needed for any property whose name ends in "URL":
     // .convertFromSnakeCase maps "user_photo_url" → "userPhotoUrl" (lowercase l),
     // which doesn't match the Swift property "userPhotoURL" (uppercase L).
@@ -65,6 +77,7 @@ struct CommunityPost: Identifiable, Codable {
         case userName           // "user_name"        → "userName"
         case userPhotoURL = "userPhotoUrl"  // "user_photo_url"  → "userPhotoUrl"
         case mediaURL = "mediaUrl"          // "media_url"       → "mediaUrl"
+        case mediaURLs = "mediaUrls"        // "media_urls"      → "mediaUrls"
         case mediaType          // "media_type"       → "mediaType"
         case isPinned           // "is_pinned"        → "isPinned"
         case likesCount         // "likes_count"      → "likesCount"

@@ -3,7 +3,7 @@ import Foundation
 protocol DataServiceProtocol {
     // Posts
     func fetchPosts(category: PostCategory?) async throws -> [CommunityPost]
-    func createPost(content: String, category: PostCategory, mediaData: Data?, mediaType: CommunityPost.MediaType?, status: PostStatus, matchedKeywords: [String]) async throws -> CommunityPost
+    func createPost(content: String, category: PostCategory, mediaData: Data?, mediaType: CommunityPost.MediaType?, additionalImageDatas: [Data], status: PostStatus, matchedKeywords: [String]) async throws -> CommunityPost
     func toggleLike(postId: UUID) async throws -> Bool
     /// Permanently remove a post the current user owns.
     /// The backend should enforce ownership via RLS.
@@ -209,7 +209,7 @@ final class MockDataService: DataServiceProtocol {
         }
     }
 
-    func createPost(content: String, category: PostCategory, mediaData: Data? = nil, mediaType: CommunityPost.MediaType? = nil, status: PostStatus = .pending, matchedKeywords: [String] = []) async throws -> CommunityPost {
+    func createPost(content: String, category: PostCategory, mediaData: Data? = nil, mediaType: CommunityPost.MediaType? = nil, additionalImageDatas: [Data] = [], status: PostStatus = .pending, matchedKeywords: [String] = []) async throws -> CommunityPost {
         try await Task.sleep(for: .milliseconds(300))
         let me = currentMockUser
         // In mock mode, posts skip moderation — show them in the feed immediately
