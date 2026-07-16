@@ -272,7 +272,18 @@ final class LoginViewModel {
         } catch {
             CrashReportingService.shared.recordError(error, context: "LoginViewModel.register")
             await MainActor.run {
-                errorMessage = "Registration failed. Please try again."
+                // Surface the ACTUAL reason (weak password, email already used,
+                // etc.) instead of a generic "try again" the user can't act on.
+                let raw = error.localizedDescription.lowercased()
+                if raw.contains("weak") || raw.contains("easy to guess") || raw.contains("pwned") {
+                    errorMessage = "That password is too weak or has appeared in a breach. Please choose a stronger, unique password."
+                } else if raw.contains("already registered") || raw.contains("already been registered") || raw.contains("user already") {
+                    errorMessage = "An account with this email already exists. Try logging in instead."
+                } else if raw.contains("valid email") || raw.contains("invalid") && raw.contains("email") {
+                    errorMessage = "Please enter a valid email address."
+                } else {
+                    errorMessage = "Registration failed: \(error.localizedDescription)"
+                }
                 isLoading = false
             }
             return nil
