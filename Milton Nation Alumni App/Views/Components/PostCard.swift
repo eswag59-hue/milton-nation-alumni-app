@@ -34,6 +34,10 @@ struct PostCard: View {
     // MARK: - Report / Block confirmation state
     @State private var showReportPostConfirm = false
     @State private var showBlockUserConfirm = false
+    /// Tapping the post image opens it fullscreen. In the feed the card is
+    /// wrapped in a NavigationLink so this tap is consumed by navigation (image
+    /// → post detail); in the post detail there's no link, so it opens fullscreen.
+    @State private var fullScreenImageURL: IdentifiableURL?
     /// The comment currently targeted by a report/block confirmation, if any.
     @State private var commentToReport: Comment?
     @State private var commentAuthorToBlock: Comment?
@@ -177,6 +181,8 @@ struct PostCard: View {
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 200)
                                 .clipShape(RoundedRectangle(cornerRadius: 12))
+                                .contentShape(RoundedRectangle(cornerRadius: 12))
+                                .onTapGesture { fullScreenImageURL = IdentifiableURL(url: mediaURL) }
                         case .failure:
                             RoundedRectangle(cornerRadius: 12)
                                 .fill(AppTheme.background)
@@ -294,6 +300,9 @@ struct PostCard: View {
         }
         .padding()
         .cardStyle()
+        .fullScreenCover(item: $fullScreenImageURL) { item in
+            FullScreenImageView(url: item.url)
+        }
         // MARK: - Report / Block confirmations
         .confirmationDialog(
             "Report this post?",

@@ -6,6 +6,9 @@ final class CommunityViewModel {
     var posts: [CommunityPost] = []
     var selectedCategory: PostCategory? = nil
     var showCreatePost = false
+    /// True while a post submit is in flight — blocks a double-tap from
+    /// creating duplicate posts, and disables the Submit button.
+    var isPostingInFlight = false
     var newPostContent = ""
     var newPostCategory: PostCategory = .general
     var isLoading = false
@@ -107,6 +110,10 @@ final class CommunityViewModel {
 
     func createPost() {
         guard !newPostContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        // Re-entrancy guard: a fast double-tap on Submit fired createPost()
+        // twice and created two identical posts. Bail if one is already in flight.
+        guard !isPostingInFlight else { return }
+        isPostingInFlight = true
         let content = newPostContent
         let category = newPostCategory
         let mediaData = selectedMediaData
@@ -174,6 +181,7 @@ final class CommunityViewModel {
                     showPostSubmitted = true
                 }
             }
+            await MainActor.run { isPostingInFlight = false }
         }
     }
 

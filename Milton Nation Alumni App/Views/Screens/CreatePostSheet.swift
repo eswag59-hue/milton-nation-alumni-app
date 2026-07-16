@@ -13,7 +13,9 @@ struct CreatePostSheet: View {
 
     private var isSubmitDisabled: Bool {
         let trimmed = viewModel.newPostContent.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty || trimmed.count > 1000
+        // Also disable while a submit is in flight so a second tap can't create
+        // a duplicate post.
+        return trimmed.isEmpty || trimmed.count > 1000 || viewModel.isPostingInFlight
     }
 
     @FocusState private var contentFocused: Bool
