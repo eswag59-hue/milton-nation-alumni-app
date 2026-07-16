@@ -31,6 +31,8 @@ protocol DataServiceProtocol {
 
     // Chat
     func fetchConversations() async throws -> [Conversation]
+    /// Staff caseload: conversations where the current user is the assigned staff.
+    func fetchClientConversations() async throws -> [Conversation]
     func fetchMessages(conversationId: UUID) async throws -> [ChatMessage]
     func sendMessage(conversationId: UUID, content: String, type: MessageType, status: MessageModerationStatus, matchedKeywords: [String]) async throws -> ChatMessage
 
@@ -387,6 +389,11 @@ final class MockDataService: DataServiceProtocol {
     }
 
     func fetchConversations() async throws -> [Conversation] {
+        try await Task.sleep(for: .milliseconds(300))
+        return MockData.conversations
+    }
+
+    func fetchClientConversations() async throws -> [Conversation] {
         try await Task.sleep(for: .milliseconds(300))
         return MockData.conversations
     }

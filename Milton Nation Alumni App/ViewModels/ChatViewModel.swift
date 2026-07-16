@@ -37,6 +37,37 @@ final class ChatViewModel {
         }
     }
 
+    /// Load the caseload for a logged-in staff member (case manager / therapist):
+    /// every conversation where they are the assigned staff, with the client as
+    /// the display party. Mirrors loadConversations() but uses the staff-side fetch.
+    func loadCaseload() {
+        loadConversationsTask?.cancel()
+        loadConversationsTask = Task {
+            await MainActor.run { isLoading = true; errorMessage = nil }
+            do {
+                let convs = try await dataService.fetchClientConversations()
+                guard !Task.isCancelled else { return }
+                await MainActor.run {
+                    conversations = convs
+                    isLoading = false
+                    cache.cacheConversations(convs)
+                }
+            } catch {
+                guard !Task.isCancelled else { return }
+                CrashReportingService.shared.recordError(error, context: "ChatViewModel.loadCaseload")
+                await MainActor.run {
+                    if let cached = cache.loadCachedConversations() {
+                        conversations = cached
+                    }
+                    if conversations.isEmpty {
+                        errorMessage = "Unable to load your clients. Please check your connection."
+                    }
+                    isLoading = false
+                }
+            }
+        }
+    }
+
     func loadConversations() {
         loadConversationsTask?.cancel()
         loadConversationsTask = Task {

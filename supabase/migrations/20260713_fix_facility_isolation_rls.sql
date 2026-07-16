@@ -225,3 +225,16 @@ FOR UPDATE USING (
   OR (is_admin() AND (facility IS NULL OR facility = current_user_facility()))
   OR id = auth.uid()
 );
+
+-- ── 2026-07-14: staff caseload — staff read their assigned clients' profiles ──
+-- So a case manager / therapist's "My Clients" list shows real names (mirrors
+-- "Users read assigned staff profiles"). Conversation read is already allowed
+-- by the participant policy (auth.uid() = staff_id).
+DROP POLICY IF EXISTS "Staff read assigned client profiles" ON public.profiles;
+CREATE POLICY "Staff read assigned client profiles" ON public.profiles
+FOR SELECT USING (
+  EXISTS (
+    SELECT 1 FROM public.staff_assignments sa
+    WHERE sa.staff_id = auth.uid() AND sa.user_id = profiles.id
+  )
+);

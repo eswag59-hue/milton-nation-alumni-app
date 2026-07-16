@@ -18,13 +18,40 @@ struct ContentView: View {
                     .sheet(isPresented: $appViewModel.showSobrietyCheck) {
                         SobrietyCheckModal()
                     }
+            } else if appViewModel.currentUser?.role.isClinical == true && !appViewModel.isViewingAsUser {
+                // Case managers / therapists / counselors get a staff view with
+                // their caseload — NOT the patient "recovery journey."
+                staffTabView
             } else {
-                // Clinical staff, or admin in "View as User" mode
+                // Admin in "View as User" mode (or any fallback)
                 alumniTabView
             }
         } else {
             LoginScreen(authService: appViewModel.authService)
         }
+    }
+
+    /// Staff shell: caseload (clients + chat) + community + profile.
+    /// No sobriety tracker, no "recovery journey" — this is the clinician view.
+    private var staffTabView: some View {
+        TabView(selection: $appViewModel.selectedTab) {
+            Tab("Clients", systemImage: "person.2.fill", value: .chat) {
+                StaffClientsScreen()
+            }
+
+            Tab("Community", systemImage: "bubble.left.and.bubble.right.fill", value: .community) {
+                CommunityScreen()
+            }
+
+            Tab("Profile", systemImage: "person.circle.fill", value: .profile) {
+                if let user = appViewModel.currentUser {
+                    NavigationStack {
+                        ProfileScreen(user: user)
+                    }
+                }
+            }
+        }
+        .tint(AppTheme.accent)
     }
 
     private var alumniTabView: some View {

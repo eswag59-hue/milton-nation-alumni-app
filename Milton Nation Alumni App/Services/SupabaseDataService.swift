@@ -246,6 +246,30 @@ nonisolated private struct StaffProfileRow: Decodable, Sendable {
     }
 }
 
+/// Staff-side conversation row: same conversation, but joined to the CLIENT
+/// (user_id) profile instead of the staff profile, so a case manager / therapist
+/// sees WHO their client is on each thread.
+nonisolated private struct ClientConversationRow: Decodable, Sendable {
+    let id: UUID
+    let userId: UUID
+    let staffId: UUID
+    let lastMessage: String?
+    let lastMessageAt: Date?
+    let unreadCount: Int
+    let createdAt: Date
+    let clientProfile: StaffProfileRow?
+    enum CodingKeys: String, CodingKey {
+        case id
+        case userId
+        case staffId
+        case lastMessage
+        case lastMessageAt
+        case unreadCount
+        case createdAt
+        case clientProfile = "client"
+    }
+}
+
 /// Staff profiles can have NULL phone / mfa_method / sobriety dates (staff
 /// never log sobriety). Decoding them as a full `User` (which requires those
 /// fields) threw valueNotFound and silently killed the chat screen — so we
@@ -864,6 +888,36 @@ final class SupabaseDataService: DataServiceProtocol {
                 staffName: row.staffProfile?.fullName ?? "Staff",
                 staffRole: row.staffProfile?.role ?? .caseManager,
                 staffPhotoURL: row.staffProfile?.profilePhotoUrl,
+                lastMessage: row.lastMessage,
+                lastMessageAt: row.lastMessageAt,
+                unreadCount: row.unreadCount,
+                createdAt: row.createdAt
+            )
+        }
+    }
+
+    /// The caseload for a logged-in staff member: every conversation where they
+    /// are the assigned staff, with the CLIENT surfaced as the display party.
+    /// We reuse the `Conversation` model — the "staff*" fields carry the client
+    /// so the existing ChatDetailScreen renders the client's name as the title.
+    func fetchClientConversations() async throws -> [Conversation] {
+        let staffId = try await currentUserId
+
+        let rows: [ClientConversationRow] = try await client.from("conversations")
+            .select("*, client:profiles!user_id(full_name, role, profile_photo_url)")
+            .eq("staff_id", value: staffId.uuidString)
+            .order("last_message_at", ascending: false)
+            .execute()
+            .value
+
+        return rows.map { row in
+            Conversation(
+                id: row.id,
+                userId: row.userId,
+                staffId: row.staffId,
+                staffName: row.clientProfile?.fullName ?? "Client",
+                staffRole: row.clientProfile?.role ?? .alumni,
+                staffPhotoURL: row.clientProfile?.profilePhotoUrl,
                 lastMessage: row.lastMessage,
                 lastMessageAt: row.lastMessageAt,
                 unreadCount: row.unreadCount,
