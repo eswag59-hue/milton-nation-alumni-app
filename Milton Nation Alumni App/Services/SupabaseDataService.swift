@@ -1410,9 +1410,14 @@ final class SupabaseDataService: DataServiceProtocol {
     }
 
     func fetchFlaggedMessages(limit: Int, facility: Facility?) async throws -> [ChatMessage] {
+        // Status values MUST match the MessageModerationStatus raw values that
+        // actually get written: "flagged_for_crisis" (crisis), "flagged",
+        // "pending", "pending_review". The old list ["flagged","crisis"] never
+        // matched "flagged_for_crisis", so the admin Chat Monitor showed NO
+        // flagged patient messages — a safety-critical miss.
         let messages: [ChatMessage] = try await client.from("messages")
             .select()
-            .in("status", values: ["flagged","crisis"])
+            .in("status", values: ["flagged_for_crisis", "flagged", "pending", "pending_review"])
             .order("created_at", ascending: false)
             .limit(limit)
             .execute()
