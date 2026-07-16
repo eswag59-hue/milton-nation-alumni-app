@@ -168,7 +168,7 @@ struct AdminDashboardScreen: View {
 
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Admin Dashboard")
+                    Text(appViewModel.currentUser?.role.isClinical == true ? "Care Tools" : "Admin Dashboard")
                         .font(.title2.bold())
                         .foregroundStyle(AppTheme.textPrimary)
                     if let user = appViewModel.currentUser {

@@ -31,12 +31,20 @@ struct ContentView: View {
         }
     }
 
-    /// Staff shell: caseload (clients + chat) + community + profile.
-    /// No sobriety tracker, no "recovery journey" — this is the clinician view.
+    /// Staff shell: caseload chat + a clinician dashboard (sobriety monitoring,
+    /// announcements, meetings, moderation, flags) + community + profile.
+    /// No sobriety tracker / "recovery journey" — this is the clinician view.
     private var staffTabView: some View {
         TabView(selection: $appViewModel.selectedTab) {
             Tab("Clients", systemImage: "person.2.fill", value: .chat) {
                 StaffClientsScreen()
+            }
+
+            // Clinician dashboard — reuses the admin dashboard, scoped by role to
+            // the staff sections (sobriety, moderation, meetings, chat monitor,
+            // announcements, flags). No user-approval / user-management.
+            Tab("Care Tools", systemImage: "square.grid.2x2.fill", value: .home) {
+                AdminDashboardScreen()
             }
 
             Tab("Community", systemImage: "bubble.left.and.bubble.right.fill", value: .community) {

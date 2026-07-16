@@ -329,6 +329,13 @@ final class AdminViewModel {
             .pendingApprovals, .inviteAlumni, .moderation, .sobriety, .meetingMgmt, .chatMonitor, .announcements, .content, .contentFlags
         ]
 
+        /// Sections accessible by clinical staff (case manager / therapist /
+        /// counselor): caseload monitoring + operational tools, but NOT user
+        /// approvals, invites, or user management (those stay admin-only).
+        static let staffSections: Set<AdminSection> = [
+            .sobriety, .moderation, .meetingMgmt, .chatMonitor, .announcements, .contentFlags
+        ]
+
         /// Sections accessible only by Super Admin
         static let superAdminOnlySections: Set<AdminSection> = [
             .assignments, .contacts, .userManagement, .gamification, .emergencyAccess
@@ -340,6 +347,8 @@ final class AdminViewModel {
                 return allCases
             } else if role == .admin {
                 return allCases.filter { adminSections.contains($0) }
+            } else if role.isClinical {
+                return allCases.filter { staffSections.contains($0) }
             }
             return []
         }
