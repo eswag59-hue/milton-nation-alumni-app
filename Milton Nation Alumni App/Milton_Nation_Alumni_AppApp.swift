@@ -1,8 +1,24 @@
 import SwiftUI
 import LocalAuthentication
+import UIKit
+
+/// SwiftUI apps only receive the APNs device-token callbacks through a UIKit
+/// app delegate. Without this, `registerForRemoteNotifications()` fires but the
+/// token is never delivered — so no token is ever stored and push never works.
+final class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication,
+                     didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        PushNotificationService.shared.didRegisterForRemoteNotifications(withDeviceToken: deviceToken)
+    }
+    func application(_ application: UIApplication,
+                     didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        PushNotificationService.shared.didFailToRegisterForRemoteNotifications(withError: error)
+    }
+}
 
 @main
 struct Milton_Nation_Alumni_AppApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var appViewModel: AppViewModel
     @State private var adminViewModel: AdminViewModel
     @State private var sessionManager = SessionManager()
