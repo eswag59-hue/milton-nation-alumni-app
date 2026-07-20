@@ -5,6 +5,8 @@ struct AdminDashboardScreen: View {
     @Environment(AppViewModel.self) private var appViewModel
     @Environment(AdminViewModel.self) private var viewModel
     @State private var staffPhotoItem: PhotosPickerItem?
+    /// Member tapped in User Management — drives the detail sheet.
+    @State private var selectedUserForDetail: User?
 
     var body: some View {
         @Bindable var viewModel = viewModel
@@ -63,6 +65,9 @@ struct AdminDashboardScreen: View {
             }
             .sheet(isPresented: $viewModel.showRSVPSheet) {
                 rsvpListSheet
+            }
+            .sheet(item: $selectedUserForDetail) { user in
+                AdminUserDetailSheet(user: user, viewModel: viewModel)
             }
             .photosPicker(isPresented: $viewModel.showStaffPhotoPicker, selection: $staffPhotoItem, matching: .images)
             .onChange(of: staffPhotoItem) {
@@ -2244,7 +2249,7 @@ struct AdminDashboardScreen: View {
                     .foregroundStyle(AppTheme.textSecondary)
             }
 
-            Text("Promote users to Admin or Super Admin. Admins access: Moderation, Staff, Sobriety, Meetings, Chat. Super Admins have full unrestricted access.")
+            Text("Tap a member to see their full details. Promote users to Admin or Super Admin — Admins access: Moderation, Staff, Sobriety, Meetings, Chat. Super Admins have full unrestricted access.")
                 .font(.caption2)
                 .foregroundStyle(AppTheme.textSecondary)
                 .padding(.bottom, 4)
@@ -2302,10 +2307,22 @@ struct AdminDashboardScreen: View {
                             .font(.caption)
                             .foregroundStyle(AppTheme.primary)
                     }
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(AppTheme.textSecondary.opacity(0.6))
                 }
                 .padding(10)
                 .background(AppTheme.background)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
+                // Whole row opens details; the inner Promote button still wins
+                // its own taps, so both interactions coexist.
+                .contentShape(Rectangle())
+                .onTapGesture { selectedUserForDetail = user }
+                .accessibilityElement(children: .contain)
+                .accessibilityAddTraits(.isButton)
+                .accessibilityLabel("\(user.fullName), \(user.role.displayName)")
+                .accessibilityHint("Opens member details")
             }
         }
         .padding()
