@@ -1985,6 +1985,15 @@ struct AdminDashboardScreen: View {
 
     // MARK: - Meeting Editor Sheet
 
+    /// Super admins may author for either facility; a facility admin may author
+    /// for their own facility or for both, never for the other facility.
+    private var selectableMeetingFacilities: [Facility?] {
+        if appViewModel.currentUser?.role.isSuperAdmin == true || viewModel.adminFacilityFilter == nil {
+            return [.florida, .ohio, nil]
+        }
+        return [viewModel.adminFacilityFilter, nil]
+    }
+
     private var meetingEditorSheet: some View {
         @Bindable var viewModel = viewModel
         return NavigationStack {
@@ -1998,6 +2007,20 @@ struct AdminDashboardScreen: View {
                             Text(type.displayName).tag(type)
                         }
                     }
+                }
+
+                Section {
+                    Picker("Visible to", selection: $viewModel.meetingFacility) {
+                        ForEach(selectableMeetingFacilities, id: \.self) { f in
+                            Text(f?.displayName ?? "Both facilities").tag(f)
+                        }
+                    }
+                } header: {
+                    Text("Facility")
+                } footer: {
+                    Text(viewModel.meetingFacility == nil
+                         ? "Members at both Florida and Ohio will see this meeting. Use for virtual meetings open to everyone."
+                         : "Only \(viewModel.meetingFacility?.displayName ?? "") members will see this meeting.")
                 }
 
                 Section("Date & Time") {

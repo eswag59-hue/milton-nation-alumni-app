@@ -310,7 +310,6 @@ final class RealtimeService {
     }
 
     // MARK: - Pending Users (admin real-time alerts)
-
     /// Subscribe to new users registering with pending status.
     func subscribeToPendingUsers(
         onNewUser: @escaping @Sendable (User) -> Void

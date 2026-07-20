@@ -222,6 +222,8 @@ final class AdminViewModel {
     var meetingTitle = ""
     var meetingDescription = ""
     var meetingType: MeetingType = .inPerson
+    /// Facility this meeting is visible to. nil == BOTH facilities.
+    var meetingFacility: Facility? = nil
     var meetingDate = Date()
     var meetingStartTime = Date()
     var meetingEndTime = Calendar.current.date(byAdding: .hour, value: 1, to: Date()) ?? Date()
@@ -996,6 +998,7 @@ final class AdminViewModel {
 
     func beginCreateMeeting() {
         editingMeeting = nil
+        meetingFacility = adminFacilityFilter
         meetingTitle = ""
         meetingDescription = ""
         meetingType = .inPerson
@@ -1011,6 +1014,7 @@ final class AdminViewModel {
 
     func beginEditMeeting(_ meeting: Meeting) {
         editingMeeting = meeting
+        meetingFacility = meeting.facility
         meetingTitle = meeting.title
         meetingDescription = meeting.description ?? ""
         meetingType = meeting.meetingType
@@ -1040,6 +1044,7 @@ final class AdminViewModel {
             updated.virtualLink = meetingVirtualLink.isEmpty ? nil : meetingVirtualLink
             updated.isRecurring = meetingIsRecurring
             updated.recurrencePattern = meetingIsRecurring ? meetingRecurrence : nil
+            updated.facility = meetingFacility
             meetingToSave = updated
         } else {
             meetingToSave = Meeting(
@@ -1061,7 +1066,8 @@ final class AdminViewModel {
                 // Falls back to the existing editing meeting's author, then to a
                 // zero UUID only if somehow unset — never a fabricated mock user.
                 createdBy: currentAdminUserId ?? editingMeeting?.createdBy ?? UUID(uuidString: "00000000-0000-0000-0000-000000000000")!,
-                createdAt: Date()
+                createdAt: Date(),
+                facility: meetingFacility
             )
         }
 
