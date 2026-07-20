@@ -285,6 +285,7 @@ final class AdminViewModel {
         case announcements = "Announcements"
         case contentFlags = "Content Flags"
         case emergencyAccess = "Emergency Access"
+        case auditLog = "Audit Log"
 
         var icon: String {
             switch self {
@@ -302,6 +303,7 @@ final class AdminViewModel {
             case .announcements: return "megaphone.fill"
             case .contentFlags: return "flag.fill"
             case .emergencyAccess: return "lock.open.trianglebadge.exclamationmark.fill"
+            case .auditLog: return "list.bullet.rectangle.portrait.fill"
             }
         }
 
@@ -321,6 +323,7 @@ final class AdminViewModel {
             case .announcements: return AppTheme.accent
             case .contentFlags: return AppTheme.struggling
             case .emergencyAccess: return .red
+            case .auditLog: return .indigo
             }
         }
 
@@ -338,7 +341,7 @@ final class AdminViewModel {
 
         /// Sections accessible only by Super Admin
         static let superAdminOnlySections: Set<AdminSection> = [
-            .assignments, .contacts, .userManagement, .gamification, .emergencyAccess
+            .assignments, .contacts, .userManagement, .gamification, .emergencyAccess, .auditLog
         ]
 
         /// Returns filtered sections based on the user's role
@@ -351,6 +354,37 @@ final class AdminViewModel {
                 return allCases.filter { staffSections.contains($0) }
             }
             return []
+        }
+    }
+
+    /// Audit trail rows, newest first. Loaded on demand — this table grows
+    /// without bound, so it is never part of the bulk dashboard load.
+    var auditEntries: [AuditLogRecord] = []
+    var isLoadingAudit = false
+    var auditError: String?
+
+    func loadAuditLog() {
+        Task { @MainActor in
+            isLoadingAudit = true
+            auditError = nil
+            defer { isLoadingAudit = false }
+            do {
+                var fetched = try await dataService.fetchAuditLog(limit: 200)
+                // Resolve actor names from the loaded roster. Rows whose actor
+                // no longer exists keep a nil name and render as "Unknown user"
+                // rather than dropping out of the trail.
+                let byId = Dictionary(
+                    (allUsers + staffMembers).map { ($0.id, $0.fullName) },
+                    uniquingKeysWith: { first, _ in first }
+                )
+                for i in fetched.indices {
+                    if let uid = fetched[i].userId { fetched[i].userName = byId[uid] }
+                }
+                auditEntries = fetched
+            } catch {
+                CrashReportingService.shared.recordError(error, context: "AdminViewModel.loadAuditLog")
+                auditError = "Could not load the audit log."
+            }
         }
     }
 

@@ -390,6 +390,84 @@ struct AdminDashboardScreen: View {
             contentFlagsSection
         case .emergencyAccess:
             emergencyAccessSection
+        case .auditLog:
+            auditLogSection
+        }
+    }
+
+    // MARK: - Audit Log Section
+
+    private var auditLogSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "list.bullet.rectangle.portrait.fill")
+                    .foregroundStyle(.indigo)
+                Text("Audit Log")
+                    .font(.subheadline.bold())
+                    .foregroundStyle(AppTheme.textPrimary)
+                Spacer()
+                Button {
+                    viewModel.loadAuditLog()
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.caption)
+                }
+            }
+
+            Text("Who did what, and when. Showing the 200 most recent entries. Highlighted rows are security-relevant.")
+                .font(.caption2)
+                .foregroundStyle(AppTheme.textSecondary)
+
+            if viewModel.isLoadingAudit {
+                HStack { Spacer(); ProgressView(); Spacer() }.padding(.vertical, 20)
+            } else if let auditError = viewModel.auditError {
+                Text(auditError).font(.caption).foregroundStyle(.red)
+            } else if viewModel.auditEntries.isEmpty {
+                Text("No audit entries yet.")
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.textSecondary)
+                    .padding(.vertical, 12)
+            } else {
+                ForEach(viewModel.auditEntries) { entry in
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack(spacing: 6) {
+                            if entry.isSensitive {
+                                Image(systemName: "exclamationmark.shield.fill")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(.orange)
+                            }
+                            Text(entry.displayAction)
+                                .font(.caption.bold())
+                                .foregroundStyle(AppTheme.textPrimary)
+                            Spacer()
+                            Text(entry.formattedTimestamp)
+                                .font(.system(size: 10))
+                                .foregroundStyle(AppTheme.textSecondary)
+                        }
+                        HStack(spacing: 6) {
+                            Text(entry.userName ?? "Unknown user")
+                                .font(.caption2)
+                                .foregroundStyle(AppTheme.textSecondary)
+                            if let detail = entry.detail, !detail.isEmpty {
+                                Text("· \(detail)")
+                                    .font(.caption2)
+                                    .foregroundStyle(AppTheme.textSecondary)
+                                    .lineLimit(1)
+                            }
+                        }
+                    }
+                    .padding(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(entry.isSensitive ? Color.orange.opacity(0.08) : AppTheme.background)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+            }
+        }
+        .padding()
+        .cardStyle()
+        .padding(.horizontal)
+        .onAppear {
+            if viewModel.auditEntries.isEmpty { viewModel.loadAuditLog() }
         }
     }
 

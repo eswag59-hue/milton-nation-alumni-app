@@ -39,6 +39,7 @@ protocol DataServiceProtocol {
     // User
     func fetchAssignedStaff() async throws -> [User]
     func updateProfile(user: User) async throws -> User
+    func fetchAuditLog(limit: Int) async throws -> [AuditLogRecord]
     /// Begin account deletion: mark the profile `deactivated` and stamp
     /// `deactivated_at = now()`. A scheduled server job hard-deletes the
     /// personal data 30 days later (see `purge_deactivated_accounts()`).
@@ -431,6 +432,10 @@ final class MockDataService: DataServiceProtocol {
     func fetchAssignedStaff() async throws -> [User] {
         try await Task.sleep(for: .milliseconds(200))
         return [MockData.caseManager, MockData.therapist]
+    }
+
+    func fetchAuditLog(limit: Int) async throws -> [AuditLogRecord] {
+        []
     }
 
     func updateProfile(user: User) async throws -> User {

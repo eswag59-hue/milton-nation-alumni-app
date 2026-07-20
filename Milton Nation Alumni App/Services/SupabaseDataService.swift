@@ -1032,6 +1032,41 @@ final class SupabaseDataService: DataServiceProtocol {
         return rows.map { $0.staffProfile.toUser() }
     }
 
+    /// Newest-first audit trail. Joins the actor's name so a reviewer sees a
+    /// person, not a UUID. RLS ("Admins read audit logs") is the access gate.
+    func fetchAuditLog(limit: Int) async throws -> [AuditLogRecord] {
+        struct Row: Decodable {
+            let id: UUID
+            let action: String
+            let userId: UUID?
+            let detail: String?
+            let ipAddress: String?
+            let createdAt: Date
+        }
+
+        let rows: [Row] = try await client.from("audit_logs")
+            // No embedded profile join: audit_logs.user_id has no FK to
+            // profiles by design — the trail must survive a purged account.
+            // Names are resolved by the caller from its loaded roster.
+            .select("id, action, user_id, detail, ip_address, created_at")
+            .order("created_at", ascending: false)
+            .limit(limit)
+            .execute()
+            .value
+
+        return rows.map {
+            AuditLogRecord(
+                id: $0.id,
+                action: $0.action,
+                userId: $0.userId,
+                detail: $0.detail,
+                ipAddress: $0.ipAddress,
+                createdAt: $0.createdAt,
+                userName: nil
+            )
+        }
+    }
+
     func updateProfile(user: User) async throws -> User {
         let update = ProfileUpdateParams(
             fullName: user.fullName,

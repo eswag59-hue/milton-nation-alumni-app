@@ -40,16 +40,16 @@ In ASC → App Privacy → "Get Started." For each type below: **Collected = Yes
 - **Age rating:** complete the questionnaire — expect **17+** (medical/treatment info + unrestricted user-generated content).
 - **Export compliance:** already declared in-app (`ITSAppUsesNonExemptEncryption = NO`) — no prompt expected.
 - **Support URL / Marketing URL:** confirm live before submit.
-- **Screenshots:** upload your fresh Build 27 screenshots (Alex Demo account) — 6.9" + 6.1".
+- **Screenshots:** upload your fresh Build 28 screenshots (Alex Demo account) — 6.9" + 6.1".
 
 ---
 
 ## ⛔ Pre-submit gate — do NOT click "Submit for Review" until ALL true
 - [x] **Report + Block shipped** (Apple 1.2) — ✅ live since Build 16, verified.
-- [x] Full test suite passed on Build 27 (create-post, crisis, report/block, delete, isolation, staff view, multi-photo) — ✅ 0 showstoppers.
+- [x] Full test suite passed on Build 28 (create-post, crisis, report/block, delete, isolation, staff view, multi-photo) — ✅ 0 showstoppers.
 - [ ] Fresh screenshots uploaded.
 - [ ] App Privacy questionnaire completed (section 1).
 - [ ] Reviewer notes + demo account entered (section 2).
-- [ ] Build 27 processed + selected.
+- [ ] Build 28 processed + selected.
 
 *(Twilio Verify SMS, live Privacy/Terms URLs, account delete + data export, and RLS are already verified ✅.)*
