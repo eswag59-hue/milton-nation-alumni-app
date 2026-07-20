@@ -205,14 +205,15 @@ nonisolated private struct MilestoneInsertParams: Encodable, Sendable {
     }
 }
 
-nonisolated private struct InviteSMSParams: Encodable, Sendable {
-    let phone: String
+nonisolated private struct InviteEmailParams: Encodable, Sendable {
+    let to: String
     let name: String?
 }
 
-nonisolated private struct InviteSMSResponse: Decodable, Sendable {
-    let success: Bool?
-    let phone: String?
+nonisolated private struct InviteEmailResponse: Decodable, Sendable {
+    let sent: Bool?
+    let email: String?
+    let reason: String?
     let error: String?
 }
 
@@ -1281,7 +1282,12 @@ final class SupabaseDataService: DataServiceProtocol {
             .eq("status", value: "pending")
 
         if let facility = facilityFilter {
-            query = query.eq("facility", value: facility.rawValue)
+            // Include signups with NO facility yet. A new member often hasn't been
+            // assigned a facility — the admin assigns it AT approval time (the
+            // Florida/Ohio toggle in the approval card). Filtering strictly by
+            // facility hid every unassigned applicant, so the queue looked empty
+            // and new members could never be approved.
+            query = query.or("facility.eq.\(facility.rawValue),facility.is.null")
         }
 
         let users: [User] = try await query
@@ -1496,10 +1502,11 @@ final class SupabaseDataService: DataServiceProtocol {
 
     // MARK: - Invite
 
-    func sendInvite(phone: String, name: String?) async throws -> String {
-        let params = InviteSMSParams(phone: phone, name: name)
-        let response: InviteSMSResponse = try await client.functions.invoke(
-            "send-invite-sms",
+    /// Invite a prospective member by EMAIL (v1 uses email, not SMS).
+    func sendInvite(email: String, name: String?) async throws -> String {
+        let params = InviteEmailParams(to: email, name: name)
+        let response: InviteEmailResponse = try await client.functions.invoke(
+            "send-invite-email",
             options: .init(
                 method: .post,
                 body: params
@@ -1509,8 +1516,12 @@ final class SupabaseDataService: DataServiceProtocol {
         if let error = response.error {
             throw NSError(domain: "invite", code: 500, userInfo: [NSLocalizedDescriptionKey: error])
         }
+        if response.sent == false, let reason = response.reason {
+            throw NSError(domain: "invite", code: 500,
+                          userInfo: [NSLocalizedDescriptionKey: "Invite not sent (\(reason))."])
+        }
 
-        return response.phone ?? phone
+        return response.email ?? email
     }
 
     // MARK: - Block & Report (Apple Guideline 1.2 — UGC safety)

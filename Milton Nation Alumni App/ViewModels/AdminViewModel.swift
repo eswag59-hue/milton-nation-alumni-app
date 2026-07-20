@@ -254,7 +254,7 @@ final class AdminViewModel {
     var badgeToastMessage: String = ""
 
     // MARK: - Invite Alumni
-    var invitePhone = ""
+    var inviteEmail = ""
     var inviteName = ""
     var inviteSending = false
     var inviteSuccess: String? = nil
@@ -1263,11 +1263,15 @@ final class AdminViewModel {
     // MARK: - Invite Alumni
 
     func sendInvite() {
-        let phone = invitePhone.trimmingCharacters(in: .whitespacesAndNewlines)
+        let email = inviteEmail.trimmingCharacters(in: .whitespacesAndNewlines)
         let name = inviteName.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        guard !phone.isEmpty else {
-            inviteError = "Please enter a phone number."
+        guard !email.isEmpty else {
+            inviteError = "Please enter an email address."
+            return
+        }
+        guard email.contains("@"), email.contains(".") else {
+            inviteError = "Please enter a valid email address."
             return
         }
 
@@ -1277,16 +1281,16 @@ final class AdminViewModel {
 
         Task {
             do {
-                let maskedPhone = try await dataService.sendInvite(
-                    phone: phone,
+                let sentTo = try await dataService.sendInvite(
+                    email: email,
                     name: name.isEmpty ? nil : name
                 )
                 await MainActor.run {
                     inviteSending = false
-                    inviteSuccess = "Invite sent to \(maskedPhone)"
-                    invitePhone = ""
+                    inviteSuccess = "Invite emailed to \(sentTo)"
+                    inviteEmail = ""
                     inviteName = ""
-                    AuditLogger.shared.log(.sendInvite, detail: "Invited \(maskedPhone)\(name.isEmpty ? "" : " (\(name))")")
+                    AuditLogger.shared.log(.sendInvite, detail: "Invited \(sentTo)\(name.isEmpty ? "" : " (\(name))")")
                 }
             } catch {
                 CrashReportingService.shared.recordError(error, context: "AdminViewModel.sendInvite")

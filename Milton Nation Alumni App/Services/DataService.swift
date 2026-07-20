@@ -76,7 +76,7 @@ protocol DataServiceProtocol {
     func fetchFlaggedMessages(limit: Int, facility: Facility?) async throws -> [ChatMessage]
 
     // Invite
-    func sendInvite(phone: String, name: String?) async throws -> String
+    func sendInvite(email: String, name: String?) async throws -> String
 
     // MARK: - Block & Report (Apple Guideline 1.2 — UGC safety)
 
@@ -620,13 +620,9 @@ final class MockDataService: DataServiceProtocol {
 
     // MARK: - Invite
 
-    func sendInvite(phone: String, name: String?) async throws -> String {
+    func sendInvite(email: String, name: String?) async throws -> String {
         try await Task.sleep(for: .milliseconds(500))
-        // Return a masked phone number like the Edge Function does
-        let digits = phone.filter(\.isNumber)
-        let lastFour = String(digits.suffix(4))
-        let masked = String(repeating: "*", count: max(0, digits.count - 4)) + lastFour
-        return masked
+        return email
     }
 
     // MARK: - Block & Report (mock — in-memory)

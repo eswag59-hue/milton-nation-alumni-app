@@ -544,7 +544,7 @@ struct AdminDashboardScreen: View {
             HStack {
                 Image(systemName: "paperplane.fill")
                     .foregroundStyle(AppTheme.primary)
-                Text("Send Invite SMS")
+                Text("Send Invite Email")
                     .font(.headline.bold())
                     .foregroundStyle(AppTheme.textPrimary)
             }
@@ -560,15 +560,17 @@ struct AdminDashboardScreen: View {
                     .autocorrectionDisabled()
             }
 
-            // Phone field
+            // Email field — v1 invites go by email, not SMS.
             VStack(alignment: .leading, spacing: 4) {
-                Text("Phone Number")
+                Text("Email Address")
                     .font(.caption)
                     .foregroundStyle(AppTheme.textSecondary)
-                TextField("e.g. (555) 123-4567", text: $viewModel.invitePhone)
+                TextField("e.g. john@example.com", text: $viewModel.inviteEmail)
                     .textFieldStyle(.roundedBorder)
-                    .textContentType(.telephoneNumber)
-                    .keyboardType(.phonePad)
+                    .textContentType(.emailAddress)
+                    .keyboardType(.emailAddress)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
             }
 
             // Send button
@@ -588,10 +590,10 @@ struct AdminDashboardScreen: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
                 .foregroundStyle(.white)
-                .background(viewModel.invitePhone.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || viewModel.inviteSending ? AppTheme.textSecondary : AppTheme.primary)
+                .background(viewModel.inviteEmail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || viewModel.inviteSending ? AppTheme.textSecondary : AppTheme.primary)
                 .clipShape(RoundedRectangle(cornerRadius: 10))
             }
-            .disabled(viewModel.invitePhone.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || viewModel.inviteSending)
+            .disabled(viewModel.inviteEmail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || viewModel.inviteSending)
 
             // Success message
             if let success = viewModel.inviteSuccess {
