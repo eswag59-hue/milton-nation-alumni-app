@@ -86,38 +86,87 @@ serve(async (req: Request) => {
       ? `Hi ${name.trim()},`
       : "Hi,";
 
+    // Brand assets are hosted in the public brand-assets bucket so email
+    // clients can load them (inline SVG / attachments are unreliable).
+    const LOGO_URL = "https://hksxzuytcmqqwxmfjzdp.supabase.co/storage/v1/object/public/brand-assets/email/milton-logo.png";
+    const BADGE_URL = "https://hksxzuytcmqqwxmfjzdp.supabase.co/storage/v1/object/public/brand-assets/email/appstore-badge.png";
+    // Swappable without a redeploy — set APP_STORE_URL once the listing is live.
+    const APP_STORE_URL = Deno.env.get("APP_STORE_URL") ?? "https://apps.apple.com/us/app/milton-nation";
+
     const html = `<!DOCTYPE html>
 <html>
-<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f2f5f5;margin:0;padding:0;">
-  <div style="max-width:520px;margin:0 auto;padding:32px 24px;">
-    <div style="text-align:center;margin-bottom:28px;">
-      <div style="font-size:30px;font-weight:700;letter-spacing:-0.5px;color:#101820;">milton</div>
-      <div style="font-size:12px;letter-spacing:2px;color:#007396;margin-top:2px;">MILTON NATION</div>
-    </div>
-    <div style="background:#ffffff;border-radius:14px;padding:28px;">
-      <p style="font-size:16px;color:#101820;margin:0 0 14px;">${greeting}</p>
-      <p style="font-size:15px;line-height:1.55;color:#3c4650;margin:0 0 14px;">
-        You've been invited to join <strong>Milton Nation</strong>, a private community app.
-      </p>
-      <p style="font-size:15px;line-height:1.55;color:#3c4650;margin:0 0 22px;">
-        Download the app, then tap <strong>Register</strong> and use this email address to
-        request access. Your request will be reviewed before your account is activated.
-      </p>
-      <div style="text-align:center;margin:26px 0;">
-        <a href="https://miltonrecovery.com/app-support/"
-           style="display:inline-block;background:#007396;color:#ffffff;text-decoration:none;
-                  padding:13px 30px;border-radius:26px;font-weight:600;font-size:15px;">
-          Get the App
-        </a>
-      </div>
-      <p style="font-size:13px;line-height:1.5;color:#7b8794;margin:0;">
-        If you weren't expecting this invitation, you can ignore this email.
-      </p>
-    </div>
-    <p style="text-align:center;font-size:11px;color:#9aa5b1;margin-top:22px;">
-      Sent by Milton Nation · Please do not reply to this address.
-    </p>
-  </div>
+<head><meta name="color-scheme" content="light"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#eef2f3;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef2f3;padding:28px 12px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:540px;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 2px 14px rgba(16,24,32,0.08);">
+
+        <!-- Brand header -->
+        <tr>
+          <td align="center" style="background:linear-gradient(135deg,#101820 0%,#165C7D 55%,#007396 100%);padding:34px 24px 30px;">
+            <img src="${LOGO_URL}" width="150" alt="Milton Nation"
+                 style="display:block;width:150px;max-width:60%;height:auto;margin:0 auto 14px;" />
+            <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
+                        color:#D4EB8E;font-size:12px;letter-spacing:2.5px;font-weight:600;">
+              YOU'RE INVITED
+            </div>
+          </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="padding:32px 30px 8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+            <p style="font-size:19px;font-weight:700;color:#101820;margin:0 0 14px;">${greeting}</p>
+            <p style="font-size:16px;line-height:1.6;color:#3c4650;margin:0 0 16px;">
+              You've been invited to join <strong style="color:#007396;">Milton Nation</strong> &mdash;
+              a private community app where you can connect, find meetings, and stay supported.
+            </p>
+            <p style="font-size:16px;line-height:1.6;color:#3c4650;margin:0 0 6px;">
+              Getting in takes about a minute:
+            </p>
+            <table role="presentation" cellpadding="0" cellspacing="0" style="margin:14px 0 4px;">
+              <tr><td style="padding:6px 0;font-size:15px;color:#3c4650;">
+                <span style="display:inline-block;width:24px;height:24px;background:#E4F1F6;color:#007396;
+                             border-radius:12px;text-align:center;line-height:24px;font-weight:700;font-size:13px;">1</span>
+                &nbsp; Download the app below
+              </td></tr>
+              <tr><td style="padding:6px 0;font-size:15px;color:#3c4650;">
+                <span style="display:inline-block;width:24px;height:24px;background:#E4F1F6;color:#007396;
+                             border-radius:12px;text-align:center;line-height:24px;font-weight:700;font-size:13px;">2</span>
+                &nbsp; Tap <strong>Register</strong> and use <strong>this email address</strong>
+              </td></tr>
+              <tr><td style="padding:6px 0;font-size:15px;color:#3c4650;">
+                <span style="display:inline-block;width:24px;height:24px;background:#E4F1F6;color:#007396;
+                             border-radius:12px;text-align:center;line-height:24px;font-weight:700;font-size:13px;">3</span>
+                &nbsp; We'll review and activate your account
+              </td></tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- App Store badge -->
+        <tr>
+          <td align="center" style="padding:22px 30px 30px;">
+            <a href="${APP_STORE_URL}" style="text-decoration:none;">
+              <img src="${BADGE_URL}" alt="Download on the App Store"
+                   width="180" style="display:block;width:180px;height:auto;border:0;margin:0 auto;" />
+            </a>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="background:#f7f9fa;padding:18px 30px;text-align:center;
+                     font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+            <p style="font-size:12px;line-height:1.5;color:#7b8794;margin:0;">
+              Not expecting this? You can safely ignore this email.<br/>
+              Sent by Milton Nation &middot; please don't reply to this address.
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
 </body>
 </html>`;
 
