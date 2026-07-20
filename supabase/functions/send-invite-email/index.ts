@@ -88,7 +88,11 @@ serve(async (req: Request) => {
 
     // Brand assets are hosted in the public brand-assets bucket so email
     // clients can load them (inline SVG / attachments are unreliable).
-    const LOGO_URL = "https://hksxzuytcmqqwxmfjzdp.supabase.co/storage/v1/object/public/brand-assets/email/milton-logo.png";
+    // Dark-background wordmark: the teal/lime gradient logo is baked onto its
+    // own #12181F field, so the header below uses that exact colour as a solid
+    // fill. A CSS gradient here would show the image's edges as a rectangle,
+    // and Outlook drops gradients entirely.
+    const LOGO_URL = "https://hksxzuytcmqqwxmfjzdp.supabase.co/storage/v1/object/public/brand-assets/email/milton-logo-dark.png";
     const BADGE_URL = "https://hksxzuytcmqqwxmfjzdp.supabase.co/storage/v1/object/public/brand-assets/email/appstore-badge.png";
     // Swappable without a redeploy — set APP_STORE_URL once the listing is live.
     const APP_STORE_URL = Deno.env.get("APP_STORE_URL") ?? "https://apps.apple.com/us/app/milton-nation";
@@ -103,9 +107,9 @@ serve(async (req: Request) => {
 
         <!-- Brand header -->
         <tr>
-          <td align="center" style="background:linear-gradient(135deg,#101820 0%,#165C7D 55%,#007396 100%);padding:34px 24px 30px;">
-            <img src="${LOGO_URL}" width="150" alt="Milton Nation"
-                 style="display:block;width:150px;max-width:60%;height:auto;margin:0 auto 14px;" />
+          <td align="center" bgcolor="#12181F" style="background-color:#12181F;padding:38px 24px 32px;">
+            <img src="${LOGO_URL}" width="200" alt="Milton Nation"
+                 style="display:block;width:200px;max-width:66%;height:auto;margin:0 auto 16px;" />
             <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
                         color:#D4EB8E;font-size:12px;letter-spacing:2.5px;font-weight:600;">
               YOU'RE INVITED
@@ -151,6 +155,13 @@ serve(async (req: Request) => {
               <img src="${BADGE_URL}" alt="Download on the App Store"
                    width="180" style="display:block;width:180px;height:auto;border:0;margin:0 auto;" />
             </a>
+            <!-- Fallback: many clients block images by default, which would
+                 otherwise leave no way to reach the listing. -->
+            <p style="margin:14px 0 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+              <a href="${APP_STORE_URL}" style="font-size:13px;color:#007396;text-decoration:underline;">
+                Open in the App Store
+              </a>
+            </p>
           </td>
         </tr>
 
