@@ -4,6 +4,10 @@ import SwiftUI
 struct AddEditMeetingSheet: View {
     let existingMeeting: Meeting?
     let currentUserId: UUID
+    /// Facility of the staff member authoring this meeting. Nil for super
+    /// admins, who may author for either facility.
+    var authorFacility: Facility? = nil
+    var authorIsSuperAdmin: Bool = false
     let onSave: (Meeting) async -> Void
     let onDelete: ((UUID) async -> Void)?
 
@@ -20,11 +24,24 @@ struct AddEditMeetingSheet: View {
     @State private var isRecurring = false
     @State private var recurrencePattern: RecurrencePattern = .weekly
     @State private var recurrenceEndDate = Calendar.current.date(byAdding: .month, value: 3, to: Date()) ?? Date()
+    /// nil == visible to BOTH facilities.
+    @State private var facility: Facility? = nil
+    @State private var didInitFacility = false
 
     @State private var showDeleteConfirm = false
     @State private var isSaving = false
 
     private var isEditing: Bool { existingMeeting != nil }
+
+    /// Super admins may author for either facility; facility staff may author
+    /// for their own facility or for both (shared virtual meetings), but never
+    /// for the other facility.
+    private var selectableFacilities: [Facility?] {
+        if authorIsSuperAdmin || authorFacility == nil {
+            return [.florida, .ohio, nil]
+        }
+        return [authorFacility, nil]
+    }
 
     private var isValid: Bool {
         !title.trimmingCharacters(in: .whitespaces).isEmpty &&
@@ -44,6 +61,21 @@ struct AddEditMeetingSheet: View {
                             Label(type.displayName, systemImage: type.iconName).tag(type)
                         }
                     }
+                }
+
+                // MARK: Facility
+                Section {
+                    Picker("Visible to", selection: $facility) {
+                        ForEach(selectableFacilities, id: \.self) { f in
+                            Text(f?.displayName ?? "Both facilities").tag(f)
+                        }
+                    }
+                } header: {
+                    Text("Facility")
+                } footer: {
+                    Text(facility == nil
+                         ? "Members at both Florida and Ohio will see this meeting. Use for virtual meetings open to everyone."
+                         : "Only \(facility?.displayName ?? "") members will see this meeting.")
                 }
 
                 // MARK: Date & Time
@@ -142,6 +174,10 @@ struct AddEditMeetingSheet: View {
     // MARK: - Populate (edit mode)
 
     private func populateIfEditing() {
+        if !didInitFacility {
+            facility = existingMeeting?.facility ?? authorFacility
+            didInitFacility = true
+        }
         guard let m = existingMeeting else { return }
         title = m.title
         description = m.description ?? ""
@@ -178,7 +214,8 @@ struct AddEditMeetingSheet: View {
             recurrenceEndDate: isRecurring ? recurrenceEndDate : nil,
             parentMeetingId: existingMeeting?.parentMeetingId,
             createdBy: existingMeeting?.createdBy ?? currentUserId,
-            createdAt: existingMeeting?.createdAt ?? Date()
+            createdAt: existingMeeting?.createdAt ?? Date(),
+            facility: facility
         )
 
         Task {

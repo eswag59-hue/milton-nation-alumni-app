@@ -44,12 +44,56 @@ struct Meeting: Identifiable, Codable {
     var parentMeetingId: UUID?
     var createdBy: UUID
     var createdAt: Date
+    /// Which facility this meeting belongs to. `nil` means BOTH facilities —
+    /// used for shared virtual meetings. Server-side RLS enforces the same rule,
+    /// so this is a display/authoring concern, not the security boundary.
+    var facility: Facility? = nil
     /// Client-side: populated from the separate `meeting_rsvps` table after fetch.
     /// There is NO `rsvp_user_ids` column on `meetings` — must NOT be in CodingKeys.
     var rsvpUserIds: [UUID] = []
 
+    /// The date this meeting next takes place.
+    ///
+    /// `date` stores the series *anchor* — the first occurrence — so a weekly
+    /// meeting created in May still reports May forever. Displaying that told
+    /// members a meeting had already happened when it recurs every week.
+    var nextOccurrence: Date {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        guard isRecurring, let pattern = recurrencePattern, date < today else { return date }
+
+        let step: DateComponents
+        switch pattern {
+        case .weekly:   step = DateComponents(day: 7)
+        case .biweekly: step = DateComponents(day: 14)
+        case .monthly:  step = DateComponents(month: 1)
+        }
+
+        // Bounded walk forward — a corrupt anchor date must not spin forever.
+        var candidate = date
+        var iterations = 0
+        while candidate < today, iterations < 600 {
+            guard let next = cal.date(byAdding: step, to: candidate) else { break }
+            candidate = next
+            iterations += 1
+        }
+        if let end = recurrenceEndDate, candidate > end { return date }
+        return candidate
+    }
+
+    /// True once a meeting can no longer occur: a one-off whose date has passed,
+    /// or a recurring series past its end date.
+    var isExpired: Bool {
+        let today = Calendar.current.startOfDay(for: Date())
+        if isRecurring {
+            guard let end = recurrenceEndDate else { return false }
+            return end < today
+        }
+        return date < today
+    }
+
     var formattedDate: String {
-        date.formatted(date: .abbreviated, time: .omitted)
+        nextOccurrence.formatted(date: .abbreviated, time: .omitted)
     }
 
     var formattedTimeRange: String {
@@ -76,5 +120,6 @@ struct Meeting: Identifiable, Codable {
         case parentMeetingId    // "parent_meeting_id"
         case createdBy          // "created_by"
         case createdAt          // "created_at"
+        case facility
     }
 }

@@ -82,6 +82,9 @@ struct MeetingsScreen: View {
                     AddEditMeetingSheet(
                         existingMeeting: nil,
                         currentUserId: userId,
+                        authorFacility: appViewModel.currentUser?.adminFacility
+                            ?? appViewModel.currentUser?.facility,
+                        authorIsSuperAdmin: appViewModel.currentUser?.role.isSuperAdmin == true,
                         onSave: { meeting in await viewModel.createMeeting(meeting) },
                         onDelete: nil
                     )
@@ -92,6 +95,9 @@ struct MeetingsScreen: View {
                     AddEditMeetingSheet(
                         existingMeeting: meeting,
                         currentUserId: userId,
+                        authorFacility: appViewModel.currentUser?.adminFacility
+                            ?? appViewModel.currentUser?.facility,
+                        authorIsSuperAdmin: appViewModel.currentUser?.role.isSuperAdmin == true,
                         onSave: { updated in await viewModel.updateMeeting(updated) },
                         onDelete: { id in await viewModel.deleteMeeting(meetingId: id) }
                     )

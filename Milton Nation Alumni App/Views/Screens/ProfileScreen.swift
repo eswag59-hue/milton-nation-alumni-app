@@ -14,6 +14,7 @@ struct ProfileScreen: View {
     /// like-comment) self-contained to this navigation hierarchy.
     @State private var communityVMForList = CommunityViewModel()
     @State private var showDeleteConfirmation = false
+    @State private var showEditProfile = false
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var profileImage: Image?
 
@@ -268,6 +269,28 @@ struct ProfileScreen: View {
 
                 // Settings & Account
                 VStack(spacing: 0) {
+                    // Edit profile → name + verified phone change
+                    Button {
+                        showEditProfile = true
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "person.text.rectangle.fill")
+                                .foregroundStyle(AppTheme.accent)
+                                .frame(width: 28)
+                            Text("Edit Profile")
+                                .foregroundStyle(AppTheme.textPrimary)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundStyle(AppTheme.textSecondary)
+                        }
+                        .padding(.vertical, 14)
+                        .padding(.horizontal, 16)
+                        .contentShape(Rectangle())
+                    }
+
+                    Divider().padding(.leading, 56)
+
                     // Settings → full settings screen
                     NavigationLink {
                         SettingsScreen()
@@ -330,6 +353,9 @@ struct ProfileScreen: View {
             }
         }
         .background(AppTheme.background)
+        .sheet(isPresented: $showEditProfile) {
+            EditProfileSheet(user: liveUser)
+        }
         .alert("Delete Account?", isPresented: $showDeleteConfirmation) {
             Button("Cancel", role: .cancel) {}
             Button("Delete", role: .destructive) {

@@ -16,7 +16,12 @@ final class SupabaseMeetingService: MeetingServiceProtocol {
             .order("start_time", ascending: true)
             .execute()
             .value
+        // Facility filtering is enforced by RLS, not here. This drops meetings
+        // that can no longer occur — a one-off whose date passed, or a series
+        // past its end date — which previously showed months-old dates.
         return rows.map { $0.toMeeting() }
+            .filter { !$0.isExpired }
+            .sorted { $0.nextOccurrence < $1.nextOccurrence }
     }
 
     // MARK: - Create
@@ -120,6 +125,7 @@ private struct MeetingRow: Decodable {
     let parentMeetingId: UUID?
     let createdBy: UUID
     let createdAt: Date
+    let facility: String?
 
     func toMeeting() -> Meeting {
         let df = DateFormatter()
@@ -146,7 +152,8 @@ private struct MeetingRow: Decodable {
             recurrenceEndDate: recurrenceEnd,
             parentMeetingId: parentMeetingId,
             createdBy: createdBy,
-            createdAt: createdAt
+            createdAt: createdAt,
+            facility: facility.flatMap { Facility(rawValue: $0) }
         )
     }
 }
@@ -166,6 +173,7 @@ private struct MeetingInsertRow: Encodable {
     let recurrence_pattern: String?
     let recurrence_end_date: String?
     let created_by: String
+    let facility: String?
 
     init(from meeting: Meeting) {
         let df = DateFormatter()
@@ -189,6 +197,7 @@ private struct MeetingInsertRow: Encodable {
         recurrence_pattern = meeting.recurrencePattern?.rawValue
         recurrence_end_date = meeting.recurrenceEndDate.map { df.string(from: $0) }
         created_by = meeting.createdBy.uuidString
+        facility = meeting.facility?.rawValue
     }
 }
 
@@ -206,6 +215,7 @@ private struct MeetingUpdateRow: Encodable {
     let is_recurring: Bool
     let recurrence_pattern: String?
     let recurrence_end_date: String?
+    let facility: String?
 
     init(from meeting: Meeting) {
         let df = DateFormatter()
@@ -228,5 +238,6 @@ private struct MeetingUpdateRow: Encodable {
         is_recurring = meeting.isRecurring
         recurrence_pattern = meeting.recurrencePattern?.rawValue
         recurrence_end_date = meeting.recurrenceEndDate.map { df.string(from: $0) }
+        facility = meeting.facility?.rawValue
     }
 }
