@@ -19,6 +19,18 @@ final class AppViewModel {
     var activeFacility: Facility = .florida
     var showFacilityPicker = false
 
+    /// Telehealth (1:1 sessions — the "My Sessions" segment for members and the
+    /// "Schedule" tab for staff) is currently an OHIO-ONLY feature. A member,
+    /// staffer, or admin only sees it if their facility is Ohio; super admins
+    /// always see it. Flip a facility to enable telehealth there later.
+    var isTelehealthEnabled: Bool {
+        guard let user = currentUser else { return false }
+        if user.role.isSuperAdmin { return true }
+        // For a super admin cross-facility view, honor the facility they're in.
+        let facility = user.adminFacility ?? user.facility
+        return facility == .ohio
+    }
+
     let authService: AuthServiceProtocol
     let dataService: DataServiceProtocol
     private var reconnectObserver: (any NSObjectProtocol)?

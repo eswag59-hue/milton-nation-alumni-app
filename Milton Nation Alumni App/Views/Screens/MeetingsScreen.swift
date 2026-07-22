@@ -114,9 +114,17 @@ struct MeetingsScreen: View {
 
     // MARK: - Tab Selector
 
+    /// "My Sessions" (telehealth) is OHIO-ONLY for now — Florida members never
+    /// see it. Everyone sees Milton + Nearby.
+    private var availableTabs: [MeetingsTab] {
+        appViewModel.isTelehealthEnabled
+            ? MeetingsTab.allCases
+            : MeetingsTab.allCases.filter { $0 != .mySessions }
+    }
+
     private var tabSelector: some View {
         HStack(spacing: 8) {
-            ForEach(MeetingsTab.allCases, id: \.self) { tab in
+            ForEach(availableTabs, id: \.self) { tab in
                 let isSelected = selectedTab == tab
                 Button {
                     withAnimation(.easeInOut(duration: 0.2)) {
