@@ -428,6 +428,16 @@ serve(async (req: Request) => {
         timestamp: new Date().toISOString(),
       });
 
+      // Record the in-app alert the care team taps through to. This is where
+      // the member identity lives (post-auth, HIPAA-covered) — never in the
+      // push payload itself.
+      await supabaseAdmin.from("care_team_alerts").insert({
+        member_id: user.id,
+        facility: memberFacility,
+        kind: "struggling",
+        status: "open",
+      });
+
     } else {
       return new Response(JSON.stringify({ error: "Invalid target. Use 'user' with userId or 'role' with roles array." }), {
         status: 400,
