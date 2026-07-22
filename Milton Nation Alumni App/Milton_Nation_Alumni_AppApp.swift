@@ -1,11 +1,24 @@
 import SwiftUI
 import LocalAuthentication
 import UIKit
+import UserNotifications
 
 /// SwiftUI apps only receive the APNs device-token callbacks through a UIKit
 /// app delegate. Without this, `registerForRemoteNotifications()` fires but the
 /// token is never delivered — so no token is ever stored and push never works.
-final class AppDelegate: NSObject, UIApplicationDelegate {
+///
+/// It is also the `UNUserNotificationCenterDelegate`. Without setting that
+/// delegate + implementing `willPresent`, iOS SILENTLY SUPPRESSES notification
+/// banners whenever the app is in the foreground — so a push that APNs accepted
+/// (status 200) shows nothing on screen, which looks exactly like "push is
+/// broken." Care-team and crisis alerts must be visible even with the app open.
+final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+    func application(_ application: UIApplication,
+                     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        UNUserNotificationCenter.current().delegate = self
+        return true
+    }
+
     func application(_ application: UIApplication,
                      didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         PushNotificationService.shared.didRegisterForRemoteNotifications(withDeviceToken: deviceToken)
@@ -13,6 +26,23 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication,
                      didFailToRegisterForRemoteNotificationsWithError error: Error) {
         PushNotificationService.shared.didFailToRegisterForRemoteNotifications(withError: error)
+    }
+
+    /// Show the banner (+ sound + badge) even when the app is in the foreground.
+    /// This is what makes a delivered push actually appear on screen while the
+    /// user is in the app — the missing piece that made push look dead.
+    func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                willPresent notification: UNNotification,
+                                withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        completionHandler([.banner, .list, .sound, .badge])
+    }
+
+    /// Tapping a notification brings the app forward; routing to a specific
+    /// screen can be layered on later. For now, just don't drop the tap.
+    func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                didReceive response: UNNotificationResponse,
+                                withCompletionHandler completionHandler: @escaping () -> Void) {
+        completionHandler()
     }
 }
 
