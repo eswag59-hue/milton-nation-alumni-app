@@ -2,40 +2,43 @@ import SwiftUI
 
 // MARK: - Request a session (client)
 
-/// A client asks their care team for a session. It lands as `requested`; a
-/// provider confirms and the video link is attached then.
+/// A client asks for a session with any provider (not just their care team),
+/// at a primary or backup time. It lands as a `requested` appointment; a
+/// scheduler or the requested clinician approves it later.
 struct RequestSessionSheet: View {
-    let vm: AppointmentsViewModel
+    @Bindable var vm: AppointmentsViewModel
     let client: User?
-    let providers: [User]
+    /// Called with true once a request is successfully sent, so the parent can
+    /// show the "your care team has been notified" confirmation.
+    var onRequested: () -> Void = {}
 
     @Environment(\.dismiss) private var dismiss
     @State private var providerId: UUID?
     @State private var type: AppointmentType = .individualTherapy
     @State private var purpose = ""
     @State private var preferredStart = Date().addingTimeInterval(86_400)
+    @State private var useBackup = false
+    @State private var backupStart = Date().addingTimeInterval(172_800)
     @State private var submitting = false
     @State private var error: String?
 
     var body: some View {
         NavigationStack {
             Form {
-                if providers.isEmpty {
+                if vm.bookableProviders.isEmpty {
                     Section {
-                        Text("You don't have a care team assigned yet. Reach out through Chat and an admin will connect you.")
-                            .font(.subheadline)
-                            .foregroundStyle(AppTheme.textSecondary)
+                        HStack { Spacer(); ProgressView(); Spacer() }
                     }
                 } else {
-                    Section("Provider") {
-                        Picker("With", selection: $providerId) {
+                    Section("Who would you like to see?") {
+                        Picker("Provider", selection: $providerId) {
                             Text("Select…").tag(UUID?.none)
-                            ForEach(providers) { p in
-                                Text(p.fullName).tag(UUID?.some(p.id))
+                            ForEach(vm.bookableProviders) { p in
+                                Text("\(p.fullName) · \(p.roleLabel)").tag(UUID?.some(p.id))
                             }
                         }
                     }
-                    Section("Session") {
+                    Section {
                         Picker("Type", selection: $type) {
                             ForEach(AppointmentType.allCases) { t in
                                 Label(t.displayName, systemImage: t.icon).tag(t)
@@ -43,25 +46,37 @@ struct RequestSessionSheet: View {
                         }
                         TextField("What's it about? (optional)", text: $purpose, axis: .vertical)
                             .lineLimit(2...4)
+                    } header: {
+                        Text("Session")
                     }
-                    Section("Preferred time") {
-                        DatePicker("Ideally", selection: $preferredStart,
+                    Section {
+                        DatePicker("Ideal time", selection: $preferredStart,
                                    in: Date()..., displayedComponents: [.date, .hourAndMinute])
+                        Toggle("Add a backup time", isOn: $useBackup)
+                        if useBackup {
+                            DatePicker("Backup time", selection: $backupStart,
+                                       in: Date()..., displayedComponents: [.date, .hourAndMinute])
+                        }
+                    } header: {
+                        Text("When works for you?")
+                    } footer: {
+                        Text("A scheduler will confirm the provider and one of these times, then it appears in your sessions.")
                     }
                     if let error {
                         Section { Text(error).font(.caption).foregroundStyle(.red) }
                     }
                 }
             }
-            .navigationTitle("Request Session")
+            .navigationTitle("Request a Session")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Send") { Task { await submit() } }
+                    Button("Request") { Task { await submit() } }
                         .disabled(providerId == nil || submitting)
                 }
             }
+            .task { await vm.loadBookableProviders() }
         }
     }
 
@@ -69,11 +84,13 @@ struct RequestSessionSheet: View {
         guard let client, let providerId else { return }
         submitting = true; error = nil
         let ok = await vm.requestSession(
-            clientId: client.id, providerId: providerId, facility: client.facility,
-            type: type, purpose: purpose.isEmpty ? nil : purpose, preferredStart: preferredStart
+            clientId: client.id, preferredProviderId: providerId, facility: client.facility,
+            type: type, purpose: purpose.isEmpty ? nil : purpose,
+            preferredStart: preferredStart, preferredStart2: useBackup ? backupStart : nil
         )
         submitting = false
-        if ok { dismiss() } else { error = vm.errorMessage ?? "Couldn't send the request." }
+        if ok { onRequested(); dismiss() }
+        else { error = vm.errorMessage ?? "Couldn't send the request." }
     }
 }
 
@@ -234,5 +251,125 @@ struct SessionFeedbackSheet: View {
                                          rating: rating, reflection: reflection.isEmpty ? nil : reflection)
         saving = false
         if ok { dismiss() }
+    }
+}
+
+// MARK: - Approve a request (scheduler / clinician)
+
+/// Review a client's session request: keep or override the provider, pick the
+/// final time (one of the two the client suggested, or a custom time), then
+/// approve — which confirms it onto both schedules — or decline it.
+struct ApproveSessionSheet: View {
+    let appt: Appointment
+    @Bindable var vm: AppointmentsViewModel
+    let approvedBy: UUID
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var providerId: UUID?
+    @State private var timeChoice: TimeChoice = .primary
+    @State private var customStart = Date().addingTimeInterval(86_400)
+    @State private var working = false
+    @State private var error: String?
+
+    private enum TimeChoice: Hashable { case primary, backup, custom }
+
+    private var chosenStart: Date {
+        switch timeChoice {
+        case .primary: return appt.preferredStart ?? customStart
+        case .backup:  return appt.preferredStart2 ?? customStart
+        case .custom:  return customStart
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Request") {
+                    row("Client", appt.clientName ?? "Client")
+                    row("Requested", appt.providerName ?? "—")
+                    row("Type", appt.appointmentType.displayName)
+                    if let p = appt.purpose, !p.isEmpty { row("About", p) }
+                }
+
+                Section("Assign provider") {
+                    Picker("Provider", selection: $providerId) {
+                        ForEach(vm.bookableProviders) { p in
+                            Text("\(p.fullName) · \(p.roleLabel)").tag(UUID?.some(p.id))
+                        }
+                    }
+                }
+
+                Section("Confirm the time") {
+                    Picker("Time", selection: $timeChoice) {
+                        if appt.preferredStart != nil { Text("Ideal").tag(TimeChoice.primary) }
+                        if appt.preferredStart2 != nil { Text("Backup").tag(TimeChoice.backup) }
+                        Text("Custom").tag(TimeChoice.custom)
+                    }
+                    .pickerStyle(.segmented)
+
+                    if let t = appt.preferredStart, timeChoice == .primary {
+                        Text(t.formatted(date: .abbreviated, time: .shortened))
+                            .font(.subheadline).foregroundStyle(AppTheme.textSecondary)
+                    } else if let t = appt.preferredStart2, timeChoice == .backup {
+                        Text(t.formatted(date: .abbreviated, time: .shortened))
+                            .font(.subheadline).foregroundStyle(AppTheme.textSecondary)
+                    } else {
+                        DatePicker("Start", selection: $customStart, in: Date()...,
+                                   displayedComponents: [.date, .hourAndMinute])
+                    }
+                }
+
+                if let error {
+                    Section { Text(error).font(.caption).foregroundStyle(.red) }
+                }
+
+                Section {
+                    Button {
+                        Task { await declineRequest() }
+                    } label: {
+                        Text("Decline request").foregroundStyle(.red)
+                    }.disabled(working)
+                }
+            }
+            .navigationTitle("Approve Request")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Approve") { Task { await approve() } }
+                        .disabled(providerId == nil || working)
+                }
+            }
+            .task {
+                await vm.loadBookableProviders()
+                // Default the assignment to who the client asked for.
+                providerId = appt.requestedProviderId ?? appt.providerId
+                if appt.preferredStart == nil { timeChoice = .custom }
+            }
+        }
+    }
+
+    private func approve() async {
+        guard let providerId else { return }
+        working = true; error = nil
+        let ok = await vm.approve(appt, providerId: providerId, at: chosenStart, approvedBy: approvedBy)
+        working = false
+        if ok { dismiss() } else { error = vm.errorMessage ?? "Couldn't approve. Try again." }
+    }
+
+    private func declineRequest() async {
+        working = true; error = nil
+        let ok = await vm.decline(appt)
+        working = false
+        if ok { dismiss() } else { error = vm.errorMessage ?? "Couldn't decline. Try again." }
+    }
+
+    private func row(_ label: String, _ value: String) -> some View {
+        HStack {
+            Text(label).foregroundStyle(AppTheme.textSecondary)
+            Spacer()
+            Text(value).foregroundStyle(AppTheme.textPrimary).multilineTextAlignment(.trailing)
+        }
+        .font(.subheadline)
     }
 }

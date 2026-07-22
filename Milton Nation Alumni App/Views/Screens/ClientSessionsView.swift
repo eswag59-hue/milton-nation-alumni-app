@@ -6,8 +6,8 @@ import SwiftUI
 struct ClientSessionsView: View {
     @Environment(AppViewModel.self) private var appViewModel
     @State private var vm = AppointmentsViewModel()
-    @State private var assignedStaff: [User] = []
     @State private var showRequest = false
+    @State private var showRequestedConfirmation = false
     @State private var selected: Appointment?
     @State private var rating: Appointment?
 
@@ -50,15 +50,17 @@ struct ClientSessionsView: View {
         .refreshable { await vm.load() }
         .task {
             await vm.load()
-            if let staff = try? await appViewModel.dataService.fetchAssignedStaff() {
-                assignedStaff = staff
-            }
             for appt in vm.past where appt.status == .completed {
                 await vm.loadFeedback(for: appt.id)
             }
         }
         .sheet(isPresented: $showRequest) {
-            RequestSessionSheet(vm: vm, client: me, providers: assignedStaff)
+            RequestSessionSheet(vm: vm, client: me, onRequested: { showRequestedConfirmation = true })
+        }
+        .alert("Request sent", isPresented: $showRequestedConfirmation) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Your care team has been notified and will confirm your session soon. It'll show up here once approved.")
         }
         .sheet(item: $selected) { appt in
             SessionDetailSheet(appt: appt, vm: vm, perspective: .client)

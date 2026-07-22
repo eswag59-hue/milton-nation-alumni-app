@@ -1692,6 +1692,10 @@ final class SupabaseDataService: DataServiceProtocol {
 
     // MARK: - Telehealth Appointments
 
+    func fetchBookableProviders() async throws -> [BookableProvider] {
+        try await client.rpc("bookable_providers").execute().value
+    }
+
     func fetchAppointments() async throws -> [Appointment] {
         // RLS scopes visibility (own-as-client / own-as-provider / facility staff).
         // client_id and provider_id are real FKs to profiles, so PostgREST can
@@ -1795,6 +1799,9 @@ private struct AppointmentInsert: Encodable {
     let zoom_join_url: String?
     let staff_note: String?
     let created_by: String?
+    let requested_provider_id: String?
+    let preferred_start: String?
+    let preferred_start_2: String?
 
     init(from a: Appointment) {
         let iso = ISO8601DateFormatter()
@@ -1812,6 +1819,9 @@ private struct AppointmentInsert: Encodable {
         zoom_join_url = a.zoomJoinUrl
         staff_note = a.staffNote
         created_by = a.createdBy?.uuidString.lowercased()
+        requested_provider_id = a.requestedProviderId?.uuidString.lowercased()
+        preferred_start = a.preferredStart.map { iso.string(from: $0) }
+        preferred_start_2 = a.preferredStart2.map { iso.string(from: $0) }
     }
 }
 
@@ -1826,10 +1836,14 @@ private struct AppointmentUpdate: Encodable {
     let zoom_meeting_id: String?
     let zoom_join_url: String?
     let staff_note: String?
+    let provider_id: String
+    let approved_by: String?
 
     init(from a: Appointment) {
         let iso = ISO8601DateFormatter()
         iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        provider_id = a.providerId.uuidString.lowercased()
+        approved_by = a.approvedBy?.uuidString.lowercased()
         facility = a.facility?.rawValue
         appointment_type = a.appointmentType.rawValue
         purpose = a.purpose
@@ -1874,6 +1888,10 @@ private struct AppointmentRow: Decodable {
     let createdBy: UUID?
     let createdAt: Date
     let updatedAt: Date?
+    let requestedProviderId: UUID?
+    let preferredStart: Date?
+    let preferredStart2: Date?
+    let approvedBy: UUID?
     let client: NameRow?
     let provider: NameRow?
 
@@ -1891,6 +1909,10 @@ private struct AppointmentRow: Decodable {
             requestedBy: requestedBy,
             scheduledStart: scheduledStart,
             durationMinutes: durationMinutes,
+            requestedProviderId: requestedProviderId,
+            preferredStart: preferredStart,
+            preferredStart2: preferredStart2,
+            approvedBy: approvedBy,
             zoomMeetingId: zoomMeetingId,
             zoomJoinUrl: zoomJoinUrl,
             staffNote: staffNote,

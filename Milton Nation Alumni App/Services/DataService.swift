@@ -104,6 +104,9 @@ protocol DataServiceProtocol {
 
     // MARK: - Telehealth Appointments
 
+    /// Providers a client may request a session with (all facility clinical
+    /// providers + admins). RLS-safe via the bookable_providers() function.
+    func fetchBookableProviders() async throws -> [BookableProvider]
     /// Appointments visible to the current user. RLS scopes the result:
     /// clients get their own, providers get theirs, facility staff get the
     /// facility's. Names are resolved by the caller from the roster.
@@ -712,6 +715,13 @@ final class MockDataService: DataServiceProtocol {
 
     private var mockAppointments: [Appointment] = []
     private var mockFeedback: [UUID: AppointmentFeedback] = [:]
+
+    func fetchBookableProviders() async throws -> [BookableProvider] {
+        [
+            BookableProvider(id: UUID(), fullName: "Dr. Ohio Demo", role: "therapist"),
+            BookableProvider(id: UUID(), fullName: "Ohio Admin", role: "admin")
+        ]
+    }
 
     func fetchAppointments() async throws -> [Appointment] {
         try await Task.sleep(for: .milliseconds(150))

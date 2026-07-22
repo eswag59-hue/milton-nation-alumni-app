@@ -53,18 +53,57 @@ final class AppointmentsViewModel {
 
     // MARK: - Mutations
 
-    /// Client-initiated request. Provider confirms later.
-    func requestSession(clientId: UUID, providerId: UUID, facility: Facility?,
-                        type: AppointmentType, purpose: String?, preferredStart: Date?) async -> Bool {
+    /// Providers a client may request (all facility clinical staff + admins).
+    var bookableProviders: [BookableProvider] = []
+
+    func loadBookableProviders() async {
+        if let list = try? await dataService.fetchBookableProviders() {
+            bookableProviders = list
+        }
+    }
+
+    /// Client-initiated request: a PREFERRED provider + a primary and backup
+    /// time. It stays `requested` (no confirmed time) until a scheduler or the
+    /// clinician approves it.
+    func requestSession(clientId: UUID, preferredProviderId: UUID, facility: Facility?,
+                        type: AppointmentType, purpose: String?,
+                        preferredStart: Date, preferredStart2: Date?) async -> Bool {
         let appt = Appointment(
-            id: UUID(), clientId: clientId, providerId: providerId, facility: facility,
+            id: UUID(), clientId: clientId, providerId: preferredProviderId, facility: facility,
             appointmentType: type, purpose: purpose, status: .requested,
-            requestedBy: clientId, scheduledStart: preferredStart, durationMinutes: 50,
+            requestedBy: clientId, scheduledStart: nil, durationMinutes: 50,
+            requestedProviderId: preferredProviderId,
+            preferredStart: preferredStart, preferredStart2: preferredStart2,
+            approvedBy: nil,
             zoomMeetingId: nil, zoomJoinUrl: nil, staffNote: nil,
             createdBy: clientId, createdAt: Date(), updatedAt: nil,
             clientName: nil, providerName: nil
         )
         return await persistCreate(appt)
+    }
+
+    /// Approve a request: the scheduler keeps or overrides the provider, sets
+    /// the final time, and confirms it. Both sides then see it on their schedule.
+    func approve(_ appointment: Appointment, providerId: UUID, at start: Date,
+                 approvedBy: UUID) async -> Bool {
+        var updated = appointment
+        updated.providerId = providerId
+        updated.scheduledStart = start
+        updated.approvedBy = approvedBy
+        updated.status = .confirmed
+        do {
+            let saved = try await dataService.updateAppointment(updated)
+            replace(saved)
+            return true
+        } catch {
+            CrashReportingService.shared.recordError(error, context: "AppointmentsViewModel.approve")
+            errorMessage = "Couldn't approve the session. Try again."
+            return false
+        }
+    }
+
+    func decline(_ appointment: Appointment) async -> Bool {
+        await updateStatus(appointment, to: .cancelled)
     }
 
     /// Staff-initiated scheduling (already confirmed).

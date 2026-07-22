@@ -65,7 +65,13 @@ struct StaffScheduleScreen: View {
                 ScheduleSessionSheet(vm: vm, provider: appViewModel.currentUser, clients: clients)
             }
             .sheet(item: $selected) { appt in
-                SessionDetailSheet(appt: appt, vm: vm, perspective: .staff)
+                // A pending request opens the approval flow (pick provider +
+                // time); anything already scheduled opens read-only details.
+                if appt.status == .requested, let uid = appViewModel.currentUser?.id {
+                    ApproveSessionSheet(appt: appt, vm: vm, approvedBy: uid)
+                } else {
+                    SessionDetailSheet(appt: appt, vm: vm, perspective: .staff)
+                }
             }
         }
     }

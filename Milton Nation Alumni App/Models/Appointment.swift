@@ -70,6 +70,14 @@ struct Appointment: Identifiable, Codable {
     var requestedBy: UUID?
     var scheduledStart: Date?
     var durationMinutes: Int
+    /// Who the client originally asked for (immutable). `providerId` is who's
+    /// actually assigned — the approver may override it.
+    var requestedProviderId: UUID? = nil
+    /// The client's primary and backup preferred times (requests only).
+    var preferredStart: Date? = nil
+    var preferredStart2: Date? = nil
+    /// The scheduler/clinician who approved the request.
+    var approvedBy: UUID? = nil
     var zoomMeetingId: String?
     var zoomJoinUrl: String?
     var staffNote: String?
@@ -100,6 +108,10 @@ struct Appointment: Identifiable, Codable {
         case createdBy
         case createdAt
         case updatedAt
+        case requestedProviderId
+        case preferredStart
+        case preferredStart2
+        case approvedBy
     }
 
     var scheduledEnd: Date? {
@@ -151,5 +163,27 @@ struct AppointmentFeedback: Identifiable, Codable {
         case appointmentId
         case clientId
         case createdAt
+    }
+}
+
+/// A provider a client may request a session with (from bookable_providers()).
+struct BookableProvider: Identifiable, Codable, Hashable {
+    let id: UUID
+    let fullName: String
+    let role: String
+
+    enum CodingKeys: String, CodingKey {
+        case id, role
+        case fullName
+    }
+
+    var roleLabel: String {
+        switch role {
+        case "therapist": return "Therapist"
+        case "case_manager": return "Case Manager"
+        case "counselor": return "Counselor"
+        case "admin": return "Admin"
+        default: return role.capitalized
+        }
     }
 }
