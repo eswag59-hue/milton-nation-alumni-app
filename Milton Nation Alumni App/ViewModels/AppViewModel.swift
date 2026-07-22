@@ -63,6 +63,10 @@ final class AppViewModel {
 
         // Register device for push notifications
         PushNotificationService.shared.registerDeviceToken(userId: user.id)
+        // Returning users already granted permission, so the first-run prompt is
+        // skipped — re-register anyway so their APNs token is refreshed and
+        // re-synced to device_tokens on every login (not just the first ever).
+        PushNotificationService.shared.refreshRegistrationIfAuthorized()
 
         // Attach user context to crash reports
         CrashReportingService.shared.setUser(user.id)

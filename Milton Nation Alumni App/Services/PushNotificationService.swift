@@ -33,6 +33,23 @@ final class PushNotificationService: NSObject, @unchecked Sendable {
 
     // MARK: - Permission
 
+    /// Re-register for remote notifications on every login **if permission was
+    /// already granted**. Without this, a returning user (who granted permission
+    /// on a past launch, so `requestPermission` is skipped) never calls
+    /// `registerForRemoteNotifications` again — so their APNs token is never
+    /// re-fetched or re-synced, and `device_tokens` can go stale or stay empty.
+    /// Apple recommends registering on every launch anyway; the token is cached
+    /// so this is cheap and returns quickly via the AppDelegate callback.
+    func refreshRegistrationIfAuthorized() {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            guard settings.authorizationStatus == .authorized ||
+                  settings.authorizationStatus == .provisional else { return }
+            DispatchQueue.main.async {
+                UIApplication.shared.registerForRemoteNotifications()
+            }
+        }
+    }
+
     /// Request notification permission from the user.
     /// Call this early in the app lifecycle (e.g., after first login).
     func requestPermission() {
