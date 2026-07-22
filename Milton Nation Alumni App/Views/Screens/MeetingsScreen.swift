@@ -21,11 +21,13 @@ struct MeetingsScreen: View {
     private enum MeetingsTab: String, CaseIterable {
         case miltonMeetings = "Milton"
         case nearbySupport = "Nearby"
+        case mySessions = "My Sessions"
 
         var icon: String {
             switch self {
             case .miltonMeetings: return "building.2.fill"
             case .nearbySupport: return "location.fill"
+            case .mySessions: return "video.fill"
             }
         }
     }
@@ -43,9 +45,10 @@ struct MeetingsScreen: View {
                     .padding(.vertical, 8)
 
                 // Content based on selected tab
-                if selectedTab == .miltonMeetings {
+                switch selectedTab {
+                case .miltonMeetings:
                     miltonMeetingsContent
-                } else {
+                case .nearbySupport:
                     VStack(spacing: 0) {
                         NearbyMeetingsView()
                         Text("Showing NA & AA meetings from participating intergroups via BMLT. For a complete AA meeting list, visit aa.org/find-aa.")
@@ -55,6 +58,9 @@ struct MeetingsScreen: View {
                             .padding(.horizontal, 20)
                             .padding(.vertical, 10)
                     }
+                case .mySessions:
+                    // Private 1:1 telehealth with the client's care team.
+                    ClientSessionsView()
                 }
             }
             .background(AppTheme.background)

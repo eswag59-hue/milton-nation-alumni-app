@@ -1690,6 +1690,66 @@ final class SupabaseDataService: DataServiceProtocol {
         )
     }
 
+    // MARK: - Telehealth Appointments
+
+    func fetchAppointments() async throws -> [Appointment] {
+        // RLS scopes visibility (own-as-client / own-as-provider / facility staff).
+        // client_id and provider_id are real FKs to profiles, so PostgREST can
+        // embed each name (disambiguated by the FK column). A name comes back
+        // nil only if profile-read RLS blocks it; the UI falls back gracefully.
+        let rows: [AppointmentRow] = try await client.from("appointments")
+            .select("*, client:profiles!client_id(full_name), provider:profiles!provider_id(full_name)")
+            .order("scheduled_start", ascending: true)
+            .execute()
+            .value
+        return rows.map { $0.toAppointment() }
+    }
+
+    func createAppointment(_ appointment: Appointment) async throws -> Appointment {
+        let insert = AppointmentInsert(from: appointment)
+        let created: Appointment = try await client.from("appointments")
+            .insert(insert)
+            .select()
+            .single()
+            .execute()
+            .value
+        return created
+    }
+
+    func updateAppointment(_ appointment: Appointment) async throws -> Appointment {
+        let update = AppointmentUpdate(from: appointment)
+        let updated: Appointment = try await client.from("appointments")
+            .update(update)
+            .eq("id", value: appointment.id.uuidString)
+            .select()
+            .single()
+            .execute()
+            .value
+        return updated
+    }
+
+    func submitAppointmentFeedback(_ feedback: AppointmentFeedback) async throws -> AppointmentFeedback {
+        let insert = AppointmentFeedbackInsert(from: feedback)
+        // One reflection per session — upsert so a client can revise theirs.
+        let saved: AppointmentFeedback = try await client.from("appointment_feedback")
+            .upsert(insert, onConflict: "appointment_id")
+            .select()
+            .single()
+            .execute()
+            .value
+        return saved
+    }
+
+    func fetchAppointmentFeedback(appointmentId: UUID) async throws -> AppointmentFeedback? {
+        let rows: [AppointmentFeedback] = try await client.from("appointment_feedback")
+            .select()
+            .eq("appointment_id", value: appointmentId.uuidString)
+            .limit(1)
+            .execute()
+            .value
+        return rows.first
+    }
+
     // MARK: - Private Helpers
 
     /// Fetch the set of post IDs the current user has liked.
@@ -1714,5 +1774,131 @@ final class SupabaseDataService: DataServiceProtocol {
             .value
 
         return rows.map(\.commentId)
+    }
+}
+
+// MARK: - Appointment Encode Rows
+
+/// PostgREST's encoder does not snake_case keys, so INSERT/UPDATE bodies use
+/// explicit snake_case property names (same pattern as MeetingInsertRow).
+private struct AppointmentInsert: Encodable {
+    let client_id: String
+    let provider_id: String
+    let facility: String?
+    let appointment_type: String
+    let purpose: String?
+    let status: String
+    let requested_by: String?
+    let scheduled_start: String?
+    let duration_minutes: Int
+    let zoom_meeting_id: String?
+    let zoom_join_url: String?
+    let staff_note: String?
+    let created_by: String?
+
+    init(from a: Appointment) {
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        client_id = a.clientId.uuidString.lowercased()
+        provider_id = a.providerId.uuidString.lowercased()
+        facility = a.facility?.rawValue
+        appointment_type = a.appointmentType.rawValue
+        purpose = a.purpose
+        status = a.status.rawValue
+        requested_by = a.requestedBy?.uuidString.lowercased()
+        scheduled_start = a.scheduledStart.map { iso.string(from: $0) }
+        duration_minutes = a.durationMinutes
+        zoom_meeting_id = a.zoomMeetingId
+        zoom_join_url = a.zoomJoinUrl
+        staff_note = a.staffNote
+        created_by = a.createdBy?.uuidString.lowercased()
+    }
+}
+
+/// Mutable columns only — id, client, provider, and created_by never change.
+private struct AppointmentUpdate: Encodable {
+    let facility: String?
+    let appointment_type: String
+    let purpose: String?
+    let status: String
+    let scheduled_start: String?
+    let duration_minutes: Int
+    let zoom_meeting_id: String?
+    let zoom_join_url: String?
+    let staff_note: String?
+
+    init(from a: Appointment) {
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        facility = a.facility?.rawValue
+        appointment_type = a.appointmentType.rawValue
+        purpose = a.purpose
+        status = a.status.rawValue
+        scheduled_start = a.scheduledStart.map { iso.string(from: $0) }
+        duration_minutes = a.durationMinutes
+        zoom_meeting_id = a.zoomMeetingId
+        zoom_join_url = a.zoomJoinUrl
+        staff_note = a.staffNote
+    }
+}
+
+private struct AppointmentFeedbackInsert: Encodable {
+    let appointment_id: String
+    let client_id: String
+    let rating: Int?
+    let reflection: String?
+
+    init(from f: AppointmentFeedback) {
+        appointment_id = f.appointmentId.uuidString.lowercased()
+        client_id = f.clientId.uuidString.lowercased()
+        rating = f.rating
+        reflection = f.reflection
+    }
+}
+
+/// Decode row for appointments, carrying the embedded client/provider names.
+private struct AppointmentRow: Decodable {
+    let id: UUID
+    let clientId: UUID
+    let providerId: UUID
+    let facility: String?
+    let appointmentType: String
+    let purpose: String?
+    let status: String
+    let requestedBy: UUID?
+    let scheduledStart: Date?
+    let durationMinutes: Int
+    let zoomMeetingId: String?
+    let zoomJoinUrl: String?
+    let staffNote: String?
+    let createdBy: UUID?
+    let createdAt: Date
+    let updatedAt: Date?
+    let client: NameRow?
+    let provider: NameRow?
+
+    struct NameRow: Decodable { let fullName: String? }
+
+    func toAppointment() -> Appointment {
+        Appointment(
+            id: id,
+            clientId: clientId,
+            providerId: providerId,
+            facility: facility.flatMap { Facility(rawValue: $0) },
+            appointmentType: AppointmentType(rawValue: appointmentType) ?? .individualTherapy,
+            purpose: purpose,
+            status: AppointmentStatus(rawValue: status) ?? .requested,
+            requestedBy: requestedBy,
+            scheduledStart: scheduledStart,
+            durationMinutes: durationMinutes,
+            zoomMeetingId: zoomMeetingId,
+            zoomJoinUrl: zoomJoinUrl,
+            staffNote: staffNote,
+            createdBy: createdBy,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            clientName: client?.fullName,
+            providerName: provider?.fullName
+        )
     }
 }

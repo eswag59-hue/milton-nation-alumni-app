@@ -47,6 +47,12 @@ struct ContentView: View {
                 AdminDashboardScreen()
             }
 
+            // Telehealth scheduling console — pending requests, agenda, and
+            // one-tap scheduling with any client on the caseload.
+            Tab("Schedule", systemImage: "calendar.badge.clock", value: .care) {
+                StaffScheduleScreen()
+            }
+
             Tab("Community", systemImage: "bubble.left.and.bubble.right.fill", value: .community) {
                 CommunityScreen()
             }

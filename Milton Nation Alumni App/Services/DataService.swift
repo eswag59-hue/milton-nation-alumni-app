@@ -101,6 +101,21 @@ protocol DataServiceProtocol {
     /// Everything the current user authored — posts, comments, and chat
     /// messages they sent — for the Settings → "Download My Data" JSON export.
     func fetchMyContentForExport() async throws -> UserContentExport
+
+    // MARK: - Telehealth Appointments
+
+    /// Appointments visible to the current user. RLS scopes the result:
+    /// clients get their own, providers get theirs, facility staff get the
+    /// facility's. Names are resolved by the caller from the roster.
+    func fetchAppointments() async throws -> [Appointment]
+    /// Schedule (staff) or request (client) a session.
+    func createAppointment(_ appointment: Appointment) async throws -> Appointment
+    /// Confirm, cancel, reschedule, or mark complete.
+    func updateAppointment(_ appointment: Appointment) async throws -> Appointment
+    /// A client's post-session rating + reflection (upsert — one per session).
+    func submitAppointmentFeedback(_ feedback: AppointmentFeedback) async throws -> AppointmentFeedback
+    /// Existing feedback for a session, if the client already left it.
+    func fetchAppointmentFeedback(appointmentId: UUID) async throws -> AppointmentFeedback?
 }
 
 // MARK: - Data Export DTO
@@ -691,6 +706,55 @@ final class MockDataService: DataServiceProtocol {
             comments: comments.sorted { $0.createdAt < $1.createdAt },
             messages: messages.sorted { $0.createdAt < $1.createdAt }
         )
+    }
+
+    // MARK: - Telehealth Appointments (mock)
+
+    private var mockAppointments: [Appointment] = []
+    private var mockFeedback: [UUID: AppointmentFeedback] = [:]
+
+    func fetchAppointments() async throws -> [Appointment] {
+        try await Task.sleep(for: .milliseconds(150))
+        if mockAppointments.isEmpty {
+            let me = currentMockUser
+            mockAppointments = [
+                Appointment(
+                    id: UUID(), clientId: me.id, providerId: UUID(), facility: me.facility,
+                    appointmentType: .individualTherapy, purpose: "Weekly check-in",
+                    status: .confirmed, requestedBy: nil,
+                    scheduledStart: Date().addingTimeInterval(86_400),
+                    durationMinutes: 50, zoomMeetingId: nil,
+                    zoomJoinUrl: "https://example.com/session",
+                    staffNote: nil, createdBy: nil, createdAt: Date(), updatedAt: nil,
+                    clientName: me.fullName, providerName: "Dana Case"
+                )
+            ]
+        }
+        return mockAppointments
+    }
+
+    func createAppointment(_ appointment: Appointment) async throws -> Appointment {
+        try await Task.sleep(for: .milliseconds(150))
+        mockAppointments.append(appointment)
+        return appointment
+    }
+
+    func updateAppointment(_ appointment: Appointment) async throws -> Appointment {
+        try await Task.sleep(for: .milliseconds(150))
+        if let i = mockAppointments.firstIndex(where: { $0.id == appointment.id }) {
+            mockAppointments[i] = appointment
+        }
+        return appointment
+    }
+
+    func submitAppointmentFeedback(_ feedback: AppointmentFeedback) async throws -> AppointmentFeedback {
+        try await Task.sleep(for: .milliseconds(150))
+        mockFeedback[feedback.appointmentId] = feedback
+        return feedback
+    }
+
+    func fetchAppointmentFeedback(appointmentId: UUID) async throws -> AppointmentFeedback? {
+        mockFeedback[appointmentId]
     }
 
     // Mock pending users for testing

@@ -314,6 +314,7 @@ enum AppTab: String, CaseIterable {
     case meetings = "Meetings"
     case chat = "Chat"
     case profile = "Profile"
+    case care = "Schedule"
 
     var iconName: String {
         switch self {
@@ -322,6 +323,7 @@ enum AppTab: String, CaseIterable {
         case .meetings: return "calendar"
         case .chat: return "message.fill"
         case .profile: return "person.circle.fill"
+        case .care: return "calendar.badge.clock"
         }
     }
 }
