@@ -133,12 +133,16 @@ nonisolated private struct MessageInsertParams: Encodable, Sendable {
     let content: String?
     let status: String
     let matchedKeywords: [String]
+    /// Signed URL for image/file messages. Without persisting this, a sent
+    /// photo showed a placeholder and vanished on reload.
+    let mediaUrl: String?
     enum CodingKeys: String, CodingKey {
         case conversationId
         case senderId
         case messageType
         case content, status
         case matchedKeywords
+        case mediaUrl
     }
 }
 
@@ -980,7 +984,8 @@ final class SupabaseDataService: DataServiceProtocol {
         content: String,
         type: MessageType,
         status: MessageModerationStatus = .clean,
-        matchedKeywords: [String] = []
+        matchedKeywords: [String] = [],
+        mediaURL: String? = nil
     ) async throws -> ChatMessage {
         let userId = try await currentUserId
 
@@ -990,7 +995,8 @@ final class SupabaseDataService: DataServiceProtocol {
             messageType: type.rawValue,
             content: content,
             status: status.rawValue,
-            matchedKeywords: matchedKeywords
+            matchedKeywords: matchedKeywords,
+            mediaUrl: mediaURL
         )
 
         // See createPost comment re: supabase-swift 2.41.1 insert+single bug.

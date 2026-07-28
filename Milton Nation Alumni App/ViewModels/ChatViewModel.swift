@@ -151,7 +151,8 @@ final class ChatViewModel {
                     content: content,
                     type: .text,
                     status: msgStatus,
-                    matchedKeywords: moderationResult.matchedKeywords
+                    matchedKeywords: moderationResult.matchedKeywords,
+                    mediaURL: nil
                 )
                 await MainActor.run {
                     // Only append if not already added by Realtime
@@ -199,11 +200,14 @@ final class ChatViewModel {
                         .from("chat-media")
                         .upload(storagePath, data: data)
 
-                    let publicURL = try SupabaseConfig.client.storage
+                    // chat-media is a PRIVATE bucket (PHI), so a public URL 404s.
+                    // Sign the object for a long window so the image loads in the
+                    // thread and survives reloads.
+                    let signedURL = try await SupabaseConfig.client.storage
                         .from("chat-media")
-                        .getPublicURL(path: storagePath)
+                        .createSignedURL(path: storagePath, expiresIn: 60 * 60 * 24 * 365)
 
-                    mediaURL = publicURL.absoluteString
+                    mediaURL = signedURL.absoluteString
                 } catch {
                     CrashReportingService.shared.recordError(error, context: "ChatViewModel.sendMedia")
                     #if DEBUG
@@ -228,7 +232,8 @@ final class ChatViewModel {
                     content: label,
                     type: type,
                     status: .clean,
-                    matchedKeywords: []
+                    matchedKeywords: [],
+                    mediaURL: mediaURL
                 )
                 await MainActor.run {
                     var message = msg

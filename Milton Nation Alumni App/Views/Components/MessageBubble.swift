@@ -4,6 +4,8 @@ struct MessageBubble: View {
     let message: ChatMessage
     let isFromCurrentUser: Bool
 
+    @State private var fullscreen: IdentifiableURL?
+
     var body: some View {
         HStack {
             if isFromCurrentUser { Spacer(minLength: 60) }
@@ -32,6 +34,8 @@ struct MessageBubble: View {
                                         .scaledToFill()
                                         .frame(width: 200, height: 200)
                                         .clipShape(RoundedRectangle(cornerRadius: 14))
+                                        .contentShape(Rectangle())
+                                        .onTapGesture { fullscreen = IdentifiableURL(url: url) }
                                 case .failure:
                                     RoundedRectangle(cornerRadius: 14)
                                         .fill(AppTheme.background)
@@ -114,6 +118,9 @@ struct MessageBubble: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(isFromCurrentUser ? "You" : "Staff") said: \(message.content ?? message.messageType.rawValue), \(message.createdAt.formatted(date: .omitted, time: .shortened))")
+        .fullScreenCover(item: $fullscreen) { item in
+            FullScreenImageView(url: item.url)
+        }
     }
 
     // MARK: - Helpers
