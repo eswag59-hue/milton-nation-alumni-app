@@ -172,21 +172,23 @@ serve(async (req: Request) => {
     let deviceTokens: string[] = [];
 
     if (target === "user" && userId) {
-      // Sending to a specific user — caller must be a service call, an admin, or
-      // the user themselves.
-      const isAdmin = isServiceCall
-        ? true
-        : await (async () => {
-            const { data: callerProfile } = await supabaseAdmin
-              .from("profiles")
-              .select("role")
-              .eq("id", user!.id)
-              .single();
-            return callerProfile?.role === "admin" || callerProfile?.role === "super_admin";
-          })();
+      // Sending to a specific user — caller must be a service call, an admin,
+      // clinical care staff (they notify their clients about sessions), or the
+      // user themselves. Only admins/service bypass the rate limit.
+      let callerRole: string | null = null;
+      if (!isServiceCall) {
+        const { data: callerProfile } = await supabaseAdmin
+          .from("profiles")
+          .select("role")
+          .eq("id", user!.id)
+          .single();
+        callerRole = (callerProfile?.role as string | null) ?? null;
+      }
+      const isAdmin = isServiceCall || callerRole === "admin" || callerRole === "super_admin";
+      const isCareStaff = callerRole === "case_manager" || callerRole === "therapist" || callerRole === "counselor";
       const isSelf = !isServiceCall && user!.id === userId;
 
-      if (!isAdmin && !isSelf) {
+      if (!isAdmin && !isCareStaff && !isSelf) {
         return new Response(JSON.stringify({ error: "Forbidden" }), {
           status: 403,
           headers: { ...corsHeaders, "Content-Type": "application/json" },

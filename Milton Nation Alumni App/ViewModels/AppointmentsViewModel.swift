@@ -1,5 +1,16 @@
 import Foundation
 import Observation
+import Supabase
+
+/// Push body for a single-user appointment notification. Keys match what the
+/// send-push-notification function reads (target/userId/title/body) — the
+/// invoke encoder does not snake-case, so `userId` arrives as `userId`.
+private struct AppointmentPushParams: Encodable {
+    let target: String
+    let userId: String
+    let title: String
+    let body: String
+}
 
 /// Drives both the client "My Sessions" surface and the staff scheduling
 /// console. RLS decides which appointments come back; this only shapes them.
@@ -93,6 +104,8 @@ final class AppointmentsViewModel {
         updated.status = .confirmed
         do {
             _ = try await dataService.updateAppointment(updated)
+            // Notify both sides that it's confirmed (PHI-safe: no names).
+            await notifyConfirmed(clientId: appointment.clientId, providerId: providerId, at: start)
             // The update response has no embedded names, so reload to bring the
             // client/provider names (and correct ordering) back — otherwise the
             // just-approved card shows a bare "Client".
@@ -103,6 +116,28 @@ final class AppointmentsViewModel {
             errorMessage = "Couldn't approve the session. Try again."
             return false
         }
+    }
+
+    /// Fire-and-forget pushes to the client and the assigned provider once a
+    /// session is confirmed. Generic wording — nothing identifying travels
+    /// through APNs.
+    private func notifyConfirmed(clientId: UUID, providerId: UUID, at start: Date) async {
+        guard SupabaseConfig.isConfigured else { return }
+        let whenStr = start.formatted(date: .abbreviated, time: .shortened)
+        _ = try? await SupabaseConfig.client.functions.invoke(
+            "send-push-notification",
+            options: .init(method: .post, body: AppointmentPushParams(
+                target: "user", userId: clientId.uuidString.lowercased(),
+                title: "Session confirmed",
+                body: "Your session is confirmed for \(whenStr). Open the app for details."))
+        )
+        _ = try? await SupabaseConfig.client.functions.invoke(
+            "send-push-notification",
+            options: .init(method: .post, body: AppointmentPushParams(
+                target: "user", userId: providerId.uuidString.lowercased(),
+                title: "New session scheduled",
+                body: "A session is scheduled for \(whenStr). Open the app for details."))
+        )
     }
 
     func decline(_ appointment: Appointment) async -> Bool {
@@ -121,7 +156,10 @@ final class AppointmentsViewModel {
             createdBy: providerId, createdAt: Date(), updatedAt: nil,
             clientName: nil, providerName: nil
         )
-        return await persistCreate(appt)
+        let ok = await persistCreate(appt)
+        // A directly-scheduled session is already confirmed — tell the client.
+        if ok { await notifyConfirmed(clientId: clientId, providerId: providerId, at: start) }
+        return ok
     }
 
     func updateStatus(_ appointment: Appointment, to status: AppointmentStatus) async -> Bool {
