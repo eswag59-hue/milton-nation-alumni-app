@@ -92,8 +92,11 @@ final class AppointmentsViewModel {
         updated.approvedBy = approvedBy
         updated.status = .confirmed
         do {
-            let saved = try await dataService.updateAppointment(updated)
-            replace(saved)
+            _ = try await dataService.updateAppointment(updated)
+            // The update response has no embedded names, so reload to bring the
+            // client/provider names (and correct ordering) back — otherwise the
+            // just-approved card shows a bare "Client".
+            await load()
             return true
         } catch {
             CrashReportingService.shared.recordError(error, context: "AppointmentsViewModel.approve")
@@ -125,8 +128,8 @@ final class AppointmentsViewModel {
         var updated = appointment
         updated.status = status
         do {
-            let saved = try await dataService.updateAppointment(updated)
-            replace(saved)
+            _ = try await dataService.updateAppointment(updated)
+            await load()
             return true
         } catch {
             CrashReportingService.shared.recordError(error, context: "AppointmentsViewModel.updateStatus")
@@ -162,8 +165,10 @@ final class AppointmentsViewModel {
 
     private func persistCreate(_ appt: Appointment) async -> Bool {
         do {
-            let saved = try await dataService.createAppointment(appt)
-            appointments.append(saved)
+            _ = try await dataService.createAppointment(appt)
+            // Reload so the new row comes back with client/provider names
+            // resolved, rather than appending a nameless copy.
+            await load()
             return true
         } catch {
             CrashReportingService.shared.recordError(error, context: "AppointmentsViewModel.persistCreate")
