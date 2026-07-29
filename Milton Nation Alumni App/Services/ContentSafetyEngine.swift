@@ -36,6 +36,22 @@ struct ContentSafetyResult: Sendable {
         riskLevel: .safe, categories: [], matches: [],
         isEmergency: false, requiresEscalation: false, requiresImmediateEscalation: false
     )
+
+    /// Returns a copy escalated to at least `level` — used when the LLM crisis
+    /// classifier catches subtle language the keyword engine missed. Never
+    /// downgrades. High risk also marks it an emergency so the member sees
+    /// resources.
+    func escalated(to level: ContentRiskLevel, category: ContentCategory = .selfHarm) -> ContentSafetyResult {
+        guard level > riskLevel else { return self }
+        return ContentSafetyResult(
+            riskLevel: level,
+            categories: categories.union([category]),
+            matches: matches,
+            isEmergency: isEmergency || level == .highRisk,
+            requiresEscalation: true,
+            requiresImmediateEscalation: level == .highRisk
+        )
+    }
 }
 
 // MARK: - Engine Config

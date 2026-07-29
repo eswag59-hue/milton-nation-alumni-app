@@ -59,7 +59,14 @@ final class ContentFilterService: @unchecked Sendable {
     ) async -> ContentSafetyResult {
 
         // Stage 1: local, synchronous, O(n)
-        let result = lock.withLock { engine.analyze(text, feature: feature) }
+        var result = lock.withLock { engine.analyze(text, feature: feature) }
+
+        // Stage 1.5: LLM classifier catches subtle/euphemistic crisis language
+        // the keyword engine can't ("might be time to let it go"). It only ever
+        // UPGRADES risk, and fails safe-open (no key / error -> no change).
+        if result.riskLevel < .highRisk, let llmLevel = await classifyWithLLM(text) {
+            result = result.escalated(to: llmLevel)
+        }
 
         // Stage 2: async server escalation for ALL non-safe results
         if result.requiresEscalation || result.isEmergency {
@@ -80,6 +87,28 @@ final class ContentFilterService: @unchecked Sendable {
     /// Does NOT escalate to server; call `escalateToServer` separately if needed.
     func analyzeLocal(_ text: String) -> ContentSafetyResult {
         lock.withLock { engine.analyze(text) }
+    }
+
+    /// Ask the server-side LLM classifier to assess crisis risk. Returns the
+    /// mapped risk level, or nil when it should not change anything — no API key
+    /// configured, an error, or a "none" verdict. Never throws (safe-open).
+    private func classifyWithLLM(_ text: String) async -> ContentRiskLevel? {
+        guard SupabaseConfig.isConfigured, text.trimmingCharacters(in: .whitespacesAndNewlines).count >= 8 else { return nil }
+        struct CrisisResponse: Decodable { let risk: String?; let configured: Bool? }
+        do {
+            let resp: CrisisResponse = try await SupabaseConfig.client.functions.invoke(
+                "classify-crisis",
+                options: .init(method: .post, body: ["text": text])
+            )
+            switch resp.risk {
+            case "high":   return .highRisk
+            case "medium": return .mediumRisk
+            case "low":    return .lowRisk
+            default:       return nil
+            }
+        } catch {
+            return nil   // safe-open: never block content on a classifier failure
+        }
     }
 
     // MARK: - Legacy API (backward compat with existing call sites)
