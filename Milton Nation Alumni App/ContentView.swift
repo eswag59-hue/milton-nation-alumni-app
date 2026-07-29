@@ -3,31 +3,44 @@ import SwiftUI
 struct ContentView: View {
     @Bindable var appViewModel: AppViewModel
 
+    /// Presented when a care-team push is tapped (staff/admin only).
+    @State private var showCareTeamAlerts = false
+
     var body: some View {
-        if appViewModel.isAuthenticated {
-            if appViewModel.currentUser?.status == .pending {
-                // New user awaiting admin facility assignment + approval
-                PendingApprovalScreen()
-            } else if appViewModel.currentUser?.role.isAdmin == true && !appViewModel.isViewingAsUser {
-                AdminDashboardScreen()
-                    .sheet(isPresented: $appViewModel.showFacilityPicker) {
-                        FacilityPickerScreen()
-                    }
-            } else if appViewModel.currentUser?.role == .alumni {
-                alumniTabView
-                    .sheet(isPresented: $appViewModel.showSobrietyCheck) {
-                        SobrietyCheckModal()
-                    }
-            } else if appViewModel.currentUser?.role.isClinical == true && !appViewModel.isViewingAsUser {
-                // Case managers / therapists / counselors get a staff view with
-                // their caseload — NOT the patient "recovery journey."
-                staffTabView
+        Group {
+            if appViewModel.isAuthenticated {
+                if appViewModel.currentUser?.status == .pending {
+                    // New user awaiting admin facility assignment + approval
+                    PendingApprovalScreen()
+                } else if appViewModel.currentUser?.role.isAdmin == true && !appViewModel.isViewingAsUser {
+                    AdminDashboardScreen()
+                        .sheet(isPresented: $appViewModel.showFacilityPicker) {
+                            FacilityPickerScreen()
+                        }
+                } else if appViewModel.currentUser?.role == .alumni {
+                    alumniTabView
+                        .sheet(isPresented: $appViewModel.showSobrietyCheck) {
+                            SobrietyCheckModal()
+                        }
+                } else if appViewModel.currentUser?.role.isClinical == true && !appViewModel.isViewingAsUser {
+                    // Case managers / therapists / counselors get a staff view with
+                    // their caseload — NOT the patient "recovery journey."
+                    staffTabView
+                } else {
+                    // Admin in "View as User" mode (or any fallback)
+                    alumniTabView
+                }
             } else {
-                // Admin in "View as User" mode (or any fallback)
-                alumniTabView
+                LoginScreen(authService: appViewModel.authService)
             }
-        } else {
-            LoginScreen(authService: appViewModel.authService)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .openCareTeamAlerts)) { _ in
+            // Only care-team members (non-alumni) have an alerts inbox.
+            if appViewModel.currentUser?.role != .alumni { showCareTeamAlerts = true }
+        }
+        .sheet(isPresented: $showCareTeamAlerts) {
+            CareTeamAlertsScreen()
+                .environment(appViewModel)
         }
     }
 

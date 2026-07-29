@@ -1750,6 +1750,49 @@ final class SupabaseDataService: DataServiceProtocol {
         return saved
     }
 
+    func fetchCareTeamAlerts() async throws -> [CareTeamAlert] {
+        struct Row: Decodable {
+            let id: UUID
+            let memberId: UUID
+            let facility: String?
+            let kind: String
+            let status: String
+            let createdAt: Date
+            let member: NameRow?
+            struct NameRow: Decodable { let fullName: String? }
+        }
+        let rows: [Row] = try await client.from("care_team_alerts")
+            .select("id, member_id, facility, kind, status, created_at, member:profiles!member_id(full_name)")
+            .eq("status", value: "open")
+            .order("created_at", ascending: false)
+            .execute()
+            .value
+        return rows.map {
+            CareTeamAlert(
+                id: $0.id, memberId: $0.memberId,
+                facility: $0.facility.flatMap { Facility(rawValue: $0) },
+                kind: $0.kind, status: $0.status, createdAt: $0.createdAt,
+                memberName: $0.member?.fullName
+            )
+        }
+    }
+
+    func acknowledgeCareTeamAlert(id: UUID, by userId: UUID) async throws {
+        struct Upd: Encodable {
+            let status: String
+            let acknowledgedBy: String
+            let acknowledgedAt: String
+        }
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        try await client.from("care_team_alerts")
+            .update(Upd(status: "acknowledged",
+                        acknowledgedBy: userId.uuidString.lowercased(),
+                        acknowledgedAt: iso.string(from: Date())))
+            .eq("id", value: id.uuidString)
+            .execute()
+    }
+
     func fetchAppointmentFeedback(appointmentId: UUID) async throws -> AppointmentFeedback? {
         let rows: [AppointmentFeedback] = try await client.from("appointment_feedback")
             .select()

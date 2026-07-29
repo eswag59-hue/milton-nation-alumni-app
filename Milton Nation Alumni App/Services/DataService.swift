@@ -119,6 +119,13 @@ protocol DataServiceProtocol {
     func submitAppointmentFeedback(_ feedback: AppointmentFeedback) async throws -> AppointmentFeedback
     /// Existing feedback for a session, if the client already left it.
     func fetchAppointmentFeedback(appointmentId: UUID) async throws -> AppointmentFeedback?
+
+    // MARK: - Care Team Alerts
+
+    /// Open "notify my care team" alerts for the caller's facility.
+    func fetchCareTeamAlerts() async throws -> [CareTeamAlert]
+    /// Mark an alert acknowledged by the current responder.
+    func acknowledgeCareTeamAlert(id: UUID, by userId: UUID) async throws
 }
 
 // MARK: - Data Export DTO
@@ -766,6 +773,9 @@ final class MockDataService: DataServiceProtocol {
     func fetchAppointmentFeedback(appointmentId: UUID) async throws -> AppointmentFeedback? {
         mockFeedback[appointmentId]
     }
+
+    func fetchCareTeamAlerts() async throws -> [CareTeamAlert] { [] }
+    func acknowledgeCareTeamAlert(id: UUID, by userId: UUID) async throws {}
 
     // Mock pending users for testing
     static var mockPendingUsers: [User] = [

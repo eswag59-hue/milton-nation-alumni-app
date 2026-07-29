@@ -10,6 +10,8 @@ struct AdminDashboardScreen: View {
     /// Opens the telehealth scheduling console (Ohio only) so a scheduler/admin
     /// can review and approve session requests.
     @State private var showScheduling = false
+    /// Opens the care-team alerts inbox (all facilities).
+    @State private var showCareAlerts = false
 
     var body: some View {
         @Bindable var viewModel = viewModel
@@ -18,6 +20,7 @@ struct AdminDashboardScreen: View {
                 VStack(spacing: 16) {
                     headerSection
                     statsRow
+                    careAlertsCard
                     if appViewModel.isTelehealthEnabled { schedulingCard }
                     sectionGrid
 
@@ -75,6 +78,9 @@ struct AdminDashboardScreen: View {
             }
             .sheet(isPresented: $showScheduling) {
                 StaffScheduleScreen()
+            }
+            .sheet(isPresented: $showCareAlerts) {
+                CareTeamAlertsScreen()
             }
             .photosPicker(isPresented: $viewModel.showStaffPhotoPicker, selection: $staffPhotoItem, matching: .images)
             .onChange(of: staffPhotoItem) {
@@ -2435,6 +2441,35 @@ struct AdminDashboardScreen: View {
         }
         .padding()
         .cardStyle()
+        .padding(.horizontal)
+    }
+
+    /// Entry to the care-team alerts inbox — members who tapped "Notify my care
+    /// team." Shown to all staff/admins (crisis response is not facility-gated).
+    private var careAlertsCard: some View {
+        Button { showCareAlerts = true } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "exclamationmark.bubble.fill")
+                    .font(.title3).foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+                    .background(AppTheme.primary)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Care Team Alerts")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(AppTheme.textPrimary)
+                    Text("Members who requested support")
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.textSecondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption).foregroundStyle(AppTheme.textSecondary)
+            }
+            .padding()
+            .background(AppTheme.cardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
         .padding(.horizontal)
     }
 

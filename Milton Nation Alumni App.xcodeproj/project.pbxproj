@@ -348,6 +348,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CODE_SIGN_ENTITLEMENTS = "Milton Nation Alumni App/Milton Nation Alumni App.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 31;
 				DEVELOPMENT_TEAM = VUQQKR3A6A;
@@ -358,7 +359,6 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				CODE_SIGN_ENTITLEMENTS = "Milton Nation Alumni App/Milton Nation Alumni App.entitlements";
 				PRODUCT_BUNDLE_IDENTIFIER = "milton-recovery-centers.Milton-Nation-Alumni-App";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -377,6 +377,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CODE_SIGN_ENTITLEMENTS = "Milton Nation Alumni App/Milton Nation Alumni App.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 31;
 				DEVELOPMENT_TEAM = 9P9N377D6K;
@@ -387,7 +388,6 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				CODE_SIGN_ENTITLEMENTS = "Milton Nation Alumni App/Milton Nation Alumni App.entitlements";
 				PRODUCT_BUNDLE_IDENTIFIER = "milton-recovery-centers.Milton-Nation-Alumni-App";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;

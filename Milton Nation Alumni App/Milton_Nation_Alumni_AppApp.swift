@@ -3,6 +3,11 @@ import LocalAuthentication
 import UIKit
 import UserNotifications
 
+extension Notification.Name {
+    /// Posted when a care-team push is tapped — the UI opens the alerts inbox.
+    static let openCareTeamAlerts = Notification.Name("openCareTeamAlerts")
+}
+
 /// SwiftUI apps only receive the APNs device-token callbacks through a UIKit
 /// app delegate. Without this, `registerForRemoteNotifications()` fires but the
 /// token is never delivered — so no token is ever stored and push never works.
@@ -42,6 +47,11 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     func userNotificationCenter(_ center: UNUserNotificationCenter,
                                 didReceive response: UNNotificationResponse,
                                 withCompletionHandler completionHandler: @escaping () -> Void) {
+        // Route a tapped care-team alert to the in-app alerts inbox.
+        let userInfo = response.notification.request.content.userInfo
+        if let type = userInfo["type"] as? String, type == "care_team_alert" {
+            NotificationCenter.default.post(name: .openCareTeamAlerts, object: nil)
+        }
         completionHandler()
     }
 }
