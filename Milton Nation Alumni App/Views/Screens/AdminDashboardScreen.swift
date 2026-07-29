@@ -7,6 +7,9 @@ struct AdminDashboardScreen: View {
     @State private var staffPhotoItem: PhotosPickerItem?
     /// Member tapped in User Management — drives the detail sheet.
     @State private var selectedUserForDetail: User?
+    /// Opens the telehealth scheduling console (Ohio only) so a scheduler/admin
+    /// can review and approve session requests.
+    @State private var showScheduling = false
 
     var body: some View {
         @Bindable var viewModel = viewModel
@@ -15,6 +18,7 @@ struct AdminDashboardScreen: View {
                 VStack(spacing: 16) {
                     headerSection
                     statsRow
+                    if appViewModel.isTelehealthEnabled { schedulingCard }
                     sectionGrid
 
                     // Expanded section content
@@ -68,6 +72,9 @@ struct AdminDashboardScreen: View {
             }
             .sheet(item: $selectedUserForDetail) { user in
                 AdminUserDetailSheet(user: user, viewModel: viewModel)
+            }
+            .sheet(isPresented: $showScheduling) {
+                StaffScheduleScreen()
             }
             .photosPicker(isPresented: $viewModel.showStaffPhotoPicker, selection: $staffPhotoItem, matching: .images)
             .onChange(of: staffPhotoItem) {
@@ -2428,6 +2435,35 @@ struct AdminDashboardScreen: View {
         }
         .padding()
         .cardStyle()
+        .padding(.horizontal)
+    }
+
+    /// Ohio-only entry to the scheduling console, where admins/schedulers review
+    /// and approve session requests (and see the facility agenda).
+    private var schedulingCard: some View {
+        Button { showScheduling = true } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "calendar.badge.clock")
+                    .font(.title3).foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+                    .background(AppTheme.accent)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Session Requests & Schedule")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(AppTheme.textPrimary)
+                    Text("Review and approve telehealth sessions")
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.textSecondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption).foregroundStyle(AppTheme.textSecondary)
+            }
+            .padding()
+            .background(AppTheme.cardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
         .padding(.horizontal)
     }
 
