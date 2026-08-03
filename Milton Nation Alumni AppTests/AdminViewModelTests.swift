@@ -273,16 +273,17 @@ struct AdminViewModelTests {
     // MARK: - Chat Moderation
 
     @Test("allowFlaggedMessage clears flag and sets allowed status")
-    func allowFlaggedMessage() {
+    func allowFlaggedMessage() async {
         let vm = AdminViewModel()
         let entry = ChatMonitorEntry(
+            messageId: UUID(), conversationId: UUID(),
             alumniName: "Test", staffName: "Staff", staffRole: .caseManager,
             lastMessagePreview: "Message", lastMessageAt: Date(),
             flagged: true, moderationStatus: .flagged, messageCount: 1
         )
         vm.chatMonitorEntries = [entry]
 
-        vm.allowFlaggedMessage(entry.id)
+        await vm.allowFlaggedMessage(entry.id)
 
         #expect(vm.chatMonitorEntries.first?.flagged == false)
         #expect(vm.chatMonitorEntries.first?.moderationStatus == .allowed)
@@ -290,19 +291,110 @@ struct AdminViewModelTests {
     }
 
     @Test("denyFlaggedMessage sets denied status and keeps flagged")
-    func denyFlaggedMessage() {
+    func denyFlaggedMessage() async {
         let vm = AdminViewModel()
         let entry = ChatMonitorEntry(
+            messageId: UUID(), conversationId: UUID(),
             alumniName: "Test", staffName: "Staff", staffRole: .caseManager,
             lastMessagePreview: "Message", lastMessageAt: Date(),
             flagged: true, moderationStatus: .flagged, messageCount: 1
         )
         vm.chatMonitorEntries = [entry]
 
-        vm.denyFlaggedMessage(entry.id)
+        await vm.denyFlaggedMessage(entry.id)
 
         #expect(vm.chatMonitorEntries.first?.flagged == true)
         #expect(vm.chatMonitorEntries.first?.moderationStatus == .denied)
+    }
+
+    // MARK: - Chat Moderation Persistence (Build 32)
+    //
+    // Regression guard for the "cosmetic allow/deny" bug: the admin decision
+    // MUST be written to the message (via the data service) so it survives the
+    // next loadData(), and local state must ONLY change if that write succeeds.
+
+    /// A MockDataService that records `updateMessageModerationStatus` calls and
+    /// can force a failure, to prove the allow/deny path persists first.
+    private final class ModerationSpyDataService: MockDataService {
+        var callCount = 0
+        var recordedMessageId: UUID?
+        var recordedStatus: MessageModerationStatus?
+        var shouldThrow = false
+
+        override func updateMessageModerationStatus(messageId: UUID, status: MessageModerationStatus) async throws {
+            callCount += 1
+            recordedMessageId = messageId
+            recordedStatus = status
+            if shouldThrow {
+                throw NSError(domain: "test", code: 1,
+                             userInfo: [NSLocalizedDescriptionKey: "forced failure"])
+            }
+        }
+    }
+
+    @Test("allowFlaggedMessage persists status=approved for the message id")
+    func allowFlaggedMessagePersists() async {
+        let spy = ModerationSpyDataService()
+        let vm = AdminViewModel(dataService: spy)
+        let messageId = UUID()
+        let entry = ChatMonitorEntry(
+            messageId: messageId, conversationId: UUID(),
+            alumniName: "Test", staffName: "Staff", staffRole: .caseManager,
+            lastMessagePreview: "Message", lastMessageAt: Date(),
+            flagged: true, moderationStatus: .flagged, messageCount: 1
+        )
+        vm.chatMonitorEntries = [entry]
+
+        await vm.allowFlaggedMessage(entry.id)
+
+        #expect(spy.callCount == 1)
+        #expect(spy.recordedMessageId == messageId)
+        #expect(spy.recordedStatus == .approved)
+        #expect(vm.chatMonitorEntries.first?.moderationStatus == .allowed)
+        #expect(vm.adminActionError == nil)
+    }
+
+    @Test("denyFlaggedMessage persists status=denied for the message id")
+    func denyFlaggedMessagePersists() async {
+        let spy = ModerationSpyDataService()
+        let vm = AdminViewModel(dataService: spy)
+        let messageId = UUID()
+        let entry = ChatMonitorEntry(
+            messageId: messageId, conversationId: UUID(),
+            alumniName: "Test", staffName: "Staff", staffRole: .caseManager,
+            lastMessagePreview: "Message", lastMessageAt: Date(),
+            flagged: true, moderationStatus: .flagged, messageCount: 1
+        )
+        vm.chatMonitorEntries = [entry]
+
+        await vm.denyFlaggedMessage(entry.id)
+
+        #expect(spy.callCount == 1)
+        #expect(spy.recordedMessageId == messageId)
+        #expect(spy.recordedStatus == .denied)
+        #expect(vm.chatMonitorEntries.first?.moderationStatus == .denied)
+        #expect(vm.adminActionError == nil)
+    }
+
+    @Test("failed persistence leaves the flag untouched and surfaces an error")
+    func moderationPersistenceFailureKeepsFlag() async {
+        let spy = ModerationSpyDataService()
+        spy.shouldThrow = true
+        let vm = AdminViewModel(dataService: spy)
+        let entry = ChatMonitorEntry(
+            messageId: UUID(), conversationId: UUID(),
+            alumniName: "Test", staffName: "Staff", staffRole: .caseManager,
+            lastMessagePreview: "Message", lastMessageAt: Date(),
+            flagged: true, moderationStatus: .flagged, messageCount: 1
+        )
+        vm.chatMonitorEntries = [entry]
+
+        await vm.allowFlaggedMessage(entry.id)
+
+        // Write failed → local state must NOT have changed, and the admin sees why.
+        #expect(vm.chatMonitorEntries.first?.flagged == true)
+        #expect(vm.chatMonitorEntries.first?.moderationStatus == .flagged)
+        #expect(vm.adminActionError != nil)
     }
 
     // MARK: - Filtered Alumni Search

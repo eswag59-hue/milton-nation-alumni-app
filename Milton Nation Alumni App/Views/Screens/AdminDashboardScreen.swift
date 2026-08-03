@@ -1538,7 +1538,7 @@ struct AdminDashboardScreen: View {
                     }
 
                     Button {
-                        viewModel.allowFlaggedMessage(entry.id)
+                        Task { await viewModel.allowFlaggedMessage(entry.id) }
                     } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "checkmark")
@@ -1553,7 +1553,7 @@ struct AdminDashboardScreen: View {
                     }
 
                     Button {
-                        viewModel.denyFlaggedMessage(entry.id)
+                        Task { await viewModel.denyFlaggedMessage(entry.id) }
                     } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "xmark")
@@ -2302,7 +2302,7 @@ struct AdminDashboardScreen: View {
                     // Action buttons
                     VStack(spacing: 12) {
                         Button {
-                            viewModel.allowFlaggedMessage(entry.id)
+                            Task { await viewModel.allowFlaggedMessage(entry.id) }
                         } label: {
                             HStack {
                                 Image(systemName: "checkmark.circle.fill")
@@ -2317,7 +2317,7 @@ struct AdminDashboardScreen: View {
                         }
 
                         Button {
-                            viewModel.denyFlaggedMessage(entry.id)
+                            Task { await viewModel.denyFlaggedMessage(entry.id) }
                         } label: {
                             HStack {
                                 Image(systemName: "xmark.circle.fill")

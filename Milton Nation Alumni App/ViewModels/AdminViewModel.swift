@@ -87,6 +87,13 @@ enum ChatModerationStatus: String {
 
 struct ChatMonitorEntry: Identifiable {
     let id = UUID()
+    /// The underlying `messages.id` this entry represents. Carried so admin
+    /// allow/deny actions can PERSIST a moderation decision to the row instead
+    /// of only mutating in-memory state (which re-flagged on the next load).
+    let messageId: UUID
+    /// The conversation the flagged message belongs to — kept for targeting /
+    /// future thread navigation. Not required for the status write itself.
+    let conversationId: UUID
     let alumniName: String
     let staffName: String
     let staffRole: UserRole
@@ -926,6 +933,8 @@ final class AdminViewModel {
                 || message.status == .denied ? .denied : .flagged
 
             return ChatMonitorEntry(
+                messageId: message.id,
+                conversationId: message.conversationId,
                 alumniName: alumniName,
                 staffName: staffName,
                 staffRole: staffRole,
@@ -945,23 +954,67 @@ final class AdminViewModel {
         showModerationModal = true
     }
 
-    func allowFlaggedMessage(_ entryId: UUID) {
-        if let index = chatMonitorEntries.firstIndex(where: { $0.id == entryId }) {
-            chatMonitorEntries[index].flagged = false
-            chatMonitorEntries[index].moderationStatus = .allowed
-            AuditLogger.shared.log(.allowFlaggedMessage, detail: "Entry \(entryId)")
-        }
-        showModerationModal = false
-        moderatingEntry = nil
+    /// Allow a flagged message: PERSIST the decision (set the message `status`
+    /// to `.approved`, which clears it from `fetchFlaggedMessages`), then update
+    /// local state. Previously this only mutated the in-memory entry, so the
+    /// message re-flagged on the next `loadData()`. On failure the flag is left
+    /// untouched and `adminActionError` surfaces the reason (retryable).
+    func allowFlaggedMessage(_ entryId: UUID) async {
+        await persistModerationDecision(entryId, status: .approved, audit: .allowFlaggedMessage)
     }
 
-    func denyFlaggedMessage(_ entryId: UUID) {
-        if let index = chatMonitorEntries.firstIndex(where: { $0.id == entryId }) {
-            chatMonitorEntries[index].moderationStatus = .denied
-            AuditLogger.shared.log(.denyFlaggedMessage, detail: "Entry \(entryId)")
+    /// Deny a flagged message: PERSIST `status = .denied` (also removes it from
+    /// `fetchFlaggedMessages` so it won't re-flag), then update local state.
+    func denyFlaggedMessage(_ entryId: UUID) async {
+        await persistModerationDecision(entryId, status: .denied, audit: .denyFlaggedMessage)
+    }
+
+    /// Shared allow/deny path: write the message status first, and only reflect
+    /// the change locally if the write succeeded. Mirrors the persist-first,
+    /// do/catch + `adminActionError` pattern used by `saveMeeting` /
+    /// `uploadStaffPhoto`.
+    private func persistModerationDecision(
+        _ entryId: UUID,
+        status: MessageModerationStatus,
+        audit: AuditAction
+    ) async {
+        guard let entry = chatMonitorEntries.first(where: { $0.id == entryId }) else {
+            await MainActor.run {
+                showModerationModal = false
+                moderatingEntry = nil
+            }
+            return
         }
-        showModerationModal = false
-        moderatingEntry = nil
+
+        do {
+            try await dataService.updateMessageModerationStatus(messageId: entry.messageId, status: status)
+            await MainActor.run {
+                if let index = chatMonitorEntries.firstIndex(where: { $0.id == entryId }) {
+                    // Allow clears the flag; deny keeps it visibly flagged but resolved.
+                    if status == .approved {
+                        chatMonitorEntries[index].flagged = false
+                        chatMonitorEntries[index].moderationStatus = .allowed
+                    } else {
+                        chatMonitorEntries[index].moderationStatus = .denied
+                    }
+                }
+                AuditLogger.shared.log(audit, detail: "message:\(entry.messageId.uuidString.prefix(8))")
+                showModerationModal = false
+                moderatingEntry = nil
+            }
+        } catch {
+            CrashReportingService.shared.recordError(error, context: "AdminViewModel.persistModerationDecision")
+            await MainActor.run {
+                adminActionError = "Couldn't update this message. Please try again.\n\(error.localizedDescription)"
+                // Leave the flag in place so the admin can retry; close the modal
+                // so the error alert isn't hidden behind it.
+                showModerationModal = false
+                moderatingEntry = nil
+            }
+            #if DEBUG
+            print("[AdminViewModel] Failed to persist moderation decision: \(error.localizedDescription)")
+            #endif
+        }
     }
 
     // MARK: - User Management (Promotion)

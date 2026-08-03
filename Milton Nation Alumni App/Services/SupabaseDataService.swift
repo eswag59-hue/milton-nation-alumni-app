@@ -1541,6 +1541,18 @@ final class SupabaseDataService: DataServiceProtocol {
         return messages
     }
 
+    /// Persist an admin chat-monitor decision on a single message. Writing
+    /// `.approved` (allow) or `.denied` (deny) both drop the row out of
+    /// `fetchFlaggedMessages`, so the decision survives the next admin reload
+    /// instead of re-flagging. RLS ("Admins update facility messages") scopes
+    /// the write to admins/super_admins within the message's facility.
+    func updateMessageModerationStatus(messageId: UUID, status: MessageModerationStatus) async throws {
+        try await client.from("messages")
+            .update(["status": status.rawValue])
+            .eq("id", value: messageId.uuidString)
+            .execute()
+    }
+
     // MARK: - Invite
 
     /// Invite a prospective member by EMAIL (v1 uses email, not SMS).

@@ -35,6 +35,10 @@ protocol DataServiceProtocol {
     func fetchClientConversations() async throws -> [Conversation]
     func fetchMessages(conversationId: UUID) async throws -> [ChatMessage]
     func sendMessage(conversationId: UUID, content: String, type: MessageType, status: MessageModerationStatus, matchedKeywords: [String], mediaURL: String?) async throws -> ChatMessage
+    /// Admin chat-monitor decision: persist a moderation `status` on a single
+    /// message (e.g. `.approved` to allow / `.denied` to remove). RLS restricts
+    /// this to admins/super_admins within the message's facility.
+    func updateMessageModerationStatus(messageId: UUID, status: MessageModerationStatus) async throws
 
     // User
     func fetchAssignedStaff() async throws -> [User]
@@ -186,7 +190,10 @@ struct BadgeAwardRow: Sendable, Identifiable {
     let earnedAt: Date
 }
 
-final class MockDataService: DataServiceProtocol {
+// Non-final so tests can subclass it (e.g. a spy that records
+// `updateMessageModerationStatus` calls or forces a failure) without
+// reimplementing the whole DataServiceProtocol surface.
+class MockDataService: DataServiceProtocol {
 
     private var mockPointsTotal = MockData.currentUser.totalPoints
 
@@ -452,6 +459,12 @@ final class MockDataService: DataServiceProtocol {
         // Persist in-session so the message survives navigating away + back
         mockMessagesAppended[conversationId, default: []].append(message)
         return message
+    }
+
+    /// Mock allow/deny: succeeds without a backend. Overridable so tests can
+    /// spy on the call or force a failure (the class is intentionally non-final).
+    func updateMessageModerationStatus(messageId: UUID, status: MessageModerationStatus) async throws {
+        try await Task.sleep(for: .milliseconds(100))
     }
 
     func fetchAssignedStaff() async throws -> [User] {
