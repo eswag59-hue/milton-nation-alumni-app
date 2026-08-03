@@ -125,6 +125,23 @@ struct Appointment: Identifiable, Codable {
         return end > Date()
     }
 
+    /// A session becomes ratable once it's over. Nothing currently transitions
+    /// an appointment to `.completed` (there's no clinician "mark complete"
+    /// action and no cron), so a confirmed session whose end time has passed is
+    /// treated as complete for the client's post-session reflection — otherwise
+    /// the entire rating flow would be permanently unreachable.
+    var isRatable: Bool {
+        switch status {
+        case .completed:
+            return true
+        case .confirmed:
+            guard let end = scheduledEnd else { return false }
+            return end < Date()
+        default:
+            return false   // requested / cancelled / no_show are never ratable
+        }
+    }
+
     /// The join button only arms shortly before the session and stays live
     /// through it — never for a session that's over or days away.
     var canJoin: Bool {

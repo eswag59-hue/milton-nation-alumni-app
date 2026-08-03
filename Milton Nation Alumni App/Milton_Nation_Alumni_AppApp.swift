@@ -8,6 +8,15 @@ extension Notification.Name {
     static let openCareTeamAlerts = Notification.Name("openCareTeamAlerts")
 }
 
+/// Survives a cold launch: a care-team push tapped while the app is dead sets
+/// this before the UI (or the session) exists. ContentView consumes it once the
+/// user is authenticated, so the tap is never dropped or fired over the login
+/// screen.
+@MainActor
+enum DeepLinkRouter {
+    static var pendingCareTeamAlerts = false
+}
+
 /// SwiftUI apps only receive the APNs device-token callbacks through a UIKit
 /// app delegate. Without this, `registerForRemoteNotifications()` fires but the
 /// token is never delivered — so no token is ever stored and push never works.
@@ -47,9 +56,13 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     func userNotificationCenter(_ center: UNUserNotificationCenter,
                                 didReceive response: UNNotificationResponse,
                                 withCompletionHandler completionHandler: @escaping () -> Void) {
-        // Route a tapped care-team alert to the in-app alerts inbox.
+        // Route a tapped care-team alert to the in-app alerts inbox. Set the
+        // pending flag (for cold launch, before ContentView/session exist) AND
+        // post now (for a warm tap). ContentView consumes it only once the user
+        // is authenticated staff.
         let userInfo = response.notification.request.content.userInfo
         if let type = userInfo["type"] as? String, type == "care_team_alert" {
+            DeepLinkRouter.pendingCareTeamAlerts = true
             NotificationCenter.default.post(name: .openCareTeamAlerts, object: nil)
         }
         completionHandler()
@@ -199,6 +212,13 @@ struct Milton_Nation_Alumni_AppApp: App {
                 }
             }
             .task {
+                // HIPAA: on a FRESH install, clear any auth material a prior
+                // install left behind. UserDefaults is wiped on app deletion but
+                // the Keychain (and the Supabase SDK's persisted session) are
+                // NOT — so without this a reinstall on a shared/resold device
+                // could silently restore the previous user's PHI-bearing session.
+                await purgeStaleSessionIfFreshInstall()
+
                 // HIPAA: Verify device security before any data access.
                 // IMPORTANT: Run on a background thread via Task.detached — LAContext.canEvaluatePolicy
                 // can stall briefly (especially on simulator / cold boot). Calling it synchronously
@@ -283,6 +303,28 @@ struct Milton_Nation_Alumni_AppApp: App {
         }
     }
 
+    // MARK: - Fresh-install session hygiene (HIPAA)
+
+    /// On the first launch after a fresh install, purge any leftover auth
+    /// material. UserDefaults is cleared when an app is deleted, but the
+    /// Keychain and the Supabase SDK's stored session survive deletion — so a
+    /// reinstall could otherwise auto-restore the prior user's session on a
+    /// shared or resold device. Uses a UserDefaults marker (itself cleared on
+    /// delete) to detect the fresh install.
+    private func purgeStaleSessionIfFreshInstall() async {
+        let marker = "com.miltonrecovery.hasLaunchedBefore"
+        let defaults = UserDefaults.standard
+        guard !defaults.bool(forKey: marker) else { return }
+        defaults.set(true, forKey: marker)
+
+        KeychainService.delete(key: .authToken)
+        KeychainService.delete(key: .mfaCompleted)
+        // Clear the SDK's own persisted session (local only — no network).
+        if let supabaseAuth = appViewModel.authService as? SupabaseAuthService {
+            await supabaseAuth.clearLocalSession()
+        }
+    }
+
     // MARK: - Session Restoration
 
     private func restoreSessionIfNeeded() async {
@@ -291,9 +333,16 @@ struct Milton_Nation_Alumni_AppApp: App {
             return
         }
 
-        // Only restore if not already authenticated and there's a stored token
+        // Only restore if not already authenticated, there's a stored token,
+        // AND the SMS second factor was completed on a prior session. Without
+        // the mfaCompleted gate, a user who force-quits at the OTP screen
+        // (password accepted, Supabase session already live, OTP not yet
+        // entered) would be silently auto-logged-in on relaunch — skipping the
+        // second factor entirely. mfaCompleted is only written after a
+        // successful OTP verification, so it's the correct gate.
         guard !appViewModel.isAuthenticated,
-              KeychainService.loadString(key: .authToken) != nil else {
+              KeychainService.loadString(key: .authToken) != nil,
+              KeychainService.loadString(key: .mfaCompleted) == "true" else {
             return
         }
 
@@ -320,11 +369,13 @@ struct Milton_Nation_Alumni_AppApp: App {
 
         if let user {
             appViewModel.login(user: user)
-        } else {
-            // Token was invalid or restore timed out — clear stale credentials
-            // so the user is presented with a clean login screen.
-            KeychainService.delete(key: .authToken)
-            KeychainService.delete(key: .mfaCompleted)
         }
+        // else: restore returned nil. Do NOT delete credentials here.
+        // `restoreSession()` already purges the token on a *definitive* auth
+        // failure (expired/invalid/401). A nil here is otherwise a transient
+        // network error or the 5-second timeout — deleting on those forces a
+        // full email+password+OTP re-login on flaky wifi AND removes the
+        // "Sign in with Face ID" affordance (gated on .mfaCompleted). Keeping
+        // the token lets the next launch (or Face ID) retry cleanly.
     }
 }

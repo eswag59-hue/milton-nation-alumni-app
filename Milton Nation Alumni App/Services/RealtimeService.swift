@@ -430,12 +430,12 @@ nonisolated private struct ConversationUpdateRow: Decodable, Sendable {
     let lastMessageAt: Date?
     let unreadCount: Int
 
-    enum CodingKeys: String, CodingKey {
-        case id
-        case lastMessage = "last_message"
-        case lastMessageAt = "last_message_at"
-        case unreadCount = "unread_count"
-    }
+    // NO explicit snake_case CodingKeys. The shared decoder applies
+    // `.convertFromSnakeCase`, so it already maps last_message → lastMessage;
+    // declaring the snake_case strings here too would DOUBLE-map and throw
+    // keyNotFound on `unreadCount` if this were ever wired up. The synthesized
+    // camelCase keys are correct. (This type is currently unused, but leave it
+    // safe so a future subscribeToConversations doesn't crash.)
 }
 
 nonisolated private struct ProfileStatusRow: Decodable, Sendable {

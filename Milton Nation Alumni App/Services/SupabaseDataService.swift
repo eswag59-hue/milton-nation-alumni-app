@@ -838,11 +838,14 @@ final class SupabaseDataService: DataServiceProtocol {
     // MARK: - Meetings
 
     func fetchMeetings() async throws -> [Meeting] {
-        // Fetch meetings
+        // Do NOT filter server-side by `date >= now`. A RECURRING meeting whose
+        // *original* base date has passed still has future occurrences, but a
+        // raw `gte("date")` drops it — so it vanished from the admin dashboard
+        // (can't edit/delete) while members still saw it via the model's
+        // recurrence logic. Fetch all, then apply the SAME `isExpired` /
+        // `nextOccurrence` filtering the member path uses so both agree.
         let meetings: [Meeting] = try await client.from("meetings")
             .select()
-            .gte("date", value: ISO8601DateFormatter().string(from: Date()))
-            .order("date", ascending: true)
             .execute()
             .value
 
@@ -850,6 +853,8 @@ final class SupabaseDataService: DataServiceProtocol {
         // The rsvpUserIds field defaults to [] in the model.
 
         return meetings
+            .filter { !$0.isExpired }
+            .sorted { ($0.nextOccurrence ?? .distantFuture) < ($1.nextOccurrence ?? .distantFuture) }
     }
 
     func createMeeting(_ meeting: Meeting) async throws -> Meeting {
@@ -867,13 +872,20 @@ final class SupabaseDataService: DataServiceProtocol {
     }
 
     func updateMeeting(_ meeting: Meeting) async throws -> Meeting {
-        let updated: Meeting = try await client.from("meetings")
+        // Same supabase-swift 2.41.1 update+single bug as createMeeting: `single()`
+        // can throw on a returned array, which was swallowed upstream (skipping
+        // the audit-log line) even though the UPDATE committed. Decode the array
+        // and take the first row instead.
+        let updatedMeetings: [Meeting] = try await client.from("meetings")
             .update(meeting)
             .eq("id", value: meeting.id.uuidString)
             .select()
-            .single()
             .execute()
             .value
+        guard let updated = updatedMeetings.first else {
+            throw NSError(domain: "SupabaseDataService.updateMeeting", code: 1,
+                          userInfo: [NSLocalizedDescriptionKey: "Server returned empty response on update."])
+        }
         return updated
     }
 
@@ -1093,6 +1105,22 @@ final class SupabaseDataService: DataServiceProtocol {
             .value
 
         return updated
+    }
+
+    func updateUserRole(userId: UUID, role: UserRole) async throws {
+        // Role-only update. No `.select().single()` — the pinned supabase-swift
+        // 2.41.1 returns an array where `single()` expects an object on some
+        // mutations, so we just execute and let the caller update its lists.
+        struct RoleUpdate: Encodable {
+            let role: String
+            let updatedAt: String
+            enum CodingKeys: String, CodingKey { case role; case updatedAt }
+        }
+        try await client.from("profiles")
+            .update(RoleUpdate(role: role.rawValue,
+                               updatedAt: ISO8601DateFormatter().string(from: Date())))
+            .eq("id", value: userId.uuidString)
+            .execute()
     }
 
     func deactivateAccount(userId: UUID) async throws {

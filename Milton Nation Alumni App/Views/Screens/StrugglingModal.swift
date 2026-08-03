@@ -16,6 +16,7 @@ struct StrugglingModal: View {
     @Environment(AppViewModel.self) private var appViewModel
     @State private var notifyCareTeam = false
     @State private var showNotificationSent = false
+    @State private var notifyFailed = false
     @State private var chatViewModel = ChatViewModel()
     @State private var navigateToStaff: User?
 
@@ -112,10 +113,9 @@ struct StrugglingModal: View {
                     .background(AppTheme.background)
                     .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSmall))
                     .onChange(of: notifyCareTeam) {
-                        if notifyCareTeam {
-                            notifyCareTeamNow()
-                            showNotificationSent = true
-                        }
+                        // Confirmation is set by the async call based on the
+                        // actual result — never optimistically here.
+                        if notifyCareTeam { Task { await notifyCareTeamNow() } }
                     }
 
                     Divider()
@@ -159,6 +159,14 @@ struct StrugglingModal: View {
             } message: {
                 Text("Your care team has been notified and will reach out to you soon.")
             }
+            // Crisis path: if the alert did NOT go through, never leave the member
+            // believing help is coming — tell them plainly and steer to 988/911.
+            .alert("Couldn't reach your care team", isPresented: $notifyFailed) {
+                Button("Call 988") { PhoneService.call("988") }
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("We couldn't notify your care team just now. If you need help right away, call or text 988, or call 911. You can also message a staff member below.")
+            }
             .onAppear {
                 chatViewModel.loadConversations()
             }
@@ -196,39 +204,41 @@ struct StrugglingModal: View {
     // MARK: - Care Team Notification
 
     /// Sends a real alert to the care team when the user toggles "Notify care team".
-    private func notifyCareTeamNow() {
+    /// Alerts the care team. This is a crisis path, so it must NEVER claim
+    /// success it didn't achieve, and must NEVER fail silently: the confirmation
+    /// is shown only when the server actually records the alert, and any failure
+    /// is logged and surfaced (steering the member to 988) instead of a false
+    /// "you've been notified."
+    private func notifyCareTeamNow() async {
         let userId = appViewModel.currentUser?.id
-
-        // 1. Audit log — creates a server-side record staff can review
         AuditLogger.shared.log(.contentEscalated, userId: userId, detail: "User triggered Notify Care Team in StrugglingModal")
 
-        // 2. Local notification fires immediately on THIS device (visible on
-        //    simulator + reassures the member it went through).
-        PushNotificationService.shared.scheduleLocalNotification(
-            title: "Care team notified",
-            body: "Your care team has been alerted and will reach out to you.",
-            userInfo: ["type": "care_team_alert_sent", "userId": userId?.uuidString ?? ""]
-        )
+        // Dev/mock: no backend to reach — confirm optimistically.
+        guard SupabaseConfig.isConfigured else { showNotificationSent = true; return }
 
-        // 3. Push the actual alert to the care team (clinical staff + admins in
-        //    the member's facility) via the send-push-notification Edge Function.
-        //    PHI-safe: NO member name in the payload — the function forces a fixed
-        //    generic message and resolves recipients server-side. Fire-and-forget
-        //    so a network hiccup never blocks the member's help flow.
-        guard SupabaseConfig.isConfigured else { return }
-        Task {
-            _ = try? await SupabaseConfig.client.functions.invoke(
+        struct PushAck: Decodable { let sent: Int? }
+        do {
+            // The care_team target inserts the (HIPAA-covered) alert row and
+            // pushes the facility care team; the function forces a PHI-safe body.
+            // A non-2xx (429/403/network/APNs) throws → caught below.
+            let _: PushAck = try await SupabaseConfig.client.functions.invoke(
                 "send-push-notification",
-                options: .init(
-                    method: .post,
-                    body: CareTeamAlertParams(
-                        target: "care_team",
-                        title: "Member needs support",
-                        body: "A member has requested care team support. Tap to review.",
-                        data: ["type": "care_team_alert"]
-                    )
-                )
+                options: .init(method: .post, body: CareTeamAlertParams(
+                    target: "care_team",
+                    title: "Member needs support",
+                    body: "A member has requested care team support. Tap to review.",
+                    data: ["type": "care_team_alert"]))
             )
+            PushNotificationService.shared.scheduleLocalNotification(
+                title: "Care team notified",
+                body: "Your care team has been alerted and will reach out to you.",
+                userInfo: ["type": "care_team_alert_sent", "userId": userId?.uuidString ?? ""]
+            )
+            showNotificationSent = true
+        } catch {
+            CrashReportingService.shared.recordError(error, context: "StrugglingModal.notifyCareTeamNow")
+            notifyCareTeam = false      // reset the toggle so it can be retried
+            notifyFailed = true
         }
     }
 

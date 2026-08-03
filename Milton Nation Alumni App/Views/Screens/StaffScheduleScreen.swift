@@ -124,6 +124,7 @@ struct ScheduleSessionSheet: View {
     @State private var start = Date().addingTimeInterval(3600)
     @State private var duration = 50
     @State private var note = ""
+    @State private var teamsLink = ""
     @State private var saving = false
     @State private var error: String?
 
@@ -162,6 +163,16 @@ struct ScheduleSessionSheet: View {
                             ForEach(durations, id: \.self) { Text("\($0) min").tag($0) }
                         }
                     }
+                    Section {
+                        TextField("Paste the Teams meeting link (optional)", text: $teamsLink, axis: .vertical)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .lineLimit(1...3)
+                    } header: {
+                        Text("Video — Microsoft Teams")
+                    } footer: {
+                        Text("Paste the Teams meeting join link. The client's Join button becomes active shortly before the session.")
+                    }
                     Section("Private staff note (optional)") {
                         TextField("Not shown to the client", text: $note, axis: .vertical)
                             .lineLimit(1...3)
@@ -192,7 +203,8 @@ struct ScheduleSessionSheet: View {
         let ok = await vm.scheduleSession(
             clientId: clientId, providerId: provider.id, facility: facility,
             type: type, purpose: purpose.isEmpty ? nil : purpose,
-            start: start, durationMinutes: duration, staffNote: note.isEmpty ? nil : note
+            start: start, durationMinutes: duration, staffNote: note.isEmpty ? nil : note,
+            videoJoinUrl: teamsLink
         )
         saving = false
         if ok { dismiss() } else { error = vm.errorMessage ?? "Couldn't schedule the session." }

@@ -173,7 +173,7 @@ struct AdminViewModelTests {
     }
 
     @Test("confirmPromoteUser changes user role")
-    func confirmPromoteUser() {
+    func confirmPromoteUser() async {
         let vm = AdminViewModel()
         let user = makeAlumniUser()
         vm.alumniUsers = [user]
@@ -182,10 +182,17 @@ struct AdminViewModelTests {
         vm.beginPromoteUser(user, to: .admin)
         vm.confirmPromoteUser()
 
-        #expect(vm.alumniUsers.first?.role == .admin)
-        #expect(vm.allUsers.first?.role == .admin)
+        // The confirmation state clears synchronously.
         #expect(vm.showPromoteConfirmation == false)
         #expect(vm.userToPromote == nil)
+
+        // The role change is now PERSISTED via the data service and only then
+        // reflected locally (previously it mutated in-memory with no write and
+        // reverted on reload). confirmPromoteUser fires this detached; await the
+        // same path directly to verify it lands.
+        await vm.promoteUser(user, to: .admin)
+        #expect(vm.alumniUsers.first?.role == .admin)
+        #expect(vm.allUsers.first?.role == .admin)
     }
 
     @Test("cancelPromotion clears promotion state")

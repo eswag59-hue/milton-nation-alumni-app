@@ -803,7 +803,20 @@ final class AdminViewModel {
 
     func moderatePost(postId: UUID, action: PostStatus) {
         Task {
-            _ = try? await dataService.moderatePost(postId: postId, action: action)
+            // Persist FIRST and only touch the UI / notify the author if the
+            // write actually succeeded. Previously this used `try?` and then
+            // updated the list + fired a "Post Approved" push unconditionally —
+            // so a network/RLS failure showed the post as approved and told the
+            // author it was "visible to everyone" while it stayed pending.
+            do {
+                _ = try await dataService.moderatePost(postId: postId, action: action)
+            } catch {
+                CrashReportingService.shared.recordError(error, context: "AdminViewModel.moderatePost")
+                await MainActor.run {
+                    adminActionError = "Couldn't \(action == .approved ? "approve" : "update") the post. Please try again."
+                }
+                return
+            }
             await MainActor.run {
                 if let index = pendingPosts.firstIndex(where: { $0.id == postId }) {
                     var post = pendingPosts.remove(at: index)
@@ -1026,20 +1039,38 @@ final class AdminViewModel {
     }
 
     func confirmPromoteUser() {
-        guard let user = userToPromote,
-              let index = alumniUsers.firstIndex(where: { $0.id == user.id }) else {
+        guard let user = userToPromote else {
             showPromoteConfirmation = false
-            userToPromote = nil
             return
         }
-        alumniUsers[index].role = selectedPromotionRole
-        // Also update in allUsers
-        if let allIndex = allUsers.firstIndex(where: { $0.id == user.id }) {
-            allUsers[allIndex].role = selectedPromotionRole
-        }
-        AuditLogger.shared.log(.promoteUser, userId: user.id, detail: "To: \(selectedPromotionRole.rawValue)")
+        let newRole = selectedPromotionRole
+        // Dismiss the confirmation now; persist in the background.
         showPromoteConfirmation = false
         userToPromote = nil
+        Task { await promoteUser(user, to: newRole) }
+    }
+
+    /// Persist a role change and reflect it locally ONLY on success. Split out
+    /// from `confirmPromoteUser` (which fires it detached) so it can be awaited
+    /// directly in tests. Previously the promotion mutated the in-memory arrays
+    /// with no dataService call at all — so it evaporated on the next reload and
+    /// the UI silently lied.
+    @MainActor
+    func promoteUser(_ user: User, to newRole: UserRole) async {
+        do {
+            try await dataService.updateUserRole(userId: user.id, role: newRole)
+        } catch {
+            CrashReportingService.shared.recordError(error, context: "AdminViewModel.promoteUser")
+            adminActionError = "Couldn't update \(user.fullName)'s role. Please try again."
+            return
+        }
+        if let index = alumniUsers.firstIndex(where: { $0.id == user.id }) {
+            alumniUsers[index].role = newRole
+        }
+        if let allIndex = allUsers.firstIndex(where: { $0.id == user.id }) {
+            allUsers[allIndex].role = newRole
+        }
+        AuditLogger.shared.log(.promoteUser, userId: user.id, detail: "To: \(newRole.rawValue)")
     }
 
     func cancelPromotion() {

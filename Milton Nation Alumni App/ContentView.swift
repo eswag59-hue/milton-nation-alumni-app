@@ -35,13 +35,28 @@ struct ContentView: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .openCareTeamAlerts)) { _ in
-            // Only care-team members (non-alumni) have an alerts inbox.
-            if appViewModel.currentUser?.role != .alumni { showCareTeamAlerts = true }
+            presentCareAlertsIfEligible()
         }
+        // Cold launch: a tap set the pending flag before the session restored.
+        // Re-check once auth resolves so the tap isn't lost or fired over login.
+        .onChange(of: appViewModel.isAuthenticated) { _, _ in presentCareAlertsIfEligible() }
+        .task { presentCareAlertsIfEligible() }
         .sheet(isPresented: $showCareTeamAlerts) {
             CareTeamAlertsScreen()
                 .environment(appViewModel)
         }
+    }
+
+    /// Present the alerts inbox only for an authenticated staff/admin, and only
+    /// if a care-team push is actually pending. Guards against `currentUser`
+    /// being nil (which would otherwise pass a `!= .alumni` check) and against
+    /// presenting over the login screen.
+    private func presentCareAlertsIfEligible() {
+        guard DeepLinkRouter.pendingCareTeamAlerts,
+              appViewModel.isAuthenticated,
+              let role = appViewModel.currentUser?.role, role != .alumni else { return }
+        DeepLinkRouter.pendingCareTeamAlerts = false
+        showCareTeamAlerts = true
     }
 
     /// Staff shell: caseload chat + a clinician dashboard (sobriety monitoring,

@@ -133,7 +133,9 @@ final class PushNotificationService: NSObject, @unchecked Sendable {
                         token: token,
                         platform: "ios",
                         updatedAt: ISO8601DateFormatter().string(from: Date())
-                    ))
+                    ), onConflict: "user_id,token")   // else it conflicts on the
+                    // PK (id), generates a new id, and violates UNIQUE(user_id,
+                    // token) on every re-registration — noisy 23505 errors.
                     .execute()
                 #if DEBUG
                 print("[PushNotification] ✅ Token synced to Supabase")

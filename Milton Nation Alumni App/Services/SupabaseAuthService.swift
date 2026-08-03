@@ -168,6 +168,13 @@ final class SupabaseAuthService: AuthServiceProtocol {
         try await client.auth.signOut()
     }
 
+    /// Clear only the SDK's LOCALLY persisted session (no network call, no
+    /// server-side revocation). Used for fresh-install HIPAA hygiene, where the
+    /// Keychain-backed SDK session can survive an app deletion. Never throws.
+    func clearLocalSession() async {
+        try? await client.auth.signOut(scope: .local)
+    }
+
     // MARK: - Register
 
     func register(

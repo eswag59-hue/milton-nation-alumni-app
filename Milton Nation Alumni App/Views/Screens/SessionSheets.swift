@@ -25,9 +25,25 @@ struct RequestSessionSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                if vm.bookableProviders.isEmpty {
+                if !vm.providersLoaded {
+                    // Still loading the roster.
+                    Section { HStack { Spacer(); ProgressView(); Spacer() } }
+                } else if vm.providersLoadFailed {
+                    // The load errored — offer a retry instead of an eternal spinner.
                     Section {
-                        HStack { Spacer(); ProgressView(); Spacer() }
+                        VStack(spacing: 10) {
+                            Text("Couldn't load providers.")
+                                .font(.subheadline).foregroundStyle(AppTheme.textPrimary)
+                            Button("Try again") { Task { await vm.loadBookableProviders() } }
+                                .buttonStyle(.bordered)
+                        }
+                        .frame(maxWidth: .infinity).padding(.vertical, 8)
+                    }
+                } else if vm.bookableProviders.isEmpty {
+                    // Loaded successfully, but the facility has no bookable staff.
+                    Section {
+                        Text("No providers are available to request right now. Please reach out to your care team directly.")
+                            .font(.subheadline).foregroundStyle(AppTheme.textSecondary)
                     }
                 } else {
                     Section("Who would you like to see?") {
@@ -144,16 +160,11 @@ struct SessionDetailSheet: View {
                             .multilineTextAlignment(.center)
                     }
 
-                    if perspective == .staff && appt.status == .requested {
-                        Button {
-                            Task { working = true; _ = await vm.updateStatus(appt, to: .confirmed); working = false; dismiss() }
-                        } label: {
-                            Text("Confirm Session").fontWeight(.semibold)
-                                .frame(maxWidth: .infinity).padding(.vertical, 14)
-                                .background(.green).foregroundStyle(.white)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                        }.disabled(working)
-                    }
+                    // NOTE: staff-side "confirm a request" is intentionally NOT
+                    // here — a requested session is confirmed through
+                    // ApproveSessionSheet (which sets the final time + provider
+                    // and notifies both sides). A one-tap confirm here would
+                    // confirm with scheduled_start still nil and no notification.
 
                     if appt.status == .confirmed || appt.status == .requested {
                         Button(role: .destructive) {
@@ -268,6 +279,7 @@ struct ApproveSessionSheet: View {
     @State private var providerId: UUID?
     @State private var timeChoice: TimeChoice = .primary
     @State private var customStart = Date().addingTimeInterval(86_400)
+    @State private var teamsLink = ""
     @State private var working = false
     @State private var error: String?
 
@@ -319,6 +331,17 @@ struct ApproveSessionSheet: View {
                     }
                 }
 
+                Section {
+                    TextField("Paste the Teams meeting link (optional)", text: $teamsLink, axis: .vertical)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .lineLimit(1...3)
+                } header: {
+                    Text("Video — Microsoft Teams")
+                } footer: {
+                    Text("Paste the Teams meeting join link so the client can join from the app.")
+                }
+
                 if let error {
                     Section { Text(error).font(.caption).foregroundStyle(.red) }
                 }
@@ -345,6 +368,7 @@ struct ApproveSessionSheet: View {
                 // Default the assignment to who the client asked for.
                 providerId = appt.requestedProviderId ?? appt.providerId
                 if appt.preferredStart == nil { timeChoice = .custom }
+                teamsLink = appt.zoomJoinUrl ?? ""   // prefill if one already set
             }
         }
     }
@@ -352,7 +376,8 @@ struct ApproveSessionSheet: View {
     private func approve() async {
         guard let providerId else { return }
         working = true; error = nil
-        let ok = await vm.approve(appt, providerId: providerId, at: chosenStart, approvedBy: approvedBy)
+        let ok = await vm.approve(appt, providerId: providerId, at: chosenStart,
+                                  approvedBy: approvedBy, videoJoinUrl: teamsLink)
         working = false
         if ok { dismiss() } else { error = vm.errorMessage ?? "Couldn't approve. Try again." }
     }

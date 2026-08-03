@@ -35,9 +35,13 @@ struct ClientSessionsView: View {
                         section("Past") {
                             ForEach(vm.past) { appt in
                                 SessionCard(appt: appt, perspective: .client,
-                                            showRate: vm.feedbackByAppointment[appt.id] == nil)
+                                            showRate: appt.isRatable && vm.feedbackByAppointment[appt.id] == nil)
                                     .onTapGesture {
-                                        if appt.status == .completed { rating = appt } else { selected = appt }
+                                        if appt.isRatable && vm.feedbackByAppointment[appt.id] == nil {
+                                            rating = appt
+                                        } else {
+                                            selected = appt
+                                        }
                                     }
                             }
                         }
@@ -47,10 +51,17 @@ struct ClientSessionsView: View {
             .padding(.vertical)
         }
         .background(AppTheme.background)
-        .refreshable { await vm.load() }
+        .refreshable {
+            await vm.load()
+            await vm.loadBookableProviders()
+            vm.fillProviderNames()
+        }
         .task {
             await vm.load()
-            for appt in vm.past where appt.status == .completed {
+            // Resolve provider names the profiles RLS hides from the client.
+            await vm.loadBookableProviders()
+            vm.fillProviderNames()
+            for appt in vm.past where appt.isRatable {
                 await vm.loadFeedback(for: appt.id)
             }
         }
@@ -60,7 +71,10 @@ struct ClientSessionsView: View {
         .alert("Request sent", isPresented: $showRequestedConfirmation) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text("Your care team has been notified and will confirm your session soon. It'll show up here once approved.")
+            // Honest wording: the request is queued for the care team to review
+            // in their scheduling console — we don't claim a push went out to
+            // them (it doesn't yet). The client IS notified once it's approved.
+            Text("Your request is in. Your care team will review it and confirm a time — you'll get a notification here once it's scheduled.")
         }
         .sheet(item: $selected) { appt in
             SessionDetailSheet(appt: appt, vm: vm, perspective: .client)

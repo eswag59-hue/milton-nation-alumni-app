@@ -43,6 +43,10 @@ protocol DataServiceProtocol {
     // User
     func fetchAssignedStaff() async throws -> [User]
     func updateProfile(user: User) async throws -> User
+    /// Persist a role change (admin "promote"). Separate from `updateProfile`,
+    /// which deliberately never writes `role`. RLS
+    /// (`profiles_admin_update_facility`) scopes this to the admin's facility.
+    func updateUserRole(userId: UUID, role: UserRole) async throws
     func fetchAuditLog(limit: Int) async throws -> [AuditLogRecord]
     /// Begin account deletion: mark the profile `deactivated` and stamp
     /// `deactivated_at = now()`. A scheduled server job hard-deletes the
@@ -485,6 +489,12 @@ class MockDataService: DataServiceProtocol {
             mockProfilePhotoURLByUserId[user.id] = url
         }
         return user
+    }
+
+    func updateUserRole(userId: UUID, role: UserRole) async throws {
+        try await Task.sleep(for: .milliseconds(200))
+        // No-op in mock beyond the artificial latency — the AdminViewModel
+        // updates its in-memory lists on success.
     }
 
     func deactivateAccount(userId: UUID) async throws {

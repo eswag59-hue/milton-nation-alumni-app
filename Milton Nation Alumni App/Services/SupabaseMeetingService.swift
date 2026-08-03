@@ -27,29 +27,39 @@ final class SupabaseMeetingService: MeetingServiceProtocol {
     // MARK: - Create
 
     func createMeeting(_ meeting: Meeting) async throws -> Meeting {
+        // supabase-swift 2.41.1 can return an array where `single()` expects an
+        // object on insert+select, throwing a decode error even though the row
+        // was written. Decode the array and take the first row.
         let insert = MeetingInsertRow(from: meeting)
-        let row: MeetingRow = try await client
+        let rows: [MeetingRow] = try await client
             .from("meetings")
             .insert(insert)
             .select()
-            .single()
             .execute()
             .value
+        guard let row = rows.first else {
+            throw NSError(domain: "SupabaseMeetingService.createMeeting", code: 1,
+                          userInfo: [NSLocalizedDescriptionKey: "Server returned empty response on insert."])
+        }
         return row.toMeeting()
     }
 
     // MARK: - Update
 
     func updateMeeting(_ meeting: Meeting) async throws -> Meeting {
+        // Same 2.41.1 update+single bug — decode the array, take the first row.
         let update = MeetingUpdateRow(from: meeting)
-        let row: MeetingRow = try await client
+        let rows: [MeetingRow] = try await client
             .from("meetings")
             .update(update)
             .eq("id", value: meeting.id.uuidString)
             .select()
-            .single()
             .execute()
             .value
+        guard let row = rows.first else {
+            throw NSError(domain: "SupabaseMeetingService.updateMeeting", code: 1,
+                          userInfo: [NSLocalizedDescriptionKey: "Server returned empty response on update."])
+        }
         return row.toMeeting()
     }
 

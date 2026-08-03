@@ -82,6 +82,25 @@ struct PostCard: View {
         return post.userId != me
     }
 
+    /// A member sees their OWN posts in the feed even while they're held for
+    /// moderation (the feed query returns own pending/flagged rows). Without an
+    /// indicator, a pending post looks published and the author assumes the
+    /// community can see it. This surfaces the true state — only on the author's
+    /// own, not-yet-approved posts (other members never receive these rows).
+    private var ownStatusBanner: (text: String, icon: String, color: Color)? {
+        guard let me = currentUserId, post.userId == me else { return nil }
+        switch post.status {
+        case .approved:
+            return nil
+        case .pending, .pendingReview:
+            return ("Pending review — only you can see this until it's approved", "clock.badge", .orange)
+        case .flaggedForCrisis:
+            return ("Held for review — your care team has been notified", "exclamationmark.shield.fill", AppTheme.struggling)
+        case .rejected:
+            return ("Not published — this didn't fit the guidelines", "xmark.circle.fill", AppTheme.struggling)
+        }
+    }
+
     /// One post image. `width == nil` → full-width single image; a value → fixed
     /// width for the horizontal multi-photo gallery. Tapping opens fullscreen.
     @ViewBuilder
@@ -133,6 +152,21 @@ struct PostCard: View {
                 }
                 .font(.caption2.bold())
                 .foregroundStyle(AppTheme.accent)
+            }
+
+            // Moderation status — shown only to the author on their own
+            // not-yet-approved posts so a pending post never looks published.
+            if let banner = ownStatusBanner {
+                HStack(spacing: 6) {
+                    Image(systemName: banner.icon)
+                    Text(banner.text)
+                }
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(banner.color)
+                .padding(.horizontal, 10).padding(.vertical, 6)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(banner.color.opacity(0.12))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
             }
 
             // Header
