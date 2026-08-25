@@ -238,4 +238,75 @@ struct LoginViewModelTests {
         #expect(vm.showTwoFactor == false)
         #expect(vm.pendingUser == nil)
     }
+
+    // MARK: - Lockout Expiry
+    //
+    // Regression coverage for a lockout that never let go: `failedAttempts` was
+    // persisted and cleared only on a *successful* login, so old failures kept
+    // accumulating for the life of the install. Once the count reached 5 the
+    // 15-minute lockout expired by date, but the counter stayed at 5 — leaving
+    // every later single mistyped password an instant re-lock.
+
+    private func clearLockoutDefaults() {
+        for key in ["login_lockout_end_ts", "login_failed_attempts", "login_last_failed_ts"] {
+            UserDefaults.standard.removeObject(forKey: key)
+        }
+    }
+
+    @Test("a served lockout resets the failure count instead of re-locking")
+    func servedLockoutResetsCount() {
+        clearLockoutDefaults()
+        defer { clearLockoutDefaults() }
+
+        // A lockout that ended a minute ago, with the streak that caused it.
+        let ended = Date().addingTimeInterval(-60).timeIntervalSince1970
+        UserDefaults.standard.set(ended, forKey: "login_lockout_end_ts")
+        UserDefaults.standard.set(5, forKey: "login_failed_attempts")
+
+        let vm = LoginViewModel()
+        #expect(vm.isLockedOut == false)
+        #expect(vm.failedAttempts == 0, "a served lockout must not leave the count at the threshold")
+    }
+
+    @Test("a cold failure streak expires")
+    func coldStreakExpires() {
+        clearLockoutDefaults()
+        defer { clearLockoutDefaults() }
+
+        // Four failures from an hour ago — well outside the attempt window.
+        UserDefaults.standard.set(4, forKey: "login_failed_attempts")
+        UserDefaults.standard.set(Date().addingTimeInterval(-3600).timeIntervalSince1970,
+                                  forKey: "login_last_failed_ts")
+
+        let vm = LoginViewModel()
+        #expect(vm.failedAttempts == 0, "failures from an hour ago must not count toward today's lockout")
+    }
+
+    @Test("a recent failure streak is preserved")
+    func recentStreakPreserved() {
+        clearLockoutDefaults()
+        defer { clearLockoutDefaults() }
+
+        // Three failures a minute ago — still inside the window, still counted.
+        UserDefaults.standard.set(3, forKey: "login_failed_attempts")
+        UserDefaults.standard.set(Date().addingTimeInterval(-60).timeIntervalSince1970,
+                                  forKey: "login_last_failed_ts")
+
+        let vm = LoginViewModel()
+        #expect(vm.failedAttempts == 3, "recent failures must still count — the rate limit has to work")
+    }
+
+    @Test("an unexpired lockout is still enforced")
+    func activeLockoutEnforced() {
+        clearLockoutDefaults()
+        defer { clearLockoutDefaults() }
+
+        UserDefaults.standard.set(Date().addingTimeInterval(300).timeIntervalSince1970,
+                                  forKey: "login_lockout_end_ts")
+        UserDefaults.standard.set(5, forKey: "login_failed_attempts")
+
+        let vm = LoginViewModel()
+        #expect(vm.isLockedOut == true, "a live lockout must survive a relaunch")
+        #expect(vm.failedAttempts == 5)
+    }
 }

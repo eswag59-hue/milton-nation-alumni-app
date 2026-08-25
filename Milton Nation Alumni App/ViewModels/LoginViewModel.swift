@@ -51,6 +51,12 @@ final class LoginViewModel {
     private let lockoutDuration: TimeInterval = 900 // 15 minutes
     private let lockoutEndKey = "login_lockout_end_ts"
     private let failedAttemptsKey = "login_failed_attempts"
+    private let lastFailedAtKey = "login_last_failed_ts"
+    /// A failure older than this no longer counts toward the lockout. Without a
+    /// window the counter is cumulative for the life of the install: five
+    /// mistyped passwords spread over months would leave a member permanently
+    /// one typo away from a 15-minute lockout.
+    private let attemptWindow: TimeInterval = 900 // 15 minutes
 
     // Registration toggle & fields
     var isRegistering = false
@@ -78,11 +84,41 @@ final class LoginViewModel {
         if let ts = UserDefaults.standard.object(forKey: lockoutEndKey) as? Double {
             lockoutEndDate = Date(timeIntervalSince1970: ts)
         }
+        expireStaleAttempts()
+    }
+
+    /// Drops a served lockout and any failure streak that has gone cold, so the
+    /// counter reflects *recent* activity rather than the install's whole life.
+    private func expireStaleAttempts() {
+        // A lockout that has already elapsed is finished — clear it along with
+        // the streak that caused it, otherwise the very next failure re-locks.
+        if let end = lockoutEndDate, Date() >= end {
+            lockoutEndDate = nil
+            failedAttempts = 0
+            UserDefaults.standard.removeObject(forKey: lockoutEndKey)
+            UserDefaults.standard.removeObject(forKey: failedAttemptsKey)
+            UserDefaults.standard.removeObject(forKey: lastFailedAtKey)
+            return
+        }
+        // Not locked out, but the last failure is old — start the count fresh.
+        guard lockoutEndDate == nil, failedAttempts > 0 else { return }
+        let lastFailed = UserDefaults.standard.object(forKey: lastFailedAtKey) as? Double
+        if let lastFailed {
+            guard Date().timeIntervalSince1970 - lastFailed >= attemptWindow else { return }
+        }
+        // No recorded timestamp means the streak predates this fix — clear it.
+        failedAttempts = 0
+        UserDefaults.standard.removeObject(forKey: failedAttemptsKey)
+        UserDefaults.standard.removeObject(forKey: lastFailedAtKey)
     }
 
     // MARK: - Login
 
     func login() async -> User? {
+        // Retire a served lockout / cold streak before judging this attempt —
+        // the app can sit open for hours between tries.
+        expireStaleAttempts()
+
         // Rate limiting check
         if isLockedOut {
             let seconds = Int(lockoutRemaining)
@@ -141,6 +177,7 @@ final class LoginViewModel {
                 // Clear persisted lockout on successful login
                 UserDefaults.standard.removeObject(forKey: lockoutEndKey)
                 UserDefaults.standard.removeObject(forKey: failedAttemptsKey)
+                UserDefaults.standard.removeObject(forKey: lastFailedAtKey)
                 pendingUser = user
                 showTwoFactor = true
                 isLoading = false
@@ -159,6 +196,7 @@ final class LoginViewModel {
             }
             await MainActor.run {
                 failedAttempts += 1
+                UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: lastFailedAtKey)
                 AuditLogger.shared.log(.loginFailed, detail: "Email-hash: \(Self.hashEmail(email)), attempt: \(failedAttempts)")
                 if failedAttempts >= maxAttempts {
                     lockoutEndDate = Date().addingTimeInterval(lockoutDuration)
