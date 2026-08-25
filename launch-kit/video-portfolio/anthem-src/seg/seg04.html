@@ -1,0 +1,38 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="base.css">
+<style>
+  #glass{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:900px;height:900px;border-radius:60px;z-index:10;
+    background:linear-gradient(160deg,rgba(28,36,45,.9),rgba(22,38,51,.9));
+    border:2px solid rgba(0,147,178,.35);box-shadow:0 0 140px rgba(0,147,178,.25),inset 0 0 120px rgba(0,115,150,.12);
+    display:flex;align-items:center;justify-content:center;flex-direction:column}
+  #num{font-size:380px;font-weight:800;letter-spacing:-.04em;color:#F2F5F5;
+    font-variant-numeric:tabular-nums;line-height:1;text-shadow:0 0 80px rgba(0,147,178,.65)}
+  #lab{font-size:44px;font-weight:500;color:#999EA8;letter-spacing:.34em;text-transform:uppercase;margin-top:26px}
+  .ring{position:absolute;left:50%;top:50%;width:900px;height:900px;border:3px solid rgba(212,235,142,.8);
+    border-radius:60px;transform:translate(-50%,-50%);opacity:0;z-index:9}
+  #trail{position:absolute;left:0;right:0;top:79%;text-align:center;font-size:47px;font-weight:600;
+    color:#5b6773;letter-spacing:.12em;z-index:12;font-variant-numeric:tabular-nums}
+  #trail b{color:#D4EB8E;font-weight:800}
+</style></head>
+<body><div class="stage">
+  <canvas class="bg" id="cv"></canvas>
+  <div id="glass"><div id="num">1</div><div id="lab">days sober</div></div>
+  <div id="trail">1&ensp;·&ensp;7&ensp;·&ensp;30&ensp;·&ensp;90&ensp;·&ensp;<b>365</b></div>
+  <div class="dip" id="dip"></div>
+</div>
+<script src="lib.js"></script>
+<script>
+/* SEG-04 · 4.5s · the milestone counter: 1 → 7 → 30 → 90 → 365, pulse on each landing */
+startWaves(document.getElementById('cv'));
+dipIn(dip, .35);
+const steps = [[.45, 1], [1.15, 7], [1.85, 30], [2.55, 90], [3.3, 365]];
+const num = document.getElementById('num');
+for (const [t, v] of steps) at(t, () => {
+  num.textContent = v;
+  num.animate([{ transform: 'scale(.92)', opacity: .6 }, { transform: 'scale(1.04)', opacity: 1 }, { transform: 'scale(1)' }], { duration: 420, easing: 'cubic-bezier(.2,.8,.2,1)' });
+  const r = document.createElement('div'); r.className = 'ring'; document.querySelector('.stage').appendChild(r);
+  r.animate([{ opacity: .9, transform: 'translate(-50%,-50%) scale(1)' }, { opacity: 0, transform: 'translate(-50%,-50%) scale(1.28)' }], { duration: 700, easing: 'ease-out' }).onfinish = () => r.remove();
+  if (v === 365) { num.style.color = '#D4EB8E'; num.style.textShadow = '0 0 90px rgba(212,235,142,.55)'; }
+});
+dipOut(dip, 4.12, .35);
+</script></body></html>

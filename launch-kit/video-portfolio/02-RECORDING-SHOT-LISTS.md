@@ -148,15 +148,12 @@ Screenshots from the simulator: **⌘S** saves a PNG to the Desktop at full reso
 
 ---
 
-## Part 6 — Android 🚨 read this
+## Part 6 — Android
 
-**There is no Android app in this codebase — Milton Nation is iOS/SwiftUI only.** So there is no Android screen to record today, and we should never fake one (mock Android chrome around iOS footage reads as deceptive, and Google requires real screenshots for a Play listing anyway).
+**Per Ezra (2026-08-25): the app is live on BOTH the App Store and Google Play.** The Android build lives outside this repo (this codebase is the iOS/SwiftUI app), so end-cards use both official store badges, and captions say "available now."
 
-The Android portfolio strategy until an Android build exists:
+To build the Android recording set:
 
-1. Every script in `03-VIDEO-SCRIPTS.md` is platform-neutral except the end-card. Produce everything now with the **App Store** end-card.
-2. For Android-audience placements, use the alternate end-card: **"iOS today · Android coming soon"** with an email/SMS notify-me line — that's an honest ad and it builds a warm Android waitlist.
-3. The announcement videos (A-1, A-2) barely show device chrome — they work for both audiences as-is.
-4. The moment an Android build exists, this same shot list transfers 1:1 (record via Android Studio emulator + `adb` or scrcpy; the flows and scripts stay identical) — swap end-cards, re-export, done.
-
-If an Android build DOES exist somewhere outside this repo — tell Claude where, and this section gets replaced with a real Android capture path.
+1. Every script in `03-VIDEO-SCRIPTS.md` is platform-neutral except the end-card — the whole slate already works for Android audiences with the dual-badge end-card.
+2. For true Android footage, this same shot list transfers 1:1: run the Android app in an Android Studio emulator and record with `adb shell screenrecord` (or scrcpy) — same flows, same beats, Material chrome instead of iOS.
+3. Still needed from Ezra: the **App Store link, the Google Play link**, and where the Android project lives — then this section gets exact Android capture steps and the captions get real store URLs/QR codes.

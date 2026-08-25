@@ -51,8 +51,8 @@ Open `02-RECORDING-SHOT-LISTS.md` and go top to bottom:
 
 ## ❓ Questions for you (answer whenever — the kit works either way)
 
-1. **Android:** this repo is iOS-only. Is there an Android build anywhere, or is Android a "coming soon" story for now? (The kit currently handles it honestly as "coming soon" — see Part 6 of the shot list.)
-2. **Launch status:** has the app been submitted/approved since the July docs? Changes whether end-cards say "Download now" or "Coming soon," and whether `DEMO_BYPASS` is still on for Path B recording.
+1. **Store links (answered "live on both stores" 2026-08-25 — thank you):** send the App Store URL and the Google Play URL so captions, end-cards, and QR codes can carry real links — and point Claude at where the Android project lives for the Android recording set.
+2. **Demo bypass:** since the app is live, is `DEMO_BYPASS_ENABLED` off in prod? (It should be.) If so, Path B recording uses real staff test accounts instead of code `000000`.
 3. **Tagline:** the app's login screen says **"Driven by purpose. Committed to care."** Want that as the official campaign tagline, or should the videos lead with "Recovery is stronger together"? (Scripts currently use both, in different spots.)
 4. **The brand display font:** the "milton" wordmark is custom lettering. If you know the font name (check `BRAND_SHEET.png`), tell Claude and it goes in the brand kit; until then videos use the logo files + SF Pro and never re-typeset the wordmark.
 5. **Want a real on-device capture path?** If you'd rather record on your physical iPhone, Claude can add a DEBUG-only "marketing capture" toggle that disables the screen-recording block (mock data only, so no PHI exposure). Say the word.

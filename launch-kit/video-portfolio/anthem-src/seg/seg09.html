@@ -1,0 +1,106 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="base.css">
+<style>
+  #pvp{position:absolute;left:40px;right:40px;top:24px;bottom:10px;overflow:hidden}
+  #pscroll{transition:transform 1.5s cubic-bezier(.33,.72,.22,1);display:flex;flex-direction:column}
+  .avwrap{align-self:center;position:relative;margin-top:10px}
+  .pav{width:170px;height:170px;border-radius:50%;background:linear-gradient(135deg,#0093B2,#56B093);
+    color:#fff;display:flex;align-items:center;justify-content:center;font-size:70px;font-weight:600}
+  .cam{position:absolute;right:-6px;bottom:-2px;width:60px;height:60px;border-radius:50%;background:var(--cyan);
+    border:5px solid var(--dbg);display:flex;align-items:center;justify-content:center;font-size:28px}
+  .ptitle{align-self:center;font-size:42px;font-weight:600;margin-top:20px;color:var(--dtx)}
+  .puser{align-self:center;color:var(--cyan);font-size:28px;margin-top:4px}
+  .pmail{align-self:center;color:var(--dtx2);font-size:25px;margin-top:2px}
+  .bhead{display:flex;align-items:center;gap:14px;font-size:31px;font-weight:600;color:var(--dtx)}
+  .pts{margin-left:auto;color:#D4EB8E;font-weight:800;font-size:33px}
+  .prow2{display:flex;justify-content:space-between;font-size:26px;color:var(--dtx2);margin:22px 0 12px}
+  .prow2 b{color:var(--dtx)}
+  .bar{height:16px;border-radius:8px;background:#22303C;overflow:hidden}
+  .fill{height:100%;width:0;border-radius:8px;background:linear-gradient(90deg,#007396,#56B093,#D4EB8E);transition:width 1.4s cubic-bezier(.2,.7,.2,1)}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:26px;margin-top:28px}
+  .bd{display:flex;flex-direction:column;align-items:center;gap:8px}
+  .bico{width:126px;height:126px;border-radius:34px;background:#22303C;display:flex;align-items:center;justify-content:center;font-size:60px;position:relative}
+  .bd span{font-size:22px;color:var(--dtx2);font-weight:500}
+  .dim{opacity:.28}
+  .earned{position:absolute;left:50%;bottom:-14px;transform:translateX(-50%) scale(0);background:var(--sage);
+    color:#fff;border-radius:999px;padding:5px 18px;font-size:20px;font-weight:700;white-space:nowrap}
+  .htitle{display:flex;align-items:center;font-size:30px;font-weight:600;color:var(--dtx)}
+  .goal{margin-left:auto;font-size:24px;color:var(--dtx2);font-weight:500}
+  .hrow{display:flex;align-items:center;gap:20px;padding:18px 0;border-bottom:1px solid var(--dline);font-size:27px;color:var(--dtx)}
+  .hrow:last-child{border-bottom:0}
+  .hrow .em{font-size:40px}
+  .hrow .hsub{display:block;font-size:23px;color:var(--dtx2)}
+  .hpts{margin-left:auto;color:#D4EB8E;font-weight:700}
+  .irow{display:flex;justify-content:space-between;padding:20px 0;border-bottom:1px solid var(--dline);font-size:27px}
+  .irow:last-child{border-bottom:0}
+  .irow span{color:var(--dtx2)}.irow b{font-weight:600;color:var(--dtx)}
+  .acct .hrow{justify-content:space-between}
+  .mcard{margin-top:28px}
+</style></head>
+<body><div class="stage">
+  <canvas class="bg" id="cv"></canvas>
+  <div class="cap cap-bottom" id="c1">proof, in your <span class="hi">pocket</span></div>
+  <div class="dip" id="dip"></div>
+</div>
+<script src="lib.js"></script>
+<script>
+/* SEG-09 · 6.0s · the real Profile screen, scrolled naturally; the One Year badge earns itself */
+startWaves(document.getElementById('cv'));
+mkPhone({ theme: 'dark', active: 'Profile' });
+document.getElementById('content').innerHTML = `
+<div id="pvp"><div id="pscroll">
+  <div class="avwrap"><div class="pav">A</div><div class="cam">&#128247;</div></div>
+  <div class="ptitle">Alex Demo</div>
+  <div class="puser">@recovery_warrior</div>
+  <div class="pmail">alex.demo@example.com</div>
+  <div class="mcard" style="padding:36px 40px">
+    <div class="bhead">&#11088; Points &amp; Badges <span class="pts">1,240 pts</span></div>
+    <div class="prow2"><span>Next: &#128293; <b>Streak 500</b></span><span><b>365</b>/500</span></div>
+    <div class="bar"><div class="fill" id="fill"></div></div>
+    <div class="grid">
+      <div class="bd"><div class="bico">&#127793;</div><span>Seedling</span></div>
+      <div class="bd"><div class="bico">&#127807;</div><span>Sprout</span></div>
+      <div class="bd"><div class="bico">&#127800;</div><span>Bloom</span></div>
+      <div class="bd" id="star"><div class="bico">&#127942;<span class="earned" id="ep">Earned!</span></div><span>One Year</span></div>
+      <div class="bd dim"><div class="bico">&#128293;</div><span>Streak 500</span></div>
+      <div class="bd dim"><div class="bico">&#127775;</div><span>Rising</span></div>
+      <div class="bd dim"><div class="bico">&#128142;</div><span>Pillar</span></div>
+      <div class="bd dim"><div class="bico">&#128081;</div><span>Legend</span></div>
+    </div>
+  </div>
+  <div class="mcard" style="padding:34px 40px">
+    <div class="htitle">How to Earn Badges <span class="goal">Goal: 5,000 pts</span></div>
+    <div class="hrow"><span class="em">&#128293;</span><span>Daily Login<span class="hsub">Log in once per day</span></span><span class="hpts">+10 pts</span></div>
+    <div class="hrow"><span class="em">&#128221;</span><span>Community Post<span class="hsub">Share in the community</span></span><span class="hpts">+15 pts</span></div>
+    <div class="hrow"><span class="em">&#10084;&#65039;</span><span>Give Support<span class="hsub">Like a peer's post</span></span><span class="hpts">+5 pts</span></div>
+    <div class="hrow"><span class="em">&#127942;</span><span>Sobriety Milestone<span class="hsub">Hit a recovery milestone</span></span><span class="hpts">+50 pts</span></div>
+  </div>
+  <div class="mcard" style="padding:20px 40px">
+    <div class="irow"><span>Phone</span><b>&bull;&bull;&bull; &bull;&bull;&bull; 4567</b></div>
+    <div class="irow"><span>Sobriety Date</span><b>Aug 25, 2025</b></div>
+    <div class="irow"><span>Program</span><b>Milton Recovery Residential</b></div>
+    <div class="irow"><span>Days Since Discharge</span><b>363</b></div>
+  </div>
+  <div class="mcard acct" style="padding:16px 40px">
+    <div class="hrow">Edit Profile <span style="color:var(--dtx2)">&#8250;</span></div>
+    <div class="hrow">Settings <span style="color:var(--dtx2)">&#8250;</span></div>
+    <div class="hrow" style="color:#F1948A">Delete Account <span style="color:var(--dtx2)">&#8250;</span></div>
+  </div>
+  <div style="height:40px"></div>
+</div></div>`;
+dipIn(dip, .4);
+/* natural scroll: header → badges (earn moment) → how-to-earn + info */
+const sc = document.getElementById('pscroll');
+at(1.0, () => sc.style.transform = 'translateY(-430px)');
+at(1.7, () => {
+  const b = document.querySelector('#star .bico'), ep = document.getElementById('ep');
+  b.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.22)' }, { transform: 'scale(1.06)' }],
+    { duration: 700, fill: 'forwards', easing: 'cubic-bezier(.2,.8,.2,1)' });
+  b.animate([{ boxShadow: '0 0 0 0 rgba(212,235,142,.8)' }, { boxShadow: '0 0 60px 14px rgba(212,235,142,0)' }], { duration: 1100 });
+  ep.animate([{ transform: 'translateX(-50%) scale(0)' }, { transform: 'translateX(-50%) scale(1.12)' }, { transform: 'translateX(-50%) scale(1)' }], { duration: 500, fill: 'forwards', delay: 240, easing: 'cubic-bezier(.2,.8,.2,1)' });
+});
+at(1.5, () => document.getElementById('fill').style.width = '73%');
+at(3.6, () => sc.style.transform = 'translateY(-1150px)');
+at(2.0, () => c1.classList.add('rise'));
+at(5.35, () => c1.classList.add('fadeout'));
+dipOut(dip, 5.62, .35);
+</script></body></html>

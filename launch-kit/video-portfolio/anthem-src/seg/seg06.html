@@ -1,0 +1,79 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="base.css">
+<style>
+  .ionav{display:flex;align-items:center;padding:2px 4px 18px;border-bottom:1px solid var(--line)}
+  .back{color:var(--teal);font-size:52px;font-weight:400;width:90px;line-height:1}
+  .navmid{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:-6px}
+  .cav{width:92px;height:92px;border-radius:50%;background:var(--sage);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:38px}
+  .cname{font-weight:600;font-size:28px}
+  .crole{color:var(--tx2);font-size:22px;margin-top:-4px}
+  .vid{width:90px;text-align:right;color:var(--teal);font-size:40px}
+  #chatvp{position:absolute;left:40px;right:40px;top:250px;bottom:250px;overflow:hidden}
+  #thread{position:absolute;left:0;right:0;bottom:0;display:flex;flex-direction:column;gap:16px;
+    transition:transform 1.4s cubic-bezier(.33,.72,.22,1)}
+  .bub{max-width:76%;padding:22px 30px;font-size:29px;line-height:1.4;position:relative}
+  .them{align-self:flex-start;background:#E9E9EB;color:#101820;border-radius:34px 34px 34px 10px}
+  .me{align-self:flex-end;background:var(--teal);color:#fff;border-radius:34px 34px 10px 34px}
+  .tstamp{font-size:21px;color:var(--tx2);margin:-6px 10px 4px}
+  .tstamp.r{align-self:flex-end}
+  .sep{align-self:center;font-size:22px;color:var(--tx2);font-weight:500;margin:10px 0 4px}
+  #typing{align-self:flex-start;background:#E9E9EB;border-radius:34px 34px 34px 10px;padding:24px 32px;display:none;gap:10px}
+  #typing i{width:14px;height:14px;border-radius:50%;background:#9aa4ad;display:inline-block;animation:bl 1s infinite}
+  #typing i:nth-child(2){animation-delay:.15s}#typing i:nth-child(3){animation-delay:.3s}
+  @keyframes bl{0%,100%{opacity:.35;transform:translateY(0)}50%{opacity:1;transform:translateY(-6px)}}
+  .inbar{position:absolute;left:40px;right:40px;bottom:120px;display:flex;gap:18px;align-items:center}
+  .plus{width:66px;height:66px;border-radius:50%;background:#E9E9EB;color:#6B7280;display:flex;align-items:center;justify-content:center;font-size:40px}
+  .field{flex:1;background:#fff;border:2px solid var(--line);border-radius:999px;padding:20px 32px;font-size:28px;color:var(--tx2)}
+  .send{width:70px;height:70px;border-radius:50%;background:var(--teal);color:#fff;display:flex;align-items:center;justify-content:center;font-size:38px;font-weight:700}
+  .foot988{position:absolute;left:0;right:0;bottom:0;height:76px;background:#FDEDEC;color:#C0392B;
+    display:flex;align-items:center;justify-content:center;gap:14px;font-size:26px;font-weight:600}
+</style></head>
+<body><div class="stage">
+  <canvas class="bg" id="cv"></canvas>
+  <div class="cap cap-bottom" id="c1">your care team. <span class="hi">one tap.</span></div>
+  <div class="dip" id="dip"></div>
+</div>
+<script src="lib.js"></script>
+<script>
+/* SEG-06 · 6.5s · iOS-native care-team chat: history scroll → typing → the reply lands */
+startWaves(document.getElementById('cv'));
+mkPhone({ theme: 'light', active: 'Chat' });
+document.getElementById('content').innerHTML = `
+  <div class="ionav">
+    <div class="back">&#8249;</div>
+    <div class="navmid"><div class="cav">DC</div><div class="cname">Dana Case</div><div class="crole">Case Manager &middot; Milton Team Florida</div></div>
+    <div class="vid"><svg width="52" height="52" viewBox="0 0 24 24" fill="#007396"><path d="M3.5 6.5h11a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2zm14 4.2 4-2.6a.7.7 0 0 1 1.1.6v6.6a.7.7 0 0 1-1.1.6l-4-2.6z"/></svg></div>
+  </div>
+  <div id="chatvp"><div id="thread">
+    <div class="bub them">Morning Alex! Group is at 6 tonight &mdash; Community Hall.</div>
+    <div class="tstamp">8:12 AM</div>
+    <div class="bub me">I'll be there &#128077;</div>
+    <div class="tstamp r">8:15 AM</div>
+    <div class="sep">Today 9:02 AM</div>
+    <div class="bub them">Hey Alex &mdash; saw you hit 365 today. That is a big, big deal. &#127881;</div>
+    <div class="bub them">How are you feeling about the milestone?</div>
+    <div class="tstamp">9:03 AM</div>
+    <div id="typing"><i></i><i></i><i></i></div>
+    <div class="bub me" id="mymsg" style="opacity:0;transform:translateY(140px) scale(.92)">Honestly? Grateful. Thanks for checking in &#128591;</div>
+    <div class="tstamp r" id="myts" style="opacity:0">Delivered</div>
+  </div></div>
+  <div class="inbar"><div class="plus">+</div><div class="field" id="fld">Type a message...</div><div class="send">&#8593;</div></div>
+  <div class="foot988">&#9888;&#65039;&nbsp; Need immediate help? &nbsp;<u>Call 988</u></div>`;
+dipIn(dip, .4);
+/* start scrolled up in history, settle down to the live end of the thread */
+const th = document.getElementById('thread');
+th.style.transform = 'translateY(470px)';
+at(0.9, () => th.style.transform = 'translateY(0)');
+at(2.3, () => document.getElementById('typing').style.display = 'inline-flex');
+at(3.0, () => { fld.textContent = 'Honestly? Grateful…'; fld.style.color = '#101820'; });
+at(3.7, () => {
+  document.getElementById('typing').style.display = 'none';
+  fld.textContent = 'Type a message...'; fld.style.color = '';
+  const m = document.getElementById('mymsg');
+  m.style.transition = 'opacity .3s, transform .6s cubic-bezier(.3,.9,.3,1.08)';
+  m.style.opacity = '1'; m.style.transform = 'translateY(0) scale(1)';
+});
+at(4.4, () => { const t = document.getElementById('myts'); t.style.transition = 'opacity .5s'; t.style.opacity = '1'; });
+at(1.6, () => c1.classList.add('rise'));
+at(5.85, () => c1.classList.add('fadeout'));
+dipOut(dip, 6.12, .35);
+</script></body></html>

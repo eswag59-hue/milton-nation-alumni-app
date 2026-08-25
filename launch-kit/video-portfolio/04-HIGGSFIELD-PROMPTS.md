@@ -107,7 +107,7 @@ Lines to render (one card each): `nobody recovers alone` · `we built a nation` 
 | H-3 2am 15s | P-11, P-13 ("2:04 AM", "help is here") | ALUM-07 (modal only, no dialer) | iOS |
 | H-4 Pocket blitz 15s | P-02 slam open | 6 × 1.5s feature cuts | iOS |
 
-**End-card build (make once, reuse):** `AppIcon.png` centered on P-01 wave loop → wordmark below → Apple's official "Download on the App Store" badge (download from Apple's marketing-resources page — never redraw it) → legal line "Free for verified alumni of Milton Recovery Centers & Milton Jefferson." Android variant: swap badge for "Android — coming soon" until a Play listing exists.
+**End-card build (make once, reuse):** `AppIcon.png` centered on P-01 wave loop → wordmark below → "Available now · Free for verified alumni" → **both official badges side by side** — Apple "Download on the App Store" + Google "Get it on Google Play" (official artwork only, never redrawn; the app is live on both stores per Ezra, 2026-08-25) → legal line "Free for verified alumni of Milton Recovery Centers & Milton Jefferson."
 
 **Voiceover:** if using Higgsfield/ElevenLabs-style TTS, direct it: *"warm, mid-30s-to-40s, unhurried, quietly confident, speaks like a trusted friend, slight smile, never announcer-y."* Both a male and a female read; pick per platform. All VO lines are in `03-VIDEO-SCRIPTS.md`.
 
@@ -122,5 +122,5 @@ Lines to render (one card each): `nobody recovers alone` · `we built a nation` 
 - [ ] "HIPAA-aware," never "HIPAA-certified" · no "treatment/cure" claims
 - [ ] Crisis frames: slow pacing, no glitch/strobe effects, never imply Milton staff are 24/7
 - [ ] AI-people scenes read as everyday life; "Dramatization" caption where a story is enacted
-- [ ] Apple badge is the official artwork; no Play badge until the app is actually on Google Play
+- [ ] Store badges are the official Apple/Google artwork, never redrawn
 - [ ] 17+ rating respected in placement targeting

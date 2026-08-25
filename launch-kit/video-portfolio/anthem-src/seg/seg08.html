@@ -1,0 +1,45 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="base.css">
+<style>
+  #darklayer{position:absolute;inset:9px;border-radius:110px;overflow:hidden;
+    clip-path:circle(0px at 78% 10%);transition:clip-path 1.7s cubic-bezier(.4,.1,.2,1)}
+  .moon{position:absolute;top:186px;right:60px;width:92px;height:92px;border-radius:50%;
+    background:rgba(34,48,60,.92);color:#D4EB8E;display:flex;align-items:center;justify-content:center;
+    font-size:46px;z-index:31;box-shadow:0 6px 24px rgba(0,0,0,.4)}
+</style></head>
+<body><div class="stage">
+  <canvas class="bg" id="cv"></canvas>
+  <div class="cap cap-bottom" id="c1">built for <span class="hi">every hour</span></div>
+  <div class="dip" id="dip"></div>
+</div>
+<script src="lib.js"></script>
+<script>
+/* SEG-08 · 5.5s · the full Home washes from day to night in one sweep */
+startWaves(document.getElementById('cv'));
+const ph = mkPhone({ theme: 'light', active: 'Home' });
+document.getElementById('content').innerHTML = `<div style="transform:translateY(-260px)">${homeHTML('l', false)}</div>`;
+
+const screen = ph.querySelector('.screen');
+const darkLayer = document.createElement('div');
+darkLayer.id = 'darklayer';
+darkLayer.innerHTML = `
+  <div class="app dark" style="position:absolute;inset:0">
+    <div class="apphead"><img src="logo_dark.png" style="height:74px"></div>
+    <div class="gradbar"></div>
+    <div class="content dark"><div style="transform:translateY(-260px)">${homeHTML('d', true)}</div></div>
+    <div class="tabbar dark" style="position:absolute;left:0;right:0;bottom:0">${
+      [['Home','home',1],['Community','people',0],['Meetings','cal',0],['Chat','msg',0],['Profile','person',0]]
+      .map(([n,i,on])=>`<div class="tab" style="color:${on?'#0093B2':'#999EA8'}">${ICONS[i]}<span>${n}</span></div>`).join('')}</div>
+  </div>
+  <div class="status" style="color:#F2F5F5"><span>9:41</span>${SB_RIGHT}</div>`;
+screen.appendChild(darkLayer);
+const moon = document.createElement('div'); moon.className = 'moon'; moon.innerHTML = '&#9790;';
+screen.appendChild(moon);
+dipIn(dip, .4);
+at(1.4, () => {
+  moon.animate([{ transform: 'scale(1)' }, { transform: 'scale(.84)' }, { transform: 'scale(1)' }], { duration: 340 });
+  darkLayer.style.clipPath = 'circle(2300px at 78% 10%)';
+});
+at(1.1, () => c1.classList.add('rise'));
+at(4.85, () => c1.classList.add('fadeout'));
+dipOut(dip, 5.12, .35);
+</script></body></html>
