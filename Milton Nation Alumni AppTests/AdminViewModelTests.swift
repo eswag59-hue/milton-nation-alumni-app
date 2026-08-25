@@ -660,8 +660,13 @@ struct AdminViewModelTests {
         #expect(vm.badgeToastMessage.contains("Alice"))
         #expect(vm.badgeToastMessage.contains("First Step"))
 
-        // showBadgeToast is set via DispatchQueue.main.asyncAfter(0.5s), wait for it
-        try await Task.sleep(for: .milliseconds(800))
+        // showBadgeToast is set via DispatchQueue.main.asyncAfter(0.5s) — poll for it
+        // rather than assuming a fixed margin holds on a loaded CI simulator.
+        let deadline = Date().addingTimeInterval(10)
+        while !vm.showBadgeToast && Date() < deadline {
+            try await Task.sleep(for: .milliseconds(80))
+            await Task.yield()
+        }
         #expect(vm.showBadgeToast == true)
     }
 

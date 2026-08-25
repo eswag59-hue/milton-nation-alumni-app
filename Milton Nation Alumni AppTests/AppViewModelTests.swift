@@ -117,7 +117,8 @@ struct AppViewModelTests {
         user.totalPoints = 100
         vm.login(user: user)
 
-        // Give any async work time
+        // Negative assertion: points must NOT change, so there is no state
+        // transition to poll for — a fixed window is the only option here.
         try await Task.sleep(for: .milliseconds(1200))
 
         // Points should remain the same since we already got them today

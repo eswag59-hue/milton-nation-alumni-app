@@ -5,10 +5,14 @@ import Foundation
 @Suite("MeetingsViewModel Tests")
 struct MeetingsViewModelTests {
 
-    /// Waits for an unstructured MainActor Task spawned inside a ViewModel to complete.
-    private func waitForViewModel(ms: Int = 1200) async throws {
-        try await Task.sleep(for: .milliseconds(ms))
-        for _ in 0..<10 { await Task.yield() }
+    /// Polls until `cond` holds (or the deadline passes) — fixed sleeps raced the
+    /// ViewModel's unstructured Tasks on slow shared CI simulators.
+    private func waitUntil(timeout: Double = 10, _ cond: () -> Bool) async throws {
+        let deadline = Date().addingTimeInterval(timeout)
+        while !cond() && Date() < deadline {
+            try await Task.sleep(for: .milliseconds(80))
+            await Task.yield()
+        }
     }
 
     // MARK: - Loading
@@ -17,8 +21,7 @@ struct MeetingsViewModelTests {
     func loadMeetings() async throws {
         let vm = MeetingsViewModel(meetingService: MockMeetingService())
         vm.loadMeetings()
-        // Wait for async task
-        try await waitForViewModel()
+        try await waitUntil { !vm.meetings.isEmpty && !vm.isLoading }
         #expect(!vm.meetings.isEmpty)
         #expect(!vm.isLoading)
     }
@@ -27,7 +30,7 @@ struct MeetingsViewModelTests {
     func loadMeetingsFinishesLoading() async throws {
         let vm = MeetingsViewModel(meetingService: MockMeetingService())
         vm.loadMeetings()
-        try await waitForViewModel()
+        try await waitUntil { !vm.isLoading && !vm.meetings.isEmpty }
         #expect(vm.isLoading == false)
     }
 
@@ -65,7 +68,7 @@ struct MeetingsViewModelTests {
     func filteredNoFilter() async throws {
         let vm = MeetingsViewModel(meetingService: MockMeetingService())
         vm.loadMeetings()
-        try await waitForViewModel()
+        try await waitUntil { !vm.meetings.isEmpty }
         #expect(vm.filteredMeetings.count == vm.meetings.count)
     }
 
@@ -90,7 +93,7 @@ struct MeetingsViewModelTests {
     func filterBySearch() async throws {
         let vm = MeetingsViewModel(meetingService: MockMeetingService())
         vm.loadMeetings()
-        try await waitForViewModel()
+        try await waitUntil { !vm.meetings.isEmpty }
         guard !vm.meetings.isEmpty else { return }
         let firstTitle = vm.meetings[0].title
         vm.searchText = firstTitle

@@ -5,19 +5,21 @@ import Foundation
 @Suite("HomeViewModel Tests")
 struct HomeViewModelTests {
 
-    /// Waits for an unstructured MainActor Task spawned inside a ViewModel to complete.
-    /// Sleeps long enough for mock async work, then yields multiple times to drain
-    /// any pending MainActor work (e.g., `await MainActor.run { ... }` in the task).
-    private func waitForViewModel() async throws {
-        try await Task.sleep(for: .milliseconds(1200))
-        for _ in 0..<10 { await Task.yield() }
+    /// Polls until `cond` holds (or the deadline passes) — fixed sleeps raced the
+    /// ViewModel's unstructured Tasks on slow shared CI simulators.
+    private func waitUntil(timeout: Double = 10, _ cond: () -> Bool) async throws {
+        let deadline = Date().addingTimeInterval(timeout)
+        while !cond() && Date() < deadline {
+            try await Task.sleep(for: .milliseconds(80))
+            await Task.yield()
+        }
     }
 
     @Test("loadData populates dailyQuote")
     func loadDataQuote() async throws {
         let vm = HomeViewModel()
         vm.loadData()
-        try await waitForViewModel()
+        try await waitUntil { vm.dailyQuote != nil && !vm.isLoading }
         #expect(vm.dailyQuote != nil)
         #expect(!vm.isLoading)
     }
@@ -26,7 +28,7 @@ struct HomeViewModelTests {
     func loadDataAnnouncements() async throws {
         let vm = HomeViewModel()
         vm.loadData()
-        try await waitForViewModel()
+        try await waitUntil { !vm.announcements.isEmpty }
         #expect(!vm.announcements.isEmpty)
     }
 
