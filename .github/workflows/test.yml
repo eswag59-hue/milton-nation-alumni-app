@@ -27,14 +27,12 @@ jobs:
         run: xcodebuild -version
 
       - name: Resolve Swift packages
-        working-directory: "Milton Nation Alumni App"
         run: |
           xcodebuild -resolvePackageDependencies \
             -project "Milton Nation Alumni App.xcodeproj" \
             -scheme "Milton Nation Alumni App"
 
       - name: Build & test
-        working-directory: "Milton Nation Alumni App"
         run: |
           xcodebuild test \
             -project "Milton Nation Alumni App.xcodeproj" \
@@ -53,5 +51,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: TestResults
-          path: "Milton Nation Alumni App/TestResults.xcresult"
+          path: "TestResults.xcresult"
           retention-days: 7
