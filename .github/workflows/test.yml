@@ -42,13 +42,27 @@ jobs:
             -project "Milton Nation Alumni App.xcodeproj" \
             -scheme "Milton Nation Alumni App"
 
+      # Runner images vary in which iPhone models they provision (some carry
+      # iPhone 16, others newer lineups). Pick whatever iPhone simulator the
+      # image actually has instead of hardcoding a model name.
+      - name: Select an iPhone simulator
+        id: sim
+        run: |
+          xcrun simctl list devices available | sed -n '1,25p'
+          UDID=$(xcrun simctl list devices available \
+            | grep -E "^\s*iPhone" | head -1 \
+            | grep -oE "[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}")
+          if [ -z "$UDID" ]; then echo "No iPhone simulator found"; exit 1; fi
+          echo "Chosen simulator UDID: $UDID"
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+
       - name: Build & test
         run: |
           set -o pipefail
           xcodebuild test \
             -project "Milton Nation Alumni App.xcodeproj" \
             -scheme "Milton Nation Alumni App" \
-            -destination "platform=iOS Simulator,name=iPhone 16" \
+            -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.udid }}" \
             -resultBundlePath TestResults.xcresult \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGN_IDENTITY="" \
