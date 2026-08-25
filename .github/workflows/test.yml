@@ -59,10 +59,15 @@ jobs:
       - name: Build & test
         run: |
           set -o pipefail
+          # Serial execution: several suites share mutable singletons
+          # (OfflineCacheService.shared, MockMeetingService) and the ViewModels
+          # still carry data races the compiler flags as future Swift 6 errors.
+          # Run in parallel and a different random handful fails each time.
           xcodebuild test \
             -project "Milton Nation Alumni App.xcodeproj" \
             -scheme "Milton Nation Alumni App" \
             -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.udid }}" \
+            -parallel-testing-enabled NO \
             -resultBundlePath TestResults.xcresult \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGN_IDENTITY="" \
