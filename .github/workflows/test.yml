@@ -26,6 +26,16 @@ jobs:
       - name: Show Xcode version
         run: xcodebuild -version
 
+      # Debug.xcconfig / Release.xcconfig hold local secrets and are gitignored,
+      # but the project's baseConfigurationReference requires the files to exist.
+      # Empty stubs let CI build with the project's own settings.
+      - name: Create xcconfig stubs (real ones are gitignored)
+        run: |
+          mkdir -p "Milton Nation Alumni App/Config"
+          printf '// CI stub — the real xcconfig is local-only and gitignored\n' \
+            | tee "Milton Nation Alumni App/Config/Debug.xcconfig" \
+            > "Milton Nation Alumni App/Config/Release.xcconfig"
+
       - name: Resolve Swift packages
         run: |
           xcodebuild -resolvePackageDependencies \
@@ -34,6 +44,7 @@ jobs:
 
       - name: Build & test
         run: |
+          set -o pipefail
           xcodebuild test \
             -project "Milton Nation Alumni App.xcodeproj" \
             -scheme "Milton Nation Alumni App" \
