@@ -20,8 +20,20 @@ JOST   = HERE / "fonts" / "Jost.ttf"
 # Milton brand ramp, sampled from the app's own gradient bar.
 BRAND = ['#101820', '#165C7D', '#007396', '#0093B2', '#369DA0', '#56B093', '#D4EB8E']
 
-HEADLINE = ["Recovery doesn't", "happen alone."]
-KICKER   = "NOW ON THE APP STORE"
+KICKER = "NOW ON THE APP STORE"
+
+# The six type cards of the 60s film, in order. Each is (slug, lines, size).
+# The throughline is deliberately four sentences long: loneliness, company,
+# the promise, the payoff.
+CARDS = [
+    ("01-day-one",   ["Day one is", "the loneliest day."], 76),
+    ("02-not-alone", ["You're not", "doing this alone."],  76),
+    ("03a-community",["A community."],                     84),
+    ("03b-careteam", ["A care team."],                     84),
+    ("03c-meeting",  ["A meeting tonight."],               76),
+    ("04-counted",   ["Every day,", "counted."],           92),
+    ("05-days",      ["1,096 days."],                      96),
+]
 
 
 def tracked(draw, xy, text, font, fill, track=0.0):
@@ -56,18 +68,24 @@ def white_wordmark(target_w):
     return wm.resize((target_w, int(wm.height * target_w / wm.width)), Image.LANCZOS)
 
 
-def build_headline():
+def build_card(slug, lines, size, y0=None):
+    """One type card, transparent, ready to overlay on a rendered shot."""
     card = Image.new('RGBA', (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(card)
-    f = ImageFont.truetype(str(BODONI), 78)
-    for i, line in enumerate(HEADLINE):
-        tracked(d, (W / 2, 205 + i * 95), line, f, (255, 255, 255, 255), track=1.5)
+    f = ImageFont.truetype(str(BODONI), size)
+    step = int(size * 1.22)
+    # Vertically centre the block in the upper third, above where the device sits.
+    if y0 is None:
+        y0 = 250 - (len(lines) - 1) * step // 2
+    for i, line in enumerate(lines):
+        tracked(d, (W / 2, y0 + i * step), line, f, (255, 255, 255, 255), track=1.5)
     # Soft shadow so the type holds over the volumetric haze.
     blur = card.filter(ImageFilter.GaussianBlur(18))
     ba = np.array(blur)
     shadow = np.dstack([np.zeros_like(ba[:, :, 0])] * 3 + [(ba[:, :, 3] * 0.55).astype('uint8')])
     card = Image.alpha_composite(Image.fromarray(shadow, 'RGBA'), card)
-    card.save(BUILD / "title.png")
+    card.save(BUILD / f"type-{slug}.png")
+    return BUILD / f"type-{slug}.png"
 
 
 def build_endcard():
@@ -88,6 +106,7 @@ def build_endcard():
 
 
 if __name__ == "__main__":
-    build_headline()
+    for slug, lines, size in CARDS:
+        print("wrote", build_card(slug, lines, size))
     build_endcard()
-    print(f"wrote {BUILD/'title.png'} and {BUILD/'endcard.png'}")
+    print("wrote", BUILD / "endcard.png")
