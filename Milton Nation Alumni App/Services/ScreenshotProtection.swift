@@ -47,7 +47,9 @@ private struct ScreenshotProtectionModifier: ViewModifier {
                     for: UIScreen.capturedDidChangeNotification
                 )
             ) { notification in
-                if let screen = notification.object as? UIScreen {
+                if MarketingCapture.isEnabled {
+                    isBeingCaptured = false
+                } else if let screen = notification.object as? UIScreen {
                     isBeingCaptured = screen.isCaptured
                 } else {
                     isBeingCaptured = Self.isCaptured
@@ -57,8 +59,13 @@ private struct ScreenshotProtectionModifier: ViewModifier {
 
     /// iOS 16+ deprecated `UIScreen.screens`; read `isCaptured` via the
     /// connected scene's window instead.
+    ///
+    /// Reports `false` while a PHI-free demo account is signed in, so marketing
+    /// can record the real app. See `MarketingCapture` — every real member is
+    /// still fully protected.
     private static var isCaptured: Bool {
-        UIApplication.shared.connectedScenes
+        guard !MarketingCapture.isEnabled else { return false }
+        return UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
             .first?
             .screen
