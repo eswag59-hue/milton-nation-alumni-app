@@ -145,9 +145,12 @@ DEBUG builds use `MockAuthService` + `MockDataService`. You can sign in with:
 
 | Email | Role |
 |---|---|
-| any email except the two below | Alumni user |
+| any email except the ones below | Alumni user |
 | `admin@milton.com` | Florida admin |
 | `super@milton.com` | Super admin |
+| `therapist@milton.com` | Therapist (staff view) |
+| `case@milton.com` | Case manager (staff view) |
+| `counselor@milton.com` | Counselor (staff view) |
 
 Any 6-digit number works as the OTP.
 

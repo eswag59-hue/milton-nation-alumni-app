@@ -24,6 +24,12 @@ final class MockAuthService: AuthServiceProtocol {
             user = MockData.adminUser
         case "super@milton.com":
             user = MockData.superAdminUser
+        case "therapist@milton.com":
+            user = MockData.therapist
+        case "case@milton.com":
+            user = MockData.caseManager
+        case "counselor@milton.com":
+            user = MockData.counselor
         default:
             user = MockData.currentUser
         }

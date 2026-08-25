@@ -104,14 +104,20 @@ final class LoginViewModel {
         // ── DEBUG FAST-PATH ──────────────────────────────────────────────────
         // Skip network auth entirely. Works on simulator AND real device,
         // regardless of build scheme or Supabase configuration.
-        //   Regular user  →  any email except the two below
-        //   Admin         →  admin@milton.com   (any password)
-        //   Super Admin   →  super@milton.com   (any password)
+        //   Regular user  →  any email except the ones below
+        //   Admin         →  admin@milton.com     (any password)
+        //   Super Admin   →  super@milton.com     (any password)
+        //   Therapist     →  therapist@milton.com (any password)
+        //   Case Manager  →  case@milton.com      (any password)
+        //   Counselor     →  counselor@milton.com (any password)
         let debugUser: User
         switch email.lowercased() {
-        case "admin@milton.com":  debugUser = MockData.adminUser
-        case "super@milton.com":  debugUser = MockData.superAdminUser
-        default:                  debugUser = MockData.currentUser
+        case "admin@milton.com":      debugUser = MockData.adminUser
+        case "super@milton.com":      debugUser = MockData.superAdminUser
+        case "therapist@milton.com":  debugUser = MockData.therapist
+        case "case@milton.com":       debugUser = MockData.caseManager
+        case "counselor@milton.com":  debugUser = MockData.counselor
+        default:                      debugUser = MockData.currentUser
         }
         await MainActor.run {
             failedAttempts = 0
