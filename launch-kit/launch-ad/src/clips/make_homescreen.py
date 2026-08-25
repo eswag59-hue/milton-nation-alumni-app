@@ -245,5 +245,55 @@ def build():
     bg.convert("RGB").save(OUT/"homescreen.png")
     print("wrote", OUT/"homescreen.png")
 
+def lockscreen():
+    """Same wallpaper as the home screen, so the unlock reads as one continuous
+    surface rather than a cut between two different pictures."""
+    bg = wallpaper().convert("RGBA")
+    d = ImageDraw.Draw(bg)
+
+    # status bar
+    f = ImageFont.truetype(JOST, 46)
+    d.text((104, 74), "9:41", font=f, fill=(255,255,255), anchor="lm")
+    for i, h in enumerate((16, 24, 32, 40)):
+        x = W-300+i*22
+        d.rounded_rectangle([x, 88-h, x+13, 88], 4, fill=(255,255,255,235 if i < 3 else 120))
+    d.rounded_rectangle([W-196, 62, W-120, 96], 12, outline=(255,255,255,190), width=3)
+    d.rounded_rectangle([W-192, 66, W-146, 92], 9, fill=(255,255,255,235))
+
+    # padlock
+    cx, cy = W/2, 470
+    d.rounded_rectangle([cx-30, cy-6, cx+30, cy+40], 10, fill=(255,255,255,235))
+    d.arc([cx-20, cy-40, cx+20, cy+6], 180, 360, fill=(255,255,255,235), width=9)
+
+    # the time — light weight, very large, the way a lock screen carries it
+    ft = ImageFont.truetype(JOST, 430)
+    d.text((cx, 900), "9:41", font=ft, fill=(255,255,255,252), anchor="mm")
+    fd = ImageFont.truetype(JOST, 64)
+    d.text((cx, 630), "Tuesday, August 25", font=fd, fill=(255,255,255,215), anchor="mm")
+
+    # frosted quick-action buttons
+    for dx in (-1, 1):
+        bx, by, r = int(cx + dx*230), 2560, 86
+        reg = bg.crop((bx-r, by-r, bx+r, by+r)).filter(ImageFilter.GaussianBlur(30))
+        reg = Image.alpha_composite(reg.convert("RGBA"),
+                                    Image.new("RGBA", reg.size, (255,255,255,42)))
+        m = Image.new("L", reg.size, 0)
+        ImageDraw.Draw(m).ellipse([0,0,reg.width-1,reg.height-1], fill=255)
+        bg.paste(reg, (bx-r, by-r), m)
+        if dx < 0:                                   # torch
+            d.rounded_rectangle([bx-16, by-26, bx+16, by+8], 8, fill=(255,255,255,240))
+            d.polygon([(bx-10, by+8),(bx+10, by+8),(bx+6, by+30),(bx-6, by+30)],
+                      fill=(255,255,255,240))
+        else:                                        # camera
+            d.ellipse([bx-30, by-22, bx+30, by+30], outline=(255,255,255,240), width=8)
+            d.ellipse([bx-13, by-5, bx+13, by+21], fill=(255,255,255,240))
+
+    d.text((cx, 2726), "swipe up to open", font=ImageFont.truetype(JOST, 38),
+           fill=(255,255,255,190), anchor="mm")
+    d.rounded_rectangle([W/2-134, 2800, W/2+134, 2812], 6, fill=(255,255,255,225))
+    bg.convert("RGB").save(OUT/"lockscreen.png")
+    print("wrote", OUT/"lockscreen.png")
+
 if __name__ == "__main__":
     build()
+    lockscreen()
