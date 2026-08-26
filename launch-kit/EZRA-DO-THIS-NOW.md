@@ -253,3 +253,38 @@ which is iOS-only, as you specified — doesn't depend on them, so it isn't bloc
 | Code `000000` rejected | The server-side bypass flag flipped off | Stop and tell me. I can see it in the logs and will say so within a minute |
 | Profile shows 13 days | Staging didn't apply | Stop and tell me — don't shoot, I'll re-stage in about 30 seconds |
 | A black screen while recording | The PHI protection, working correctly | Expected. See above — recording is out of scope today |
+
+---
+
+## Part 5 — Scroll recordings (5 minutes, only when you want the long scroll)
+
+You asked the film to "scroll through the whole home screen." Right now it can't
+— not properly. The screenshots you sent are single-viewport stills: 1320×2868,
+which is exactly the phone's screen. There is no content below the fold in them
+to scroll *to*. Panning a still just drags its own tab bar up into frame, which
+reads as two tab bars stacked.
+
+So in the current cut each screen moves a little — the content pans inside the
+phone while the status bar and tab bar stay pinned at true size — but it is a
+short move, not a full scroll. That's the honest ceiling on still screenshots.
+
+To get a real full-length scroll I need the content that lives below the fold.
+Five screen recordings, about 45 seconds total:
+
+1. Open **Control Centre** → tap the **record** button (⏺).
+2. Open the app on **Home**. Wait one second without touching it.
+3. Scroll slowly to the bottom of the page — slow and even, roughly three
+   seconds top to bottom. Do not flick; a flick blurs every frame.
+4. Wait one second at the bottom, then stop.
+5. Repeat for **Community**, **Meetings**, **Chat**, **Profile**.
+
+Send the five files. I stitch each recording into one tall image of the full
+page, and then the scroll in the film is real footage of your app, at full
+length, at whatever pace the edit wants.
+
+**One more, if you can:** on **Meetings**, tap **Nearby** and record scrolling
+that list too. The nearby AA/NA screen in the current cut is rendered from the
+app's own shipped SwiftUI — the real card layout, the real AA-blue / NA-green
+fellowship badges, the real distance pills, the real Directions button — but the
+meetings listed in it are stand-ins. A recording replaces them with whatever
+BMLT actually returns near you, and that beat stops being a reconstruction.
