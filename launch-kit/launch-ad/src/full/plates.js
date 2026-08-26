@@ -32,3 +32,15 @@ function light(g, im, cx, cy, w, alpha, rot, mode){
   g.drawImage(im, -w/2, -h/2, w, h);
   g.restore();
 }
+
+/* Where a point on a plate lands on screen, using the same transform plate()
+   applies. Needed so an object composited into a plate — the icon set into the
+   glass emblem — can be handed off to a free-floating copy without jumping. */
+function plateMap(W, H, p, opts, fx, fy){
+  opts = opts || {};
+  const z  = 1 + p*(opts.push !== undefined ? opts.push : 0.085);
+  const dx = (opts.dx || 0) * p * W;
+  const dy = (opts.dy !== undefined ? opts.dy : -0.012) * p * H;
+  const dw = W*PAD*z, dh = H*PAD*z;
+  return { x: W/2 - dw/2 + dx + fx*dw, y: H/2 - dh/2 + dy + fy*dh, w: dw, h: dh };
+}

@@ -6,7 +6,7 @@ function Grade(W, H){
   const mk = (w,h) => { const c=document.createElement('canvas'); c.width=w; c.height=h;
                         return [c, c.getContext('2d')]; };
   const [b1,g1] = mk(BW,BH), [b2,g2] = mk(BW,BH), [b3,g3] = mk(BW,BH);
-  const [tmp,tg] = mk(W,H), [out,og] = mk(W,H);
+  const [out,og] = mk(W,H);
 
   /* Deterministic grain: four tiles built once from a seeded PRNG, cycled by
      frame index.  Generating per frame would make the render non-repeatable. */
@@ -27,20 +27,13 @@ function Grade(W, H){
     o = o || {};
     const bloomAmt = o.bloom !== undefined ? o.bloom : 0.24;
     const grainAmt = o.grain !== undefined ? o.grain : 0.055;
-    const caAmt    = o.ca    !== undefined ? o.ca    : 0.0022;
     const vig      = o.vig   !== undefined ? o.vig   : 0.34;
 
-    // ── chromatic aberration: isolate each channel, then re-add at its own scale
+    // Straight copy — no chromatic aberration. See note above the CH table's
+    // removal in git history: at any strength visible on a 1080-wide frame it
+    // fringed the bezel and the type, which read as cheap rather than filmic.
     og.globalCompositeOperation='source-over'; og.globalAlpha=1;
-    og.clearRect(0,0,W,H); og.fillStyle='#000'; og.fillRect(0,0,W,H);
-    const CH = [['#FF0000', 1+caAmt], ['#00FF00', 1], ['#0000FF', 1-caAmt]];
-    for (const [mask, k] of CH){
-      tg.globalCompositeOperation='source-over'; tg.globalAlpha=1;
-      tg.drawImage(src,0,0);
-      tg.globalCompositeOperation='multiply'; tg.fillStyle=mask; tg.fillRect(0,0,W,H);
-      og.globalCompositeOperation='lighter';
-      og.drawImage(tmp, W/2-(W*k)/2, H/2-(H*k)/2, W*k, H*k);
-    }
+    og.clearRect(0,0,W,H); og.drawImage(src,0,0);
 
     // ── bloom: square the frame to crush everything but the highlights
     g1.globalCompositeOperation='source-over'; g1.globalAlpha=1;

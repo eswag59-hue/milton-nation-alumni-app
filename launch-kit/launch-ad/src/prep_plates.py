@@ -118,3 +118,57 @@ _ID.Draw(home).rectangle(
     [hw*0.24, hh*0.3020, hw*0.76, hh*0.3700], fill=(222, 240, 243))
 home.save('src/full/assets/02_home_blank.png')
 print('02_home_blank.png', home.size)
+
+# ── the app icon, set into the glass emblem ──────────────────────────────────
+# Ezra: "the logo of the icon you have there doesn't fit in that emblem. Tilt it
+# and make it fit" and "you have it on top, but it's not fully on top."  The
+# earlier pass drew the icon flat and square over a slab that sits at a 3/4
+# angle, so it floated. The face quad below is measured off tile.jpg; the icon
+# is warped into it, then the slab's own speculars are put back over the top so
+# it reads as printed inside the glass rather than pasted on the front.
+from PIL import ImageFilter as _IF
+
+FACE = [(0.211, 0.317), (0.820, 0.308), (0.829, 0.681), (0.217, 0.672)]  # TL TR BR BL
+INSET = 0.055                       # the glass has a bevel; hold off the edge
+
+
+def _coeffs(dst, src):
+    m = []
+    for (dx, dy), (sx_, sy_) in zip(dst, src):
+        m.append([dx, dy, 1, 0, 0, 0, -sx_ * dx, -sx_ * dy])
+        m.append([0, 0, 0, dx, dy, 1, -sy_ * dx, -sy_ * dy])
+    A = np.array(m, dtype=np.float64)
+    B = np.array(src, dtype=np.float64).reshape(8)
+    return np.linalg.solve(A.T @ A, A.T @ B)
+
+
+tile = Image.open(f'{DST}/tile.jpg').convert('RGB')
+TW_, TH_ = tile.size
+quad = [(fx * TW_, fy * TH_) for fx, fy in FACE]
+cx_ = sum(p[0] for p in quad) / 4.0
+cy_ = sum(p[1] for p in quad) / 4.0
+quad = [(cx_ + (x - cx_) * (1 - INSET), cy_ + (y - cy_) * (1 - INSET)) for x, y in quad]
+
+icon = Image.open('src/full/assets/icon_bright.png').convert('RGB')
+# round the icon's own corners so it sits in the slab's radius, not as a square
+ic_m = Image.new('L', icon.size, 0)
+_ID.Draw(ic_m).rounded_rectangle([0, 0, icon.width - 1, icon.height - 1],
+                                 radius=int(icon.width * 0.225), fill=255)
+icon.putalpha(ic_m)
+
+src_pts = [(0, 0), (icon.width, 0), (icon.width, icon.height), (0, icon.height)]
+warped = icon.transform((TW_, TH_), Image.PERSPECTIVE, _coeffs(quad, src_pts),
+                        Image.BICUBIC)
+
+out = tile.copy()
+out.paste(warped, (0, 0), warped.split()[3].point(lambda v: int(v * 0.90)))
+
+# put the slab's speculars back over the icon so the glass reads in front of it
+base = np.asarray(tile).astype(np.float32)
+soft = np.asarray(tile.filter(_IF.GaussianBlur(26))).astype(np.float32)
+spec = np.clip((base - soft) * 1.7, 0, 255)
+res = np.asarray(out).astype(np.float32)
+res = 255.0 - (255.0 - res) * (255.0 - spec) / 255.0          # screen blend
+Image.fromarray(np.clip(res, 0, 255).astype(np.uint8)).save(
+    f'{DST}/tile_icon.jpg', quality=94, subsampling=0)
+print('tile_icon.jpg  face quad', [(round(x), round(y)) for x, y in quad])

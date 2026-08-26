@@ -45,20 +45,21 @@ const inB=(t,k)=>t>=B[k][0]&&t<B[k][1], pB=(t,k)=>seg(t,B[k][0],B[k][1]);
    make; see launch-kit/EZRA-DO-THIS-NOW.md. */
 const BAND_TOP=0.048, BAND_BOT=0.925, ZK=1.08;
 const TRAVEL=(BAND_BOT-BAND_TOP)*(ZK-1);
-function screenScroll(im,x,y,w,h,p){
+function screenScroll(im,x,y,w,h,p,ctx){
+  ctx=ctx||g;
   if(!im)return;
   const kw=w*ZK, kh=h*ZK, kx=x-(kw-w)/2;
   const o=BAND_TOP*(1-ZK)*h - cl(p,0,1)*TRAVEL*h;
-  g.save();
-  g.beginPath(); g.rect(x,y+h*BAND_TOP,w,h*(BAND_BOT-BAND_TOP)); g.clip();
-  g.drawImage(im,kx,y+o,kw,kh);
-  g.restore();
-  g.save();                                   // status bar, pinned, true size
-  g.beginPath(); g.rect(x,y,w,h*BAND_TOP); g.clip();
-  g.drawImage(im,x,y,w,h); g.restore();
-  g.save();                                   // tab bar, pinned, true size
-  g.beginPath(); g.rect(x,y+h*BAND_BOT,w,h*(1-BAND_BOT)); g.clip();
-  g.drawImage(im,x,y,w,h); g.restore();
+  ctx.save();
+  ctx.beginPath(); ctx.rect(x,y+h*BAND_TOP,w,h*(BAND_BOT-BAND_TOP)); ctx.clip();
+  ctx.drawImage(im,kx,y+o,kw,kh);
+  ctx.restore();
+  ctx.save();                                   // status bar, pinned, true size
+  ctx.beginPath(); ctx.rect(x,y,w,h*BAND_TOP); ctx.clip();
+  ctx.drawImage(im,x,y,w,h); ctx.restore();
+  ctx.save();                                   // tab bar, pinned, true size
+  ctx.beginPath(); ctx.rect(x,y+h*BAND_BOT,w,h*(1-BAND_BOT)); ctx.clip();
+  ctx.drawImage(im,x,y,w,h); ctx.restore();
 }
 /* where a point on the capture lands on screen once the content has panned */
 function onScreenY(y,h,frac,p){
@@ -128,94 +129,142 @@ function kinetic(t,t0,words,y,size,limeFrom,face){
   g.restore();
 }
 
-/* ── beat 1 · the logo jumps in ───────────────────────────────────────────── */
+/* ── beat 1 · the colour wave, and the word it lands on ──────────────────────
+   Ezra on the glass-shard version: "I don't like the glass. I like what you
+   originally had. I want a wave of colors to kind of flow through that entire
+   page and through the word, and then it lands on the word and it's like bop."
+
+   So: no plate. A near-black ground, ribbons of the brand ramp sweeping in from
+   the left, the wordmark painted in behind the wave front as it passes, then the
+   ribbons collapsing onto the word's own line — the colour becomes the word —
+   and a scale punch on the frame they land. */
+const RAMP=['#165C7D','#007396','#0093B2','#369DA0','#56B093','#D4EB8E'];
+const WAVE=[0.10,1.38], LAND=1.52, COLLAPSE=[1.30,1.74];
+
+function ribbon(i,t,front,coll,alpha,wy){
+  const spd=0.86+i*0.052;
+  const k=(6.1+i*0.7)/W, ph=i*1.25 - t*1.15;
+  /* the collapse pulls every ribbon onto the wordmark's line, so the field
+     resolves into the word instead of just sliding off frame */
+  const baseY=mix(CY+(i-3)*H*0.056+Math.sin(t*0.62+i*1.4)*H*0.010, wy, coll);
+  const amp=mix(H*(0.052+(i%3)*0.020), H*0.004, coll);
+  const th =mix(H*(0.034+(i%4)*0.014), H*0.006, coll);
+  const x0=-W*0.30, x1=W*1.30, STEP=W*0.030;
+  const grad=g.createLinearGradient(front*W-W*0.85,0,front*W+W*0.55,0);
+  for(let q=0;q<=5;q++){
+    const c=RAMP[(q+i)%RAMP.length];
+    grad.addColorStop(q/5, c);
+  }
+  for(let pass=0;pass<3;pass++){
+    const tk=th*(1+pass*0.85), a=alpha*[0.52,0.24,0.12][pass];
+    if(a<=0.003) continue;
+    g.globalAlpha=a; g.fillStyle=grad;
+    g.beginPath();
+    for(let x=x0;x<=x1;x+=STEP) g.lineTo(x, baseY+Math.sin(x*k+ph)*amp-tk/2);
+    for(let x=x1;x>=x0;x-=STEP) g.lineTo(x, baseY+Math.sin(x*k+ph)*amp+tk/2);
+    g.closePath(); g.fill();
+  }
+}
+
 function hook(t){
-  const p=pB(t,'HOOK');
-  plate(g,T,'hook',W,H,p,1,{push:0.11,dy:-0.014});
-  /* the plate's own bloom sat exactly where the wordmark lands and washed it
-     out; a soft scrim buys the contrast back without flattening the ground */
-  g.save();
-  const scr=g.createRadialGradient(CX,CY-H*0.05,0,CX,CY-H*0.05,W*0.80);
-  scr.addColorStop(0,'rgba(4,7,10,.46)'); scr.addColorStop(0.55,'rgba(4,7,10,.24)');
-  scr.addColorStop(1,'rgba(4,7,10,0)');
-  g.fillStyle=scr; g.fillRect(0,0,W,H); g.restore();
+  /* ground: near-black with one soft lift, not flat and not glass */
+  g.fillStyle='#06080B'; g.fillRect(0,0,W,H);
+  const bg=g.createRadialGradient(CX,CY-H*0.04,0,CX,CY-H*0.04,W*0.95);
+  bg.addColorStop(0,'rgba(16,30,38,.85)'); bg.addColorStop(1,'rgba(4,6,9,0)');
+  g.fillStyle=bg; g.fillRect(0,0,W,H);
+
   const lg=T.logo; if(!lg)return;
+  const lw=W*0.76, lh=lg.height*(lw/lg.width);
+  const wy=CY-H*0.055;
 
-  const j=seg(t,0.42,1.22);
-  if(j<=0)return;
-  const e=back(j,2.15);
-  /* a settle bounce after the overshoot, damped to nothing by ~2.1s */
-  const bnc=Math.exp(-(t-1.22)*5.5)*Math.sin((t-1.22)*13.5)*(t>1.22?0.028:0);
-  const sc=(0.46+e*0.54)*(1+bnc);
-  const lw=W*0.76*sc, lh=lg.height*(lw/lg.width);
-  const ly=CY-H*0.055+(1-e)*H*0.115;
-  const a=cl(seg(t,0.42,0.62),0,1)-seg(t,5.05,5.4);
+  const front=mix(-0.34,1.42,eIO(seg(t,WAVE[0],WAVE[1])));
+  const coll=eIO(seg(t,COLLAPSE[0],COLLAPSE[1]));
+  const env=cl(seg(t,0.06,0.42),0,1)*(1-seg(t,COLLAPSE[0],COLLAPSE[1]+0.10));
+  if(env>0.003){
+    g.save(); g.globalCompositeOperation='lighter';
+    for(let i=0;i<7;i++) ribbon(i,t,front,coll,env,wy);
+    g.restore();
+  }
 
-  /* the arrival flash — the logo lands on light, not on nothing */
-  const fl=Math.max(0,1-Math.abs(t-1.20)*3.4);
+  /* the word, painted in behind the wave front */
+  const rev=cl((front*W - (CX-lw/2) + W*0.16)/(lw+W*0.32),0,1);
+  if(rev>0.004){
+    /* the bop: a damped punch on the frame the wave lands, not a slow scale */
+    const b=t>=LAND?Math.exp(-(t-LAND)*9.0)*Math.sin((t-LAND)*26.0):0;
+    const sc=1+b*0.085;
+    og.clearRect(0,0,W,H);
+    og.globalCompositeOperation='source-over'; og.globalAlpha=1;
+    og.drawImage(lg,CX-lw/2,wy-lh/2,lw,lh);
+    const m=og.createLinearGradient(CX-lw/2-W*0.16,0,CX-lw/2-W*0.16+(lw+W*0.32)*rev,0);
+    m.addColorStop(0,'rgba(0,0,0,1)');
+    m.addColorStop(Math.max(0,1-0.16),'rgba(0,0,0,1)');
+    m.addColorStop(1,'rgba(0,0,0,0)');
+    og.globalCompositeOperation='destination-in';
+    og.fillStyle=m; og.fillRect(CX-lw/2-W*0.16,0,(lw+W*0.32)*rev+2,H);
+    og.globalCompositeOperation='source-over';
+    g.save();
+    g.translate(CX,wy); g.scale(sc,sc); g.translate(-CX,-wy);
+    g.globalAlpha=1-seg(t,5.05,5.4);
+    g.shadowColor='rgba(40,170,200,.55)'; g.shadowBlur=44;
+    g.drawImage(oc,0,0);
+    g.restore();
+  }
+
+  /* the flash on landing */
+  const fl=Math.max(0,1-Math.abs(t-LAND)*4.2);
   if(fl>0){
-    g.save(); g.globalCompositeOperation='lighter'; g.globalAlpha=fl*0.55;
-    const rg=g.createRadialGradient(CX,ly,0,CX,ly,W*0.72);
-    rg.addColorStop(0,'rgba(190,232,238,.9)'); rg.addColorStop(0.45,'rgba(60,150,175,.28)');
+    g.save(); g.globalCompositeOperation='lighter'; g.globalAlpha=fl*0.42;
+    const rg=g.createRadialGradient(CX,wy,0,CX,wy,W*0.80);
+    rg.addColorStop(0,'rgba(206,244,250,.95)');
+    rg.addColorStop(0.40,'rgba(70,165,190,.26)');
     rg.addColorStop(1,'rgba(0,0,0,0)');
     g.fillStyle=rg; g.fillRect(0,0,W,H); g.restore();
   }
 
-  og.clearRect(0,0,W,H);
-  og.globalAlpha=1; og.globalCompositeOperation='source-over';
-  og.drawImage(lg,CX-lw/2,ly-lh/2,lw,lh);
-  /* the swirl from his mark, swept through the word */
-  const sw=seg(t,1.30,2.35);
-  if(sw>0&&sw<1){
-    const bx=CX-lw/2-lw*0.35+sw*lw*1.7;
-    const lgd=og.createLinearGradient(bx-lw*0.30,0,bx+lw*0.30,0);
-    lgd.addColorStop(0,'rgba(255,255,255,0)');
-    lgd.addColorStop(0.42,'rgba(214,246,252,.85)');
-    lgd.addColorStop(0.50,'rgba(255,255,255,.95)');
-    lgd.addColorStop(0.58,'rgba(200,229,114,.80)');
-    lgd.addColorStop(1,'rgba(255,255,255,0)');
-    og.globalCompositeOperation='source-atop';
-    og.fillStyle=lgd; og.fillRect(0,0,W,H);
-    og.globalCompositeOperation='source-over';
-  }
-  g.save(); g.globalAlpha=cl(a,0,1);
-  g.shadowColor='rgba(30,150,180,.55)'; g.shadowBlur=54;
-  g.drawImage(oc,0,0); g.restore();
-
-  kinetic(t,1.62,['Nobody','can','recover','alone.'],CY+H*0.115,68,3);
+  /* and then the line, alone on the screen */
+  kinetic(t,1.98,['Nobody','can','recover','alone.'],CY+H*0.115,68,3);
 }
 
-/* ── beat 2 · the icon shrinks onto his own home screen ───────────────────── */
-function iconBeat(t){
-  const S=box();
-  const sl=slot(S);
-  /* one continuous log-interpolated shrink: constant relative rate reads as
-     "smaller and smaller" where a linear ramp reads as a single move */
-  const k=eIO(seg(t,5.95,11.05));
-  const sz=Math.exp(mix(Math.log(W*0.86),Math.log(sl.s),k));
-  const ix=mix(CX,sl.x,k), iy=mix(CY-H*0.075,sl.y,k);
+/* ── beat 2 · out of the emblem, onto his own home screen ───────────────────
+   The emblem is a plate with the icon warped into its face (see prep_plates.py),
+   so for the first stretch the icon IS the glass slab — no flat square floating
+   in front of it. At the hand-off a free copy takes over from exactly the face's
+   measured centre and size, comes FORWARD toward camera first — Ezra: "it should
+   animate that entire app coming out of the screen onto the homepage" — and only
+   then recedes into its slot on his own home screen. */
+const TILE_P={push:0.13,dy:-0.010};
+const FACE_C=[0.5193,0.4945], FACE_W=0.6105;     // measured off tile.jpg
+const DETACH=7.05, LANDED=11.05;
 
+function iconBeat(t){
+  const S=box(), sl=slot(S);
+  const tp=seg(t,5.4,8.6);
   const toNation=seg(t,7.30,8.60);
-  plate(g,T,'tile',W,H,seg(t,5.4,8.6),1-toNation,{push:0.13,dy:-0.010});
+
+  plate(g,T,'tile_icon',W,H,tp,1-toNation,TILE_P);
   plate(g,T,'nation',W,H,seg(t,7.3,12.8),toNation,{push:0.10,dy:0.016});
 
   /* the phone arrives under the shrinking icon and takes it */
   const ph=eO(seg(t,9.05,10.25));
   if(ph>0){
     g.save(); g.globalAlpha=ph;
-    const hs=T.ezra_home;
-    drawDevice(g,(x,y,w,h)=>{
-      if(hs) g.drawImage(hs,x,y,w,h);
-      /* the icon Ezra actually has installed is the dim build; the bright one
-         lands on top of its slot, which is the swap he asked for */
-    },S.x,S.y,S.w,S.h,{});
+    drawDevice(g,(x,y,w,h)=>{ if(T.ezra_home) g.drawImage(T.ezra_home,x,y,w,h); },
+      S.x,S.y,S.w,S.h,{spill:T.ezra_home});
     g.restore();
   }
 
-  const ia=cl(seg(t,5.42,5.78),0,1);
-  if(T.icon&&ia>0){
-    g.save(); g.globalAlpha=ia;
-    if(k<0.92){g.shadowColor='rgba(24,140,170,.75)'; g.shadowBlur=sz*0.30;}
+  /* the free icon, handed off from the emblem's own face */
+  if(t>=DETACH&&T.icon){
+    const m=plateMap(W,H,seg(DETACH,5.4,8.6),TILE_P,FACE_C[0],FACE_C[1]);
+    const sz0=FACE_W*m.w;
+    /* forward first, then away: one eased travel with a scale bump on the front */
+    const k=eIO(seg(t,DETACH,LANDED));
+    const fwd=Math.sin(cl(seg(t,DETACH,DETACH+1.5),0,1)*Math.PI)*0.30;
+    const sz=Math.exp(mix(Math.log(sz0),Math.log(sl.s),k))*(1+fwd);
+    const ix=mix(m.x,sl.x,k), iy=mix(m.y,sl.y,k);
+    const a=cl(seg(t,DETACH,DETACH+0.22),0,1);
+    g.save(); g.globalAlpha=a;
+    if(k<0.94){g.shadowColor='rgba(30,150,180,.8)'; g.shadowBlur=sz*0.34;}
     g.beginPath(); g.roundRect(ix-sz/2,iy-sz/2,sz,sz,sz*0.225); g.clip();
     g.drawImage(T.icon,ix-sz/2,iy-sz/2,sz,sz);
     g.restore();
@@ -223,11 +272,11 @@ function iconBeat(t){
 
   /* light leaves the screen, then pours back into it */
   const out=seg(t,11.00,11.55)-seg(t,12.15,12.75);
-  if(out>0) light(g,T.plume_out, CX, S.y-H*0.055, W*1.30, out*0.92, 0);
+  if(out>0) light(g,T.plume_out, CX, S.y-H*0.135, W*1.00, out*0.80, 0);
   const into=seg(t,11.85,12.35)-seg(t,12.60,12.80);
-  if(into>0) light(g,T.plume_in, CX, S.y+S.h*0.16, W*1.15, into*0.80, 0);
+  if(into>0) light(g,T.plume_in, CX, S.y-H*0.055, W*0.86, into*0.62, 0);
 
-  kinetic(t,8.05,['we','built','a','nation'],H*0.885,74,3,
+  kinetic(t,8.05,['so','we','built','a','nation'],H*0.885,74,4,
     `500 74px 'Bodoni Moda', Georgia, serif`);
 }
 
@@ -242,7 +291,7 @@ function screenBeat(t,beat,plateKey,tex,scroll,l1,l2,extra,popts){
     const off=scroll?eIO(seg(t,b[0]+0.85,b[1]-0.55))*scroll:0;
     screenScroll(T[tex],x,y,w,h,off);
     if(extra) extra(x,y,w,h,t,off,h);
-  },S.x,S.y,S.w,S.h,{});
+  },S.x,S.y,S.w,S.h,{spill:T[tex]});
   g.restore();
   cap(t,b[0]+1.0,b[1],l1,l2);
   return S;
@@ -266,6 +315,41 @@ function counter(t,S,off,fh){
   g.restore();
 }
 
+
+/* Ezra, on the community beat: "have the entire screen turn flat, with
+   everything coming out of the screen, like comments and likes."
+
+   Canvas2D has only affine transforms, so a real perspective tilt is done by
+   sampling the plane in horizontal bands: under one-point perspective every
+   band at depth v has scale 1/(1+k(1-v)), which is exactly a per-band width and
+   height. At 56 bands the stepping is under a pixel and motion blur closes it. */
+function tiltedPlane(im, sx0, sy0, sw0, sh0, cx, topY, w0, h0, tilt, alpha){
+  if(!im||alpha<=0.003)return null;
+  /* 1.15 laid the plane back so far the top was under half width and it read as
+     a funnel rather than a screen. 0.40 is about a 30-degree tip — enough to see
+     the surface, still unmistakably a phone. */
+  const N=56, k=tilt*0.40;
+  const sc=v=>1/(1+k*(1-v));
+  let tot=0; for(let i=0;i<N;i++) tot+=sc((i+0.5)/N);
+  const unit=h0/(tot/N);
+  g.save(); g.globalAlpha=alpha;
+  let y=topY;
+  for(let i=0;i<N;i++){
+    const v=(i+0.5)/N, ssc=sc(v);
+    const bh=unit*ssc/N, bw=w0*ssc;
+    g.drawImage(im, sx0, sy0+sh0*i/N, sw0, sh0/N,
+                cx-bw/2, y, bw, bh+0.6);
+    y+=bh;
+  }
+  g.restore();
+  return {topW:w0*sc(0), botW:w0*sc(1), h:y-topY};
+}
+
+/* small live pieces of the real feed, lifting off the laid-back plane */
+const CHIPS=[{x0:0.055,x1:0.300,y0:0.418,y1:0.455,dx:-0.32,dy:-0.26,t0:21.55},
+             {x0:0.055,x1:0.760,y0:0.468,y1:0.514,dx: 0.30,dy:-0.20,t0:22.45},
+             {x0:0.055,x1:0.300,y0:0.853,y1:0.891,dx: 0.30,dy:-0.40,t0:23.15}];
+
 /* ── beat 4 · real posts leaving the screen ───────────────────────────────── */
 const CARDS=[{y0:0.274,y1:0.532,t0:21.05,dx:-0.150,rot:-0.10},
              {y0:0.541,y1:0.918,t0:22.15,dx: 0.160,rot: 0.11}];
@@ -283,7 +367,7 @@ function liftCards(t,S,off,fh){
     const dw=(sx1-sx0)*scl, dh=(sy1-sy0)*scl;
     const dx=onScreenX(S.x,S.w,(sx0+sx1)/2/im.width),
           dy=onScreenY(S.y,S.h,(cd.y0+cd.y1)/2,off);
-    const z=1+e*0.34;
+    const z=1+e*0.26;
     g.save(); g.globalAlpha=a;
     g.translate(dx+cd.dx*W*e, dy-e*H*0.135);
     g.rotate(cd.rot*e); g.scale(z,z);
@@ -295,6 +379,68 @@ function liftCards(t,S,off,fh){
     g.drawImage(im,sx0,sy0,sx1-sx0,sy1-sy0,-dw/2,-dh/2,dw,dh);
     g.restore();
   }
+}
+
+/* ── beat 4 · the screen lays flat and the feed comes off it ────────────────*/
+function commBeat(t){
+  const b=B.COMM, p=pB(t,'COMM');
+  plate(g,T,'comm',W,H,p,1,{push:0.10,dy:-0.014});
+  const rise=eO(seg(t,b[0],b[0]+0.75)), fall=seg(t,b[1]-0.42,b[1]);
+  const tilt=eIO(seg(t,b[0]+1.15,b[0]+2.30));
+  const S=box(FILL, SCY+(1-rise)*H*0.045);
+  const im=T['03_community'];
+  const off=eIO(seg(t,b[0]+0.85,b[1]-0.55))*1.0;
+  const A=rise*(1-fall);
+
+  /* Compose the device offscreen so the bezel, rail and screen all tip
+     together — tilting the screen alone left a phone bent in a way phones are
+     not, and dissolving the chrome lost the device entirely. */
+  const bz=S.w*0.018+S.w*0.021;
+  const BX=S.x-bz, BY=S.y-bz, BW=S.w+2*bz, BH=S.h+2*bz;
+  og.clearRect(0,0,W,H);
+  og.globalCompositeOperation='source-over'; og.globalAlpha=1;
+  drawDevice(og,(x,y,w,h)=>screenScroll(im,x,y,w,h,off,og),
+    S.x,S.y,S.w,S.h,{spill:im});
+
+  if(tilt<0.02){
+    g.save(); g.globalAlpha=A; g.drawImage(oc,0,0); g.restore();
+  } else {
+    tiltedPlane(oc, BX, BY, BW, BH, CX, BY+mix(0,H*0.045,tilt),
+                BW, BH*mix(1,0.90,tilt), tilt, A);
+    g.save(); g.globalAlpha=A*tilt*0.42;
+    g.globalCompositeOperation='lighter';
+    const gl=g.createRadialGradient(CX,S.y+S.h*0.45,0,CX,S.y+S.h*0.45,S.w*1.15);
+    gl.addColorStop(0,'rgba(150,225,240,.28)'); gl.addColorStop(1,'rgba(0,0,0,0)');
+    g.fillStyle=gl; g.fillRect(0,0,W,H); g.restore();
+  }
+
+  /* the posts, then the likes and comments, coming off the plane */
+  liftCards(t,S,off,S.h);
+  if(im) for(const c of CHIPS){
+    const k=seg(t,c.t0,c.t0+1.6); if(k<=0)continue;
+    const a=(1-seg(t,c.t0+0.85,c.t0+1.6))*cl(k*4,0,1);
+    if(a<=0.004)continue;
+    const e=eO(k), z=1+e*0.55;
+    const sx0=im.width*c.x0, sx1=im.width*c.x1;
+    const sy0=im.height*c.y0, sy1=im.height*c.y1;
+    const scl=S.w*ZK/im.width, dw=(sx1-sx0)*scl, dh=(sy1-sy0)*scl;
+    g.save(); g.globalAlpha=a;
+    g.translate(onScreenX(S.x,S.w,(c.x0+c.x1)/2)+c.dx*W*e,
+                onScreenY(S.y,S.h,(c.y0+c.y1)/2,off)+c.dy*H*e);
+    g.scale(z,z);
+    g.fillStyle='#FFFFFF';
+    g.shadowColor='rgba(0,0,0,.55)'; g.shadowBlur=34; g.shadowOffsetY=12;
+    g.beginPath(); g.roundRect(-dw/2-8,-dh/2-6,dw+16,dh+12,(dh+12)*0.42); g.fill();
+    g.shadowBlur=0; g.shadowOffsetY=0;
+    g.drawImage(im,sx0,sy0,sx1-sx0,sy1-sy0,-dw/2,-dh/2,dw,dh);
+    g.restore();
+  }
+
+  const sh=seg(t,21.0,21.6)-seg(t,24.4,25.2);
+  if(sh>0) light(g,T.shards,CX+W*0.20,SCY-H*0.06,W*0.95,sh*0.62,0);
+  cap(t,b[0]+1.0,b[1],["That's why we built a community.",''],
+      ['','Every win, witnessed together.']);
+  return S;
 }
 
 /* ── beat 5 · the nearby flex ─────────────────────────────────────────────── */
@@ -352,7 +498,7 @@ function meetBeat(t){
       g.beginPath(); g.arc(rx,ry,w*0.048,0,Math.PI*2); g.fill();
       g.restore();
     }
-  },S.x,S.y,S.w,S.h,{});
+  },S.x,S.y,S.w,S.h,{spill:swap<0.5?T['04_meetings']:T['07_nearby']});
   g.restore();
   /* the constellation feeding the phone */
   const into=seg(t,NEAR_T+0.35,NEAR_T+1.1)-seg(t,b[1]-1.0,b[1]-0.3);
@@ -389,11 +535,11 @@ function endBeat(t){
       }
       g.globalAlpha=cls; if(T.icon) g.drawImage(T.icon,cx-sz/2,cy-sz/2,sz,sz);
       g.restore();
-    },S.x,S.y,S.w,S.h,{});
+    },S.x,S.y,S.w,S.h,{spill:T.ezra_home});
     g.restore();
   }
   const burst=seg(t,b[0]+1.05,b[0]+1.5)-seg(t,b[0]+2.4,b[0]+3.0);
-  if(burst>0) light(g,T.plume_out,CX,S.y-H*0.02,W*1.45,burst*0.85,0);
+  if(burst>0) light(g,T.plume_out,CX,S.y-H*0.115,W*1.15,burst*0.72,0);
 
   /* the card */
   const t0=b[0]+2.5;
@@ -434,17 +580,7 @@ function drawAt(t){
       ['Yes, every day counts,',''],['','one day at a time.'],
       (x,y,w,h,tt,off,fh)=>counter(tt,{x,y,w,h},off,fh));
   }
-  else if(inB(t,'COMM')){
-    const S=screenBeat(t,'COMM','comm','03_community',1.0,
-      ["That's why we built a community.",''],['','Every win, witnessed.'],
-      (x,y,w,h,tt,off,fh)=>{},{push:0.10,dy:-0.014});
-    const b=B.COMM;
-    const off=eIO(seg(t,b[0]+0.85,b[1]-0.55))*0.40;
-    const im=T['03_community'];
-    if(im) liftCards(t,S,off,im.height*(S.w/im.width));
-    const sh=seg(t,21.0,21.6)-seg(t,24.4,25.2);
-    if(sh>0) light(g,T.shards,CX+W*0.20,SCY-H*0.06,W*0.95,sh*0.70,0);
-  }
+  else if(inB(t,'COMM')) commBeat(t);
   else if(inB(t,'MEET')) meetBeat(t);
   else if(inB(t,'CHAT')) screenBeat(t,'CHAT','chat','05_chat',0.90,
       ["We're there for you",''],['','when it counts.']);
@@ -482,7 +618,7 @@ const SRC={
   '02_home':'assets/02_home_blank.png','03_community':'assets/03_community.png',
   '04_meetings':'assets/04_meetings.png','05_chat':'assets/05_chat.png',
   '06_profile':'assets/06_profile.png','07_nearby':'assets/07_nearby.png',
-  hook:'plates/hook.jpg', nation:'plates/nation.jpg', tile:'plates/tile.jpg',
+  hook:'plates/hook.jpg', nation:'plates/nation.jpg', tile_icon:'plates/tile_icon.jpg',
   home:'plates/home.jpg', comm:'plates/comm.jpg', chat:'plates/chat.jpg',
   meet:'plates/meet.jpg', prof:'plates/prof.jpg', end:'plates/end.jpg',
   plume_out:'plates/plume_out.png', plume_in:'plates/plume_in.png',
