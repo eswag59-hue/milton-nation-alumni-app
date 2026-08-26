@@ -256,35 +256,86 @@ which is iOS-only, as you specified — doesn't depend on them, so it isn't bloc
 
 ---
 
-## Part 5 — Scroll recordings (5 minutes, only when you want the long scroll)
+# Part 5 — What I need from you (about 15 minutes)
 
-You asked the film to "scroll through the whole home screen." Right now it can't
-— not properly. The screenshots you sent are single-viewport stills: 1320×2868,
-which is exactly the phone's screen. There is no content below the fold in them
-to scroll *to*. Panning a still just drags its own tab bar up into frame, which
-reads as two tab bars stacked.
+You asked how to help. This is the whole list, in order. Everything here is
+something I cannot produce myself, and each item kills a specific complaint you
+made about the last cut.
 
-So in the current cut each screen moves a little — the content pans inside the
-phone while the status bar and tab bar stay pinned at true size — but it is a
-short move, not a full scroll. That's the honest ceiling on still screenshots.
+## 5.1 — Turn on Dark mode FIRST (30 seconds)
 
-To get a real full-length scroll I need the content that lives below the fold.
-Five screen recordings, about 45 seconds total:
+**Settings → Appearance → Theme → Dark.**
 
-1. Open **Control Centre** → tap the **record** button (⏺).
-2. Open the app on **Home**. Wait one second without touching it.
-3. Scroll slowly to the bottom of the page — slow and even, roughly three
-   seconds top to bottom. Do not flick; a flick blurs every frame.
-4. Wait one second at the bottom, then stop.
-5. Repeat for **Community**, **Meetings**, **Chat**, **Profile**.
+You said "too bright, I can barely see anything" about the Home screen, the
+Meetings page, the Nearby page and the Profile page. That is four of your notes
+and they all have the same cause: every screenshot you have sent me is **light
+mode**, and a white screen against a dark cinematic ground blows out. The app
+has a real dark mode already built — 7 of its 8 colour sets have dark variants.
+Dark-mode captures on a dark ground is what makes it look like an Apple film
+instead of a white rectangle.
 
-Send the five files. I stitch each recording into one tall image of the full
-page, and then the scroll in the film is real footage of your app, at full
-length, at whatever pace the edit wants.
+Do this before you take a single screenshot.
 
-**One more, if you can:** on **Meetings**, tap **Nearby** and record scrolling
-that list too. The nearby AA/NA screen in the current cut is rendered from the
-app's own shipped SwiftUI — the real card layout, the real AA-blue / NA-green
-fellowship badges, the real distance pills, the real Directions button — but the
-meetings listed in it are stand-ins. A recording replaces them with whatever
-BMLT actually returns near you, and that beat stops being a reconstruction.
+## 5.2 — Screenshots, not screen recordings
+
+**Do not try to screen-record.** The app blacks the screen out during recording
+(`ScreenshotProtection` watches `UIScreen.isCaptured`). The exemption that lifts
+that is written and tested but it lives on my branch — it is **not** in the App
+Store build on your phone, so recording will fail no matter what you do.
+
+**Still screenshots are not blocked.** iOS has no API to block them, which is
+how your six existing screenshots got made. So: screenshots.
+
+## 5.3 — The scrolling sets
+
+For each screen below, take a burst of screenshots as you scroll down:
+
+1. Screenshot at the very top.
+2. Scroll down about **two thirds of a screen** — not a full screen.
+3. Screenshot.
+4. Repeat until you hit the bottom.
+
+**The overlap matters.** I stitch the shots into one tall image by matching the
+content that appears in both, so consecutive shots must share about a third of
+their content. A full-screen scroll between shots leaves nothing to match on and
+I cannot join them.
+
+| Screen | Roughly how many shots |
+|---|---|
+| Home | 3–4 |
+| Community | 4–5 |
+| Meetings (Milton tab) | 3–4 |
+| Meetings → **Nearby** tab | 4–5 |
+| Chat | 2–3 |
+| Profile | 3–4 |
+
+This is what fixes two of your notes at once. Right now the screens barely move
+because your captures are single-viewport 1320×2868 — exactly the phone's own
+aspect — so there is no content below the fold to scroll to. To fake any motion
+at all I zoomed the content 8%, and that zoom is what is **clipping the W in
+"Welcome"** you spotted. Real full-length pages let me delete the zoom, so the
+crop goes away and the scroll runs all the way to the bottom like you asked.
+
+## 5.4 — The tapped states (one screenshot each)
+
+You said I never actually tap anything. Correct, because I have no picture of
+what a tap opens:
+
+- **Meetings → tap a meeting** → the detail sheet that opens. If there is a
+  Join / Zoom button on it, one more shot after tapping that.
+- **Meetings → Nearby → tap a meeting** → its detail sheet.
+- **Chat → tap Dana Case** → the conversation, with real messages on screen.
+- **Community → tap a post** if it opens anything.
+
+## 5.5 — Optional, only if you want it
+
+If you want real screen *recordings* later — for motion I cannot fake, like the
+rubber-band at the end of a scroll — say the word and I will get the capture
+exemption shipped. That means merging the PR and putting a TestFlight build on
+your phone. It is a day, not an hour, and the screenshots above get us to a
+finished film without it.
+
+---
+
+**Send them however is easiest — all in one go is fine.** Name them loosely if
+you can ("home-1, home-2…"), but I can sort them by content if you don't.
