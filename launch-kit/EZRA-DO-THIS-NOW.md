@@ -258,84 +258,78 @@ which is iOS-only, as you specified — doesn't depend on them, so it isn't bloc
 
 # Part 5 — What I need from you (about 15 minutes)
 
-You asked how to help. This is the whole list, in order. Everything here is
-something I cannot produce myself, and each item kills a specific complaint you
-made about the last cut.
+## First, a correction
 
-## 5.1 — Turn on Dark mode FIRST (30 seconds)
+I previously told you to switch the app to Dark mode because four of your notes
+said the screens were "too bright, I can barely see anything." That diagnosis was
+wrong and the fix was on my side, not yours.
 
-**Settings → Appearance → Theme → Dark.**
+Measured: your own Home screenshot has **26.4%** of its pixels at pure white. My
+render of that same screen had **45.1%**. I was nearly doubling it. The cause was
+the bloom pass in `src/full/grade.js` treating your paper-white UI as if it were
+an emissive light source, which crushed every mid-grey — card edges, dividers,
+the blue subtitle — up into flat white.
 
-You said "too bright, I can barely see anything" about the Home screen, the
-Meetings page, the Nearby page and the Profile page. That is four of your notes
-and they all have the same cause: every screenshot you have sent me is **light
-mode**, and a white screen against a dark cinematic ground blows out. The app
-has a real dark mode already built — 7 of its 8 colour sets have dark variants.
-Dark-mode captures on a dark ground is what makes it look like an Apple film
-instead of a white rectangle.
+Bloom belongs to emissive things: the light plumes, the wave, the landing flash.
+It does not belong to diffuse white content. The phone screen is now punched out
+of the bloom layer, and its edge light comes only from the rail spill in
+`device.js`, which is a physical effect rather than a global one. Same screen now
+measures **18.4%**.
 
-Do this before you take a single screenshot.
+**Your screenshots are correct as they are. Do not change any app settings.**
 
-## 5.2 — Screenshots, not screen recordings
+## 5.1 — Screenshots, not screen recordings
 
-**Do not try to screen-record.** The app blacks the screen out during recording
-(`ScreenshotProtection` watches `UIScreen.isCaptured`). The exemption that lifts
-that is written and tested but it lives on my branch — it is **not** in the App
-Store build on your phone, so recording will fail no matter what you do.
+Screen recording will not work and it is not your fault: `ScreenshotProtection`
+blacks the screen out whenever `UIScreen.isCaptured` is true. The exemption that
+lifts it (`MarketingCapture`) is written and tested but lives on this branch — it
+is **not** in the App Store build on your phone.
 
-**Still screenshots are not blocked.** iOS has no API to block them, which is
-how your six existing screenshots got made. So: screenshots.
+Still screenshots are not blocked. iOS has no API to block them. That is how your
+existing six were made. So: screenshots.
 
-## 5.3 — The scrolling sets
+## 5.2 — The scroll sets
 
-For each screen below, take a burst of screenshots as you scroll down:
+For each screen: shot at the top, scroll **two thirds of a screen**, shot, repeat
+to the bottom.
 
-1. Screenshot at the very top.
-2. Scroll down about **two thirds of a screen** — not a full screen.
-3. Screenshot.
-4. Repeat until you hit the bottom.
+The two-thirds overlap is the part that matters. The shots are stitched into one
+tall page by matching content that appears in both, so consecutive shots must
+share about a third of their content. A full-screen jump between shots leaves
+nothing to match on.
 
-**The overlap matters.** I stitch the shots into one tall image by matching the
-content that appears in both, so consecutive shots must share about a third of
-their content. A full-screen scroll between shots leaves nothing to match on and
-I cannot join them.
-
-| Screen | Roughly how many shots |
+| Screen | Shots |
 |---|---|
 | Home | 3–4 |
 | Community | 4–5 |
 | Meetings (Milton tab) | 3–4 |
-| Meetings → **Nearby** tab | 4–5 |
+| Meetings → Nearby tab | 4–5 |
 | Chat | 2–3 |
 | Profile | 3–4 |
 
-This is what fixes two of your notes at once. Right now the screens barely move
-because your captures are single-viewport 1320×2868 — exactly the phone's own
-aspect — so there is no content below the fold to scroll to. To fake any motion
-at all I zoomed the content 8%, and that zoom is what is **clipping the W in
-"Welcome"** you spotted. Real full-length pages let me delete the zoom, so the
-crop goes away and the scroll runs all the way to the bottom like you asked.
+This answers two notes at once. The screens barely move today because the
+captures are 1320×2868 — exactly the phone's own aspect — so nothing exists below
+the fold. Faking motion required an 8% content zoom, and that zoom is what clips
+the **W in "Welcome"**. Real pages delete the zoom: crop gone, and the scroll
+runs to the bottom.
 
-## 5.4 — The tapped states (one screenshot each)
+## 5.3 — The tapped states, one shot each
 
-You said I never actually tap anything. Correct, because I have no picture of
-what a tap opens:
+- Meetings → tap a meeting → the detail sheet. If it has a Join or Zoom button,
+  one more shot after tapping it.
+- Meetings → Nearby → tap a meeting → its detail sheet.
+- Chat → tap **Dana Case** → the conversation with messages on screen.
+- Community → tap a post, if it opens anything.
 
-- **Meetings → tap a meeting** → the detail sheet that opens. If there is a
-  Join / Zoom button on it, one more shot after tapping that.
-- **Meetings → Nearby → tap a meeting** → its detail sheet.
-- **Chat → tap Dana Case** → the conversation, with real messages on screen.
-- **Community → tap a post** if it opens anything.
+## 5.4 — Reference
 
-## 5.5 — Optional, only if you want it
+Any video whose look you want is worth more than a paragraph describing it. Send
+whatever you have; the last reference cut you sent set the house style for
+several beats.
 
-If you want real screen *recordings* later — for motion I cannot fake, like the
-rubber-band at the end of a scroll — say the word and I will get the capture
-exemption shipped. That means merging the PR and putting a TestFlight build on
-your phone. It is a day, not an hour, and the screenshots above get us to a
-finished film without it.
+## 5.5 — Optional: real recordings later
 
----
-
-**Send them however is easiest — all in one go is fine.** Name them loosely if
-you can ("home-1, home-2…"), but I can sort them by content if you don't.
+If you want genuine screen recordings — for motion that cannot be faked, like the
+rubber-band at the end of a scroll — the capture exemption has to ship: merge
+this PR, then a TestFlight build. That is a day, not an hour, and the screenshots
+above get to a finished film without it.

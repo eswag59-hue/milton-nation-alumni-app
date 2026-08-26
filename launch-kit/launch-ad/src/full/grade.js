@@ -25,6 +25,7 @@ function Grade(W, H){
 
   return function apply(src, frame, o){
     o = o || {};
+    const hole = o.hole;                       // {x,y,w,h,r} kept out of bloom
     const bloomAmt = o.bloom !== undefined ? o.bloom : 0.24;
     const grainAmt = o.grain !== undefined ? o.grain : 0.055;
     const vig      = o.vig   !== undefined ? o.vig   : 0.34;
@@ -45,6 +46,13 @@ function Grade(W, H){
     /* Blur the quarter-res bright pass, not the delivery frame.  A 46px blur
        over 1080x1920 was costing ~45 minutes a render for a result that is
        indistinguishable from the same blur applied before the upscale. */
+    og.save();
+    if (hole) {                                // everywhere except the screen
+      og.beginPath();
+      og.rect(0, 0, W, H);
+      og.roundRect(hole.x, hole.y, hole.w, hole.h, hole.r);
+      og.clip('evenodd');
+    }
     og.globalCompositeOperation='lighter';
     g3.globalCompositeOperation='source-over'; g3.globalAlpha=1;
     g3.clearRect(0,0,BW,BH); g3.filter='blur(3.5px)'; g3.drawImage(b2,0,0);
@@ -54,6 +62,7 @@ function Grade(W, H){
     g3.filter='none';
     og.globalAlpha=bloomAmt*0.55; og.drawImage(b3,0,0,W,H);
     og.globalAlpha=1;
+    og.restore();
 
     // ── vignette
     og.globalCompositeOperation='source-over';

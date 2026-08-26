@@ -12,6 +12,7 @@ const eO=t=>1-Math.pow(1-t,3), eI=t=>t*t*t, eIO=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+
 const back=(t,s)=>{s=s===undefined?1.90:s;return 1+(s+1)*Math.pow(t-1,3)+s*Math.pow(t-1,2)};
 const mix=(a,b,k)=>a+(b-a)*k;
 const T={};
+let HOLE=null;                 // screen rect to keep out of the bloom
 const SASP=2868/1320;
 
 const B={HOOK:[0,5.4],ICON:[5.4,12.8],HOME:[12.8,19.0],COMM:[19.0,25.6],
@@ -60,6 +61,7 @@ function onScreenX(x,w,frac){ return x-(w*ZK-w)/2 + frac*w*ZK; }
 const FILL=0.660, SCY=CY-H*0.055;
 function box(fillH,cy){const sh=H*(fillH||FILL), sw=sh/SASP;
   return {x:CX-sw/2,y:(cy===undefined?SCY:cy)-sh/2,w:sw,h:sh}}
+function markScreen(S){ HOLE={x:S.x,y:S.y,w:S.w,h:S.h,r:S.w*0.137}; }
 /* the Milton icon's slot on Ezra's own home screen, measured off his capture:
    centre 0.3827 / 0.5806 of the screen, 0.1553 of its width */
 const SLOT={cx:0.3827,cy:0.5806,s:0.1553};
@@ -240,6 +242,7 @@ function iconBeat(t){
     drawDevice(g,(x,y,w,h)=>{ if(T.ezra_home) g.drawImage(T.ezra_home,x,y,w,h); },
       S.x,S.y,S.w,S.h,{spill:T.ezra_home});
     g.restore();
+    if(ph>0.85) markScreen(S);
   }
 
   /* the free icon, handed off from the emblem's own face */
@@ -282,6 +285,7 @@ function screenBeat(t,beat,plateKey,tex,scroll,l1,l2,extra,popts){
     if(extra) extra(x,y,w,h,t,off,h);
   },S.x,S.y,S.w,S.h,{spill:T[tex]});
   g.restore();
+  markScreen(S);
   cap(t,b[0]+1.0,b[1],l1,l2);
   return S;
 }
@@ -393,6 +397,7 @@ function commBeat(t){
 
   if(tilt<0.02){
     g.save(); g.globalAlpha=A; g.drawImage(oc,0,0); g.restore();
+    markScreen(S);
   } else {
     tiltedPlane(oc, BX, BY, BW, BH, CX, BY+mix(0,H*0.045,tilt),
                 BW, BH*mix(1,0.90,tilt), tilt, A);
@@ -489,6 +494,7 @@ function meetBeat(t){
     }
   },S.x,S.y,S.w,S.h,{spill:swap<0.5?T['04_meetings']:T['07_nearby']});
   g.restore();
+  markScreen(S);
   /* the constellation feeding the phone */
   const into=seg(t,NEAR_T+0.35,NEAR_T+1.1)-seg(t,b[1]-1.0,b[1]-0.3);
   if(into>0) light(g,T.plume_in,CX,S.y+S.h*0.10,W*1.05,into*0.55,0);
@@ -590,11 +596,12 @@ window.SEEK=function(t){
   FRAME=Math.round(t*30); FRAME_T=FRAME/30;
   ag.globalCompositeOperation='source-over'; ag.globalAlpha=1;
   ag.fillStyle='#000'; ag.fillRect(0,0,W,H);
+  HOLE=null;
   for(let i=0;i<SUB;i++){
     drawAt(cl(t+(i/SUB-.5)*DT,0,DUR));
     ag.globalAlpha=1/(i+1); ag.drawImage(c,0,0); ag.globalAlpha=1;
   }
-  const fin=grade(acc,FRAME,{});
+  const fin=grade(acc,FRAME,{hole:HOLE});
   g.globalCompositeOperation='source-over'; g.globalAlpha=1;
   g.clearRect(0,0,W,H); g.drawImage(fin,0,0);
   return true;
