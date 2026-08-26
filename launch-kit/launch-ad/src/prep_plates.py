@@ -129,7 +129,7 @@ print('02_home_blank.png', home.size)
 from PIL import ImageFilter as _IF
 
 FACE = [(0.211, 0.317), (0.820, 0.308), (0.829, 0.681), (0.217, 0.672)]  # TL TR BR BL
-INSET = 0.055                       # the glass has a bevel; hold off the edge
+INSET = 0.004                       # Ezra: it must FILL the face, not sit inside it
 
 
 def _coeffs(dst, src):

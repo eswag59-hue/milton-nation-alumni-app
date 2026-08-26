@@ -15,8 +15,9 @@ const T={};
 let HOLE=null;                 // screen rect to keep out of the bloom
 const SASP=2868/1320;
 
-const B={HOOK:[0,5.4],ICON:[5.4,12.8],HOME:[12.8,19.0],COMM:[19.0,25.6],
-         MEET:[25.6,33.2],CHAT:[33.2,38.6],PROF:[38.6,42.8],END:[42.8,52.0]};
+const B={HOOK:[0,5.4],ICON:[5.4,12.0],OPEN:[12.0,15.6],HOME:[15.6,21.2],
+         COMM:[21.2,27.6],MEET:[27.6,34.6],CHAT:[34.6,39.6],PROF:[39.6,43.6],
+         END:[43.6,52.0]};
 const inB=(t,k)=>t>=B[k][0]&&t<B[k][1], pB=(t,k)=>seg(t,B[k][0],B[k][1]);
 
 /* Content motion inside the phone.
@@ -33,7 +34,7 @@ const inB=(t,k)=>t>=B[k][0]&&t<B[k][1], pB=(t,k)=>seg(t,B[k][0],B[k][1]);
    see the content move without ever exposing the capture's own chrome.
    A full-length scroll needs scroll-recordings of each tab, which only Ezra can
    make; see launch-kit/EZRA-DO-THIS-NOW.md. */
-const BAND_TOP=0.048, BAND_BOT=0.925, ZK=1.08;
+const BAND_TOP=0.048, BAND_BOT=0.925, ZK=1.045;
 const TRAVEL=(BAND_BOT-BAND_TOP)*(ZK-1);
 function screenScroll(im,x,y,w,h,p,ctx){
   ctx=ctx||g;
@@ -64,8 +65,12 @@ function box(fillH,cy){const sh=H*(fillH||FILL), sw=sh/SASP;
 function markScreen(S){ HOLE={x:S.x,y:S.y,w:S.w,h:S.h,r:S.w*0.137}; }
 /* the Milton icon's slot on Ezra's own home screen, measured off his capture:
    centre 0.3827 / 0.5806 of the screen, 0.1553 of its width */
-const SLOT={cx:0.3827,cy:0.5806,s:0.1553};
-function slot(S){return {x:S.x+S.w*SLOT.cx, y:S.y+S.h*SLOT.cy, s:S.w*SLOT.s}}
+/* Ezra: "when it disappears onto the iPhone you could still see a dark spot on
+   the emblem. Lower the icon just a tiny bit." His installed build has the dim
+   teal artwork; the bright one has to sit slightly proud of it to cover it, and
+   about a millimetre lower — 0.6% of screen height on a 6.3in display. */
+const SLOT={cx:0.3827,cy:0.5866,s:0.1553}, SLOT_COVER=1.055;
+function slot(S){return {x:S.x+S.w*SLOT.cx, y:S.y+S.h*SLOT.cy, s:S.w*SLOT.s*SLOT_COVER}}
 
 /* offscreen used for anything that needs its own alpha (logo sweep, cards) */
 const oc=document.createElement('canvas'); oc.width=W; oc.height=H;
@@ -95,7 +100,7 @@ function cap(t,b0,b1,l1,l2,size){
   if(l2) line(y+size*1.22, l2[0],l2[1], (seg(t,b0+0.35,b0+1.0)-seg(t,b1-0.45,b1)), size);
 }
 /* words arriving one at a time, each with its own overshoot */
-function kinetic(t,t0,words,y,size,limeFrom,face){
+function kinetic(t,t0,words,y,size,limeFrom,face,cols){
   g.save(); g.textAlign='left'; g.textBaseline='alphabetic';
   g.font=face||`600 ${size}px Jost, system-ui, sans-serif`;
   const gap=size*0.30;
@@ -111,7 +116,8 @@ function kinetic(t,t0,words,y,size,limeFrom,face){
       g.scale(mix(0.72,1,e), mix(0.72,1,e));
       g.translate(0, (1-e)*size*0.55);
       g.shadowColor='rgba(0,0,0,.6)'; g.shadowBlur=24;
-      g.fillStyle=(limeFrom!==undefined&&i>=limeFrom)?LIME:'#FFFFFF';
+      g.fillStyle=cols?cols[i%cols.length]
+                      :((limeFrom!==undefined&&limeFrom>=0&&i>=limeFrom)?LIME:'#FFFFFF');
       g.fillText(words[i], -ws[i]/2, 0);
       g.restore();
     }
@@ -120,100 +126,104 @@ function kinetic(t,t0,words,y,size,limeFrom,face){
   g.restore();
 }
 
-/* ── beat 1 · the colour wave, and the word it lands on ──────────────────────
-   Ezra on the glass-shard version: "I don't like the glass. I like what you
-   originally had. I want a wave of colors to kind of flow through that entire
-   page and through the word, and then it lands on the word and it's like bop."
+/* ── beat 1 · the colour pours down, and gathers into the word ───────────────
+   Ezra on the ribbon version: "should be milkier and creamier, much smoother,
+   coming DOWN the screen, covering the whole screen, and then it all lands and
+   comes into the word. Make the word bolder."
 
-   So: no plate. A near-black ground, ribbons of the brand ramp sweeping in from
-   the left, the wordmark painted in behind the wave front as it passes, then the
-   ribbons collapsing onto the word's own line — the colour becomes the word —
-   and a scale punch on the frame they land. */
+   So it falls rather than sweeps, and it is built from wide soft columns with
+   long vertical falloffs instead of stroked ribbons — the ribbons read as
+   stripes because their edges were hard relative to their width. These are
+   nearly all falloff. They gather onto the wordmark's line and dissolve into it. */
 const RAMP=['#165C7D','#007396','#0093B2','#369DA0','#56B093','#D4EB8E'];
-const WAVE=[0.10,1.38], LAND=1.52, COLLAPSE=[1.30,1.74];
+const CREAM='#EAF6F4';
+const POUR=[0.00,1.62], LAND=1.86, GATHER=[1.52,2.06];
 
-function ribbon(i,t,front,coll,alpha,wy){
-  const spd=0.86+i*0.052;
-  const k=(6.1+i*0.7)/W, ph=i*1.25 - t*1.15;
-  /* the collapse pulls every ribbon onto the wordmark's line, so the field
-     resolves into the word instead of just sliding off frame */
-  const baseY=mix(CY+(i-3)*H*0.056+Math.sin(t*0.62+i*1.4)*H*0.010, wy, coll);
-  const amp=mix(H*(0.052+(i%3)*0.020), H*0.004, coll);
-  const th =mix(H*(0.034+(i%4)*0.014), H*0.006, coll);
-  const x0=-W*0.30, x1=W*1.30, STEP=W*0.030;
-  const grad=g.createLinearGradient(front*W-W*0.85,0,front*W+W*0.55,0);
-  for(let q=0;q<=5;q++){
-    const c=RAMP[(q+i)%RAMP.length];
-    grad.addColorStop(q/5, c);
-  }
-  for(let pass=0;pass<3;pass++){
-    const tk=th*(1+pass*0.85), a=alpha*[0.52,0.24,0.12][pass];
-    if(a<=0.003) continue;
-    g.globalAlpha=a; g.fillStyle=grad;
-    g.beginPath();
-    for(let x=x0;x<=x1;x+=STEP) g.lineTo(x, baseY+Math.sin(x*k+ph)*amp-tk/2);
-    for(let x=x1;x>=x0;x-=STEP) g.lineTo(x, baseY+Math.sin(x*k+ph)*amp+tk/2);
-    g.closePath(); g.fill();
-  }
+function column(i,t,fall,gath,alpha,wy){
+  const n=9;
+  const x=W*((i+0.5)/n) + Math.sin(t*0.5+i*1.9)*W*0.035;
+  /* each column runs a little ahead or behind so the front is a soft edge,
+     not a ruled line */
+  const lead=cl(fall*1.30 + 0.20 - i*0.040, 0, 1.2);
+  const head=mix(-H*0.30, H*1.22, lead);
+  const len=H*(0.52+((i*7)%5)*0.09);
+  const wid=W*(0.20+((i*5)%4)*0.075);
+  /* position resolves onto the word faster than size does, or the mass piles up
+     under the wordmark instead of arriving in it */
+  const gp=Math.pow(gath,0.32);
+  const cx=mix(x, CX+(x-CX)*0.10, gp);
+  const cy=mix(head-len*0.35, wy, gp);
+  const hh=mix(len, H*0.035, gath);
+  const ww=mix(wid, W*0.44, gath);
+  const c=(i%3===1)?CREAM:RAMP[(i*2)%RAMP.length];
+  const gr=g.createRadialGradient(cx,cy,0,cx,cy,Math.max(ww,hh));
+  gr.addColorStop(0, c); gr.addColorStop(0.34,c); gr.addColorStop(1,'rgba(0,0,0,0)');
+  g.save();
+  g.globalAlpha=alpha*(0.30+((i*3)%4)*0.05);
+  g.translate(cx,cy); g.scale(ww/Math.max(ww,hh), hh/Math.max(ww,hh));
+  g.translate(-cx,-cy);
+  g.fillStyle=gr; g.beginPath(); g.arc(cx,cy,Math.max(ww,hh),0,7); g.fill();
+  g.restore();
+}
+
+/* the wordmark is a thin didone; drawing it in a tight ring thickens the strokes,
+   which is the only honest way to make his own logo read bolder */
+function boldLogo(lg,x,y,w,h,spread){
+  g.save();
+  g.shadowColor='rgba(46,178,206,.55)'; g.shadowBlur=44;
+  g.drawImage(lg,x,y,w,h);                       // the glow, once
+  g.shadowBlur=0; g.shadowColor='transparent';
+  for(let a=0;a<8;a++)
+    g.drawImage(lg, x+Math.cos(a*0.785)*spread, y+Math.sin(a*0.785)*spread, w, h);
+  g.drawImage(lg,x,y,w,h);
+  g.restore();
 }
 
 function hook(t){
-  /* ground: near-black with one soft lift, not flat and not glass */
-  g.fillStyle='#06080B'; g.fillRect(0,0,W,H);
+  g.fillStyle='#05070A'; g.fillRect(0,0,W,H);
   const bg=g.createRadialGradient(CX,CY-H*0.04,0,CX,CY-H*0.04,W*0.95);
-  bg.addColorStop(0,'rgba(16,30,38,.85)'); bg.addColorStop(1,'rgba(4,6,9,0)');
+  bg.addColorStop(0,'rgba(14,28,36,.80)'); bg.addColorStop(1,'rgba(4,6,9,0)');
   g.fillStyle=bg; g.fillRect(0,0,W,H);
 
   const lg=T.logo; if(!lg)return;
-  const lw=W*0.76, lh=lg.height*(lw/lg.width);
-  const wy=CY-H*0.055;
+  const lw=W*0.82, lh=lg.height*(lw/lg.width);
+  const wy=CY-H*0.060;
 
-  const front=mix(-0.34,1.42,eIO(seg(t,WAVE[0],WAVE[1])));
-  const coll=eIO(seg(t,COLLAPSE[0],COLLAPSE[1]));
-  const env=cl(seg(t,0.06,0.42),0,1)*(1-seg(t,COLLAPSE[0],COLLAPSE[1]+0.10));
+  const fall=eIO(seg(t,POUR[0],POUR[1]));
+  const gath=eIO(seg(t,GATHER[0],GATHER[1]));
+  const env=cl(seg(t,0.00,0.16),0,1)*(1-seg(t,GATHER[0]+0.16,GATHER[1]+0.16));
   if(env>0.003){
     g.save(); g.globalCompositeOperation='lighter';
-    for(let i=0;i<7;i++) ribbon(i,t,front,coll,env,wy);
+    for(let i=0;i<9;i++) column(i,t,fall,gath,env,wy);
     g.restore();
   }
 
-  /* the word, painted in behind the wave front */
-  const rev=cl((front*W - (CX-lw/2) + W*0.16)/(lw+W*0.32),0,1);
+  /* the word arrives as the pour reaches it, not on a wipe */
+  const rev=cl(seg(t,0.92,1.72),0,1);
   if(rev>0.004){
-    /* the bop: a damped punch on the frame the wave lands, not a slow scale */
-    const b=t>=LAND?Math.exp(-(t-LAND)*9.0)*Math.sin((t-LAND)*26.0):0;
-    const sc=1+b*0.085;
-    og.clearRect(0,0,W,H);
-    og.globalCompositeOperation='source-over'; og.globalAlpha=1;
-    og.drawImage(lg,CX-lw/2,wy-lh/2,lw,lh);
-    const m=og.createLinearGradient(CX-lw/2-W*0.16,0,CX-lw/2-W*0.16+(lw+W*0.32)*rev,0);
-    m.addColorStop(0,'rgba(0,0,0,1)');
-    m.addColorStop(Math.max(0,1-0.16),'rgba(0,0,0,1)');
-    m.addColorStop(1,'rgba(0,0,0,0)');
-    og.globalCompositeOperation='destination-in';
-    og.fillStyle=m; og.fillRect(CX-lw/2-W*0.16,0,(lw+W*0.32)*rev+2,H);
-    og.globalCompositeOperation='source-over';
+    const b=t>=LAND?Math.exp(-(t-LAND)*8.4)*Math.sin((t-LAND)*24.0):0;
+    const sc=1+b*0.070;
     g.save();
     g.translate(CX,wy); g.scale(sc,sc); g.translate(-CX,-wy);
-    g.globalAlpha=1-seg(t,5.05,5.4);
-    g.shadowColor='rgba(40,170,200,.55)'; g.shadowBlur=44;
-    g.drawImage(oc,0,0);
+    g.globalAlpha=(1-seg(t,5.05,5.4))*rev;
+    boldLogo(lg, CX-lw/2, wy-lh/2, lw, lh, Math.max(2.0, lw*0.0030));
     g.restore();
   }
 
-  /* the flash on landing */
-  const fl=Math.max(0,1-Math.abs(t-LAND)*4.2);
+  const fl=Math.max(0,1-Math.abs(t-LAND)*3.8);
   if(fl>0){
-    g.save(); g.globalCompositeOperation='lighter'; g.globalAlpha=fl*0.42;
-    const rg=g.createRadialGradient(CX,wy,0,CX,wy,W*0.80);
-    rg.addColorStop(0,'rgba(206,244,250,.95)');
-    rg.addColorStop(0.40,'rgba(70,165,190,.26)');
+    g.save(); g.globalCompositeOperation='lighter'; g.globalAlpha=fl*0.40;
+    const rg=g.createRadialGradient(CX,wy,0,CX,wy,W*0.62);
+    rg.addColorStop(0,'rgba(226,248,252,.95)');
+    rg.addColorStop(0.26,'rgba(80,175,200,.20)');
     rg.addColorStop(1,'rgba(0,0,0,0)');
     g.fillStyle=rg; g.fillRect(0,0,W,H); g.restore();
   }
 
-  /* and then the line, alone on the screen */
-  kinetic(t,1.98,['Nobody','can','recover','alone.'],CY+H*0.115,68,3);
+  /* "put the colors going through those words" — each word takes its own step
+     down the brand ramp, and the colour travels along the line as they land */
+  kinetic(t,2.30,['Nobody','can','recover','alone.'],CY+H*0.120,72,-1,null,
+          ['#0093B2', CREAM, '#56B093', '#D4EB8E']);
 }
 
 /* ── beat 2 · out of the emblem, onto his own home screen ───────────────────
@@ -225,29 +235,30 @@ function hook(t){
    then recedes into its slot on his own home screen. */
 const TILE_P={push:0.13,dy:-0.010};
 const FACE_C=[0.5193,0.4945], FACE_W=0.6105;     // measured off tile.jpg
-const DETACH=7.05, LANDED=11.05;
+const DETACH=7.05, LANDED=10.65;
 
 function iconBeat(t){
   const S=box(), sl=slot(S);
-  const tp=seg(t,5.4,8.6);
-  const toNation=seg(t,7.30,8.60);
+  const tp=seg(t,5.4,8.4);
+  const toNation=seg(t,7.20,8.40);
 
   plate(g,T,'tile_icon',W,H,tp,1-toNation,TILE_P);
-  plate(g,T,'nation',W,H,seg(t,7.3,12.8),toNation,{push:0.10,dy:0.016});
+  plate(g,T,'nation',W,H,seg(t,7.2,12.0),toNation,{push:0.10,dy:0.016});
 
   /* the phone arrives under the shrinking icon and takes it */
   const ph=eO(seg(t,9.05,10.25));
   if(ph>0){
     g.save(); g.globalAlpha=ph;
-    drawDevice(g,(x,y,w,h)=>{ if(T.ezra_home) g.drawImage(T.ezra_home,x,y,w,h); },
-      S.x,S.y,S.w,S.h,{spill:T.ezra_home});
+    const hs=T.ezra_home2||T.ezra_home;
+    drawDevice(g,(x,y,w,h)=>{ if(hs) g.drawImage(hs,x,y,w,h); },
+      S.x,S.y,S.w,S.h,{spill:hs});
     g.restore();
     if(ph>0.85) markScreen(S);
   }
 
   /* the free icon, handed off from the emblem's own face */
   if(t>=DETACH&&T.icon){
-    const m=plateMap(W,H,seg(DETACH,5.4,8.6),TILE_P,FACE_C[0],FACE_C[1]);
+    const m=plateMap(W,H,seg(DETACH,5.4,8.4),TILE_P,FACE_C[0],FACE_C[1]);
     const sz0=FACE_W*m.w;
     /* forward first, then away: one eased travel with a scale bump on the front */
     const k=eIO(seg(t,DETACH,LANDED));
@@ -262,14 +273,73 @@ function iconBeat(t){
     g.restore();
   }
 
-  /* light leaves the screen, then pours back into it */
-  const out=seg(t,11.00,11.55)-seg(t,12.15,12.75);
-  if(out>0) light(g,T.plume_out, CX, S.y-H*0.135, W*1.00, out*0.80, 0);
-  const into=seg(t,11.85,12.35)-seg(t,12.60,12.80);
-  if(into>0) light(g,T.plume_in, CX, S.y-H*0.055, W*0.86, into*0.62, 0);
+  /* Ezra: "I don't know what those sparkles are. Get rid of that shit... it
+     should change transition." So the beat ends on the icon itself waking —
+     a short bloom out of the slot that hands straight to the app opening. */
+  const wake=seg(t,11.30,11.75)-seg(t,11.90,12.00);
+  if(wake>0){
+    g.save(); g.globalCompositeOperation='lighter'; g.globalAlpha=wake*0.85;
+    const r=g.createRadialGradient(sl.x,sl.y,0,sl.x,sl.y,S.w*0.60);
+    r.addColorStop(0,'rgba(150,236,250,.95)');
+    r.addColorStop(0.30,'rgba(40,150,180,.32)');
+    r.addColorStop(1,'rgba(0,0,0,0)');
+    g.fillStyle=r; g.fillRect(0,0,W,H); g.restore();
+  }
 
   kinetic(t,8.05,['so','we','built','a','nation'],H*0.885,74,4,
     `500 74px 'Bodoni Moda', Georgia, serif`);
+}
+
+/* ── beat 3 · the app opens the way iOS opens it ────────────────────────────
+   Lifted from Ezra's own 26 Aug screen recording: the icon's rounded square
+   expands out of its slot into the full display, and what is behind it is the
+   "Welcome Back! / Are you still on track? / 1,097 days of recovery" screen —
+   the app's real first beat, which no earlier cut had because no screenshot of
+   it existed. Then the tap on "Yes, still going strong!" hands to Home. */
+function openBeat(t){
+  const b=B.OPEN, S=box(), sl=slot(S);
+  plate(g,T,'nation',W,H,seg(t,7.2,b[1]),1-seg(t,b[0]+0.5,b[0]+1.4),{push:0.10,dy:0.016});
+  plate(g,T,'home',W,H,seg(t,b[0]+0.5,B.HOME[1]),seg(t,b[0]+0.5,b[0]+1.4),
+        {push:0.085,dy:-0.012});
+
+  const k=eIO(seg(t,b[0]+0.10,b[0]+0.95));
+  const home=T.ezra_home2||T.ezra_home, wel=T['00_welcome'];
+
+  drawDevice(g,(x,y,w,h)=>{
+    if(home) g.drawImage(home,x,y,w,h);
+    /* the expanding card: icon corner radius to screen corner radius, exactly
+       as the real animation does it */
+    const cx=mix(sl.x,x+w/2,k), cy=mix(sl.y,y+h/2,k);
+    const cw=mix(sl.s,w,k),     ch=mix(sl.s,h,k);
+    const rr=mix(sl.s*0.225, w*0.137, k);
+    g.save();
+    g.beginPath(); g.roundRect(cx-cw/2,cy-ch/2,cw,ch,rr); g.clip();
+    /* the icon stays square inside the growing card — stretching it to the card
+       height elongated the m into a smear as the rect went tall */
+    const ia=1-cl(seg(t,b[0]+0.42,b[0]+0.86),0,1);
+    if(T.icon&&ia>0.004){ g.globalAlpha=ia; g.drawImage(T.icon,cx-cw/2,cy-cw/2,cw,cw); }
+    if(wel){
+      g.globalAlpha=cl(seg(t,b[0]+0.42,b[0]+0.95),0,1);
+      const s2=cw/wel.width;
+      g.drawImage(wel,cx-cw/2,cy-ch/2,cw,wel.height*s2);
+    }
+    g.restore();
+
+    /* the tap that answers it */
+    const tp=seg(t,b[1]-1.05,b[1]-0.55);
+    if(k>0.98&&tp>0&&tp<1){
+      const rx=x+w*0.50, ry=y+h*0.822;      // the "Yes, still going strong!" bar
+      g.save(); g.globalAlpha=(1-tp)*0.85;
+      g.strokeStyle='rgba(255,255,255,.95)'; g.lineWidth=w*0.010;
+      g.beginPath(); g.arc(rx,ry,w*0.05+tp*w*0.11,0,7); g.stroke();
+      g.fillStyle='rgba(255,255,255,.22)';
+      g.beginPath(); g.arc(rx,ry,w*0.045,0,7); g.fill();
+      g.restore();
+    }
+  },S.x,S.y,S.w,S.h,{spill:k>0.5?(wel||home):home});
+  markScreen(S);
+
+  cap(t,b[0]+1.15,b[1],['1,097 days.',''],['','Still going strong.']);
 }
 
 /* ── the five screen beats ────────────────────────────────────────────────── */
@@ -298,7 +368,7 @@ function counter(t,S,off,fh){
   const win=[B.HOME[0]+0.15,B.HOME[0]+3.9];
   if(t<B.HOME[0])return;
   const tq=FRAME_T;                                  // one value per output frame
-  const val=Math.round(1+eIO(cl(seg(tq,win[0],win[1]),0,1))*1095);
+  const val=Math.round(1+eIO(cl(seg(tq,win[0],win[1]),0,1))*1096);   // to 1,097, his live count
   const cx=onScreenX(S.x,S.w,0.5011), cyy=onScreenY(S.y,S.h,0.3368,off);
   g.save();
   g.textAlign='center'; g.textBaseline='middle';
@@ -321,7 +391,9 @@ function tiltedPlane(im, sx0, sy0, sw0, sh0, cx, topY, w0, h0, tilt, alpha){
   /* 1.15 laid the plane back so far the top was under half width and it read as
      a funnel rather than a screen. 0.40 is about a 30-degree tip — enough to see
      the surface, still unmistakably a phone. */
-  const N=56, k=tilt*0.40;
+  /* 1.15 read as a funnel and 0.40 barely tipped; 0.78 is a phone lying on a
+     table seen from a standing eye line. */
+  const N=56, k=tilt*0.78;
   const sc=v=>1/(1+k*(1-v));
   let tot=0; for(let i=0;i<N;i++) tot+=sc((i+0.5)/N);
   const unit=h0/(tot/N);
@@ -379,7 +451,11 @@ function commBeat(t){
   const b=B.COMM, p=pB(t,'COMM');
   plate(g,T,'comm',W,H,p,1,{push:0.10,dy:-0.014});
   const rise=eO(seg(t,b[0],b[0]+0.75)), fall=seg(t,b[1]-0.42,b[1]);
-  const tilt=eIO(seg(t,b[0]+1.15,b[0]+2.30));
+  /* Ezra: "the phone should be lying flat, like it's on a table, and then
+     coming out of the phone... and then it should turn vertically, and you can
+     see how that page looks." So the tilt goes down and comes back, rather than
+     laying back and staying there. */
+  const tilt=eIO(seg(t,b[0]+1.10,b[0]+2.20))*(1-eIO(seg(t,b[1]-2.40,b[1]-1.30)));
   const S=box(FILL, SCY+(1-rise)*H*0.045);
   const im=T['03_community'];
   const off=eIO(seg(t,b[0]+0.85,b[1]-0.55))*1.0;
@@ -399,8 +475,13 @@ function commBeat(t){
     g.save(); g.globalAlpha=A; g.drawImage(oc,0,0); g.restore();
     markScreen(S);
   } else {
-    tiltedPlane(oc, BX, BY, BW, BH, CX, BY+mix(0,H*0.045,tilt),
-                BW, BH*mix(1,0.90,tilt), tilt, A);
+    tiltedPlane(oc, BX, BY, BW, BH, CX, BY+mix(0,H*0.105,tilt),
+                BW, BH*mix(1,0.74,tilt), tilt, A*(1-tilt*0.20));
+    /* the surface it is lying on */
+    g.save(); g.globalAlpha=A*tilt*0.55;
+    const tb=g.createLinearGradient(0,BY+BH*0.62,0,H);
+    tb.addColorStop(0,'rgba(0,0,0,0)'); tb.addColorStop(1,'rgba(2,5,8,.85)');
+    g.fillStyle=tb; g.fillRect(0,BY+BH*0.62,W,H-BY-BH*0.62); g.restore();
     g.save(); g.globalAlpha=A*tilt*0.42;
     g.globalCompositeOperation='lighter';
     const gl=g.createRadialGradient(CX,S.y+S.h*0.45,0,CX,S.y+S.h*0.45,S.w*1.15);
@@ -503,63 +584,119 @@ function meetBeat(t){
   return S;
 }
 
+/* ── beat 7 · the phone steps off centre and the line sits beside it ────────
+   Every reference Ezra sent varies its composition — phones off centre, at an
+   angle, with type set beside them rather than pinned under. Holding one phone
+   dead centre at one size for forty seconds is most of what reads as flat. */
+function profBeat(t){
+  const b=B.PROF, p=pB(t,'PROF');
+  plate(g,T,'prof',W,H,p,1,{push:0.085,dy:-0.012});
+  const rise=eO(seg(t,b[0],b[0]+0.75)), fall=seg(t,b[1]-0.42,b[1]);
+  const shift=eIO(seg(t,b[0]+0.30,b[0]+1.50));
+  const sh2=H*0.560;
+  const sw2=sh2/SASP;
+  const S={x:mix(CX-sw2/2, CX+W*0.185-sw2/2, shift),
+           y:SCY-sh2/2+(1-rise)*H*0.045+H*0.010, w:sw2, h:sh2};
+  const off=eIO(seg(t,b[0]+0.85,b[1]-0.55))*1.0;
+  g.save(); g.globalAlpha=rise*(1-fall);
+  g.translate(S.x+S.w/2, S.y+S.h/2); g.rotate(mix(0,-0.052,shift));
+  g.translate(-(S.x+S.w/2), -(S.y+S.h/2));
+  drawDevice(g,(x,y,w,h)=>screenScroll(T['06_profile'],x,y,w,h,off),
+    S.x,S.y,S.w,S.h,{spill:T['06_profile']});
+  g.restore();
+  markScreen(S);
+
+  const ta=seg(t,b[0]+1.20,b[0]+1.95)-seg(t,b[1]-0.45,b[1]);
+  if(ta>0.004){
+    g.save(); g.globalAlpha=cl(ta,0,1);
+    g.textAlign='left'; g.textBaseline='alphabetic';
+    g.shadowColor='rgba(0,0,0,.65)'; g.shadowBlur=26;
+    const x=W*0.070;
+    g.font="600 66px Jost, system-ui, sans-serif"; g.fillStyle='#FFFFFF';
+    g.fillText('Driven by', x, CY-H*0.045);
+    g.fillText('purpose.',  x, CY+H*0.020);
+    g.font="600 52px Jost, system-ui, sans-serif"; g.fillStyle=LIME;
+    g.fillText('Committed', x, CY+H*0.105);
+    g.fillText('to care.',  x, CY+H*0.162);
+    g.textAlign='center'; g.restore();
+  }
+}
+
 /* ── beat 8 · close the app, then the card ────────────────────────────────── */
 function endBeat(t){
-  const b=B.END;
-  const S=box();
-  /* the app closing: the profile screen shrinks back into its own icon slot */
-  const cls=eIO(seg(t,b[0],b[0]+1.35));
-  const pull=eIO(seg(t,b[0]+1.45,b[0]+2.55));
-  plate(g,T,'nation',W,H,seg(t,b[0],b[0]+2.6),1-seg(t,b[0]+1.6,b[0]+2.6),{push:0.05,dy:0.01});
-  plate(g,T,'end',W,H,seg(t,b[0]+1.6,DUR),seg(t,b[0]+1.6,b[0]+2.6),{push:0.075,dy:-0.012});
+  const b=B.END, S=box(), sl=slot(S);
+  const home=T.ezra_home2||T.ezra_home;
+
+  /* Ezra: "the way you close the app looks so unsmooth. Close the app
+     normally." So it is the open run backwards, using the same card maths —
+     the screen contracts into its own icon and the home screen is behind it. */
+  const k=1-eIO(seg(t,b[0],b[0]+0.90));
+  const pull=eIO(seg(t,b[0]+1.15,b[0]+2.35));
+
+  plate(g,T,'nation',W,H,seg(t,b[0],b[0]+2.6),1-seg(t,b[0]+1.3,b[0]+2.4),
+        {push:0.05,dy:0.01});
+  plate(g,T,'end',W,H,seg(t,b[0]+1.3,DUR),seg(t,b[0]+1.3,b[0]+2.4),
+        {push:0.075,dy:-0.012});
 
   if(pull<1){
-    const sl=slot(S);
-    g.save(); g.globalAlpha=(1-pull);
-    g.translate(0,pull*H*0.30); g.scale(mix(1,0.82,pull),mix(1,0.82,pull));
-    g.translate(0,-pull*H*0.10);
+    g.save(); g.globalAlpha=1-pull;
+    g.translate(CX,CY); g.scale(mix(1,0.80,pull),mix(1,0.80,pull));
+    g.translate(-CX,-CY+pull*H*0.16);
     drawDevice(g,(x,y,w,h)=>{
-      if(T.ezra_home) g.drawImage(T.ezra_home,x,y,w,h);
-      const sz=mix(w,S.w*SLOT.s,cls);
-      const cx=mix(x+w/2, x+w*SLOT.cx, cls), cy=mix(y+h/2, y+h*SLOT.cy, cls);
+      if(home) g.drawImage(home,x,y,w,h);
+      const cx=mix(sl.x,x+w/2,k), cy=mix(sl.y,y+h/2,k);
+      const cw=mix(sl.s,w,k),     ch=mix(sl.s,h,k);
+      const rr=mix(sl.s*0.225, w*0.137, k);
       g.save();
-      g.beginPath(); g.roundRect(cx-sz/2,cy-sz/2,sz,sz,sz*(0.045+0.18*cls)); g.clip();
-      if(cls<0.97&&T['06_profile']){
-        const im=T['06_profile'], k=sz/im.width;
-        g.drawImage(im,cx-sz/2,cy-sz/2,sz,im.height*k);
+      g.beginPath(); g.roundRect(cx-cw/2,cy-ch/2,cw,ch,rr); g.clip();
+      if(T['06_profile']&&k>0.02){
+        g.globalAlpha=cl(k*2.2,0,1);
+        const im=T['06_profile'], q=cw/im.width;
+        g.drawImage(im,cx-cw/2,cy-ch/2,cw,im.height*q);
       }
-      g.globalAlpha=cls; if(T.icon) g.drawImage(T.icon,cx-sz/2,cy-sz/2,sz,sz);
+      g.globalAlpha=1-cl(k*2.2,0,1);
+      if(T.icon) g.drawImage(T.icon,cx-cw/2,cy-cw/2,cw,cw);
       g.restore();
-    },S.x,S.y,S.w,S.h,{spill:T.ezra_home});
+    },S.x,S.y,S.w,S.h,{spill:home});
     g.restore();
+    if(k>0.55) markScreen(S);
   }
-  const burst=seg(t,b[0]+1.05,b[0]+1.5)-seg(t,b[0]+2.4,b[0]+3.0);
-  if(burst>0) light(g,T.plume_out,CX,S.y-H*0.115,W*1.15,burst*0.72,0);
 
-  /* the card */
-  const t0=b[0]+2.5;
+  /* and then the same pour that opened the film closes it */
+  const t0=b[0]+2.30;
   const lg=T.logo;
-  const la=eO(seg(t,t0,t0+1.0));
-  if(lg&&la>0){
-    const e=back(seg(t,t0,t0+0.95),1.5);
-    const lw=W*0.70*mix(0.88,1,e), lh=lg.height*(lw/lg.width);
-    g.save(); g.globalAlpha=la;
-    g.shadowColor='rgba(30,150,180,.5)'; g.shadowBlur=48;
-    g.drawImage(lg,CX-lw/2,CY-H*0.190-lh/2+(1-e)*H*0.035,lw,lh);
+  const fall=eIO(seg(t,t0,t0+1.40));
+  const gath=eIO(seg(t,t0+1.16,t0+1.80));
+  const env=cl(seg(t,t0,t0+0.18),0,1)*(1-seg(t,t0+1.34,t0+1.92));
+  const wy=CY-H*0.190;
+  if(env>0.003){
+    g.save(); g.globalCompositeOperation='lighter';
+    for(let i=0;i<9;i++) column(i,t,fall,gath*0.82,env*0.52,wy);
     g.restore();
   }
-  line(CY-H*0.080,'The official alumni app of','',eO(seg(t,t0+0.9,t0+1.7)),42,400);
-  line(CY-H*0.030,'Milton Recovery Centers','',eO(seg(t,t0+1.05,t0+1.85)),58,600);
-  line(CY+H*0.038,'','Free for verified alumni',eO(seg(t,t0+1.5,t0+2.3)),48,600);
-  line(CY+H*0.100,'Now live on the App Store and Google Play','',
-       eO(seg(t,t0+2.0,t0+2.8)),36,400);
-  const ba=eO(seg(t,t0+2.35,t0+3.2));
+  const la=cl(seg(t,t0+0.58,t0+1.16),0,1);
+  if(lg&&la>0){
+    const LAND2=t0+1.56;
+    const bb=t>=LAND2?Math.exp(-(t-LAND2)*8.4)*Math.sin((t-LAND2)*24.0):0;
+    const lw=W*0.74*(1+bb*0.06), lh=lg.height*(lw/lg.width);
+    g.save(); g.globalAlpha=la;
+    g.translate(CX,wy); g.scale(1,1); g.translate(-CX,-wy);
+    boldLogo(lg, CX-lw/2, wy-lh/2, lw, lh, Math.max(2.0, lw*0.0030));
+    g.restore();
+  }
+
+  line(CY-H*0.075,'The official alumni app of','',eO(seg(t,t0+1.95,t0+2.65)),42,400);
+  line(CY-H*0.025,'Milton Recovery Centers','',eO(seg(t,t0+2.10,t0+2.80)),58,600);
+  line(CY+H*0.042,'','Free for verified alumni',eO(seg(t,t0+2.45,t0+3.15)),48,600);
+  line(CY+H*0.104,'Now live on the App Store and Google Play','',
+       eO(seg(t,t0+2.85,t0+3.55)),36,400);
+  const ba=eO(seg(t,t0+3.15,t0+3.95));
   if(T.badges&&ba>0){
     const bw=W*0.72, bh=T.badges.height*(bw/T.badges.width);
     g.save(); g.globalAlpha=ba;
-    g.drawImage(T.badges,CX-bw/2,CY+H*0.155,bw,bh); g.restore();
+    g.drawImage(T.badges,CX-bw/2,CY+H*0.158,bw,bh); g.restore();
   }
-  line(H*0.930,'Demo data shown','',eO(seg(t,t0+3.0,t0+3.8))*0.55,26,400);
+  line(H*0.930,'Demo data shown','',eO(seg(t,t0+3.7,t0+4.4))*0.55,26,400);
 }
 
 /* ── frame ────────────────────────────────────────────────────────────────── */
@@ -570,6 +707,7 @@ function drawAt(t){
 
   if(inB(t,'HOOK')) hook(t);
   else if(inB(t,'ICON')) iconBeat(t);
+  else if(inB(t,'OPEN')) openBeat(t);
   else if(inB(t,'HOME')){
     screenBeat(t,'HOME','home','02_home',0.95,
       ['Yes, every day counts,',''],['','one day at a time.'],
@@ -579,8 +717,7 @@ function drawAt(t){
   else if(inB(t,'MEET')) meetBeat(t);
   else if(inB(t,'CHAT')) screenBeat(t,'CHAT','chat','05_chat',0.90,
       ["We're there for you",''],['','when it counts.']);
-  else if(inB(t,'PROF')) screenBeat(t,'PROF','prof','06_profile',1.0,
-      ['Driven by purpose.',''],['','Committed to care.']);
+  else if(inB(t,'PROF')) profBeat(t);
   else endBeat(t);
 
   const bk=Math.max(1-seg(t,0,0.7),seg(t,DUR-0.9,DUR));
@@ -610,7 +747,8 @@ window.DURATION=DUR;
 
 const SRC={
   logo:'assets/logo.png', icon:'assets/icon_bright.png',
-  ezra_home:'assets/ezra_home.png', badges:'assets/badges.png',
+  ezra_home:'assets/ezra_home.png', ezra_home2:'assets/ezra_home2.png',
+  ezra_lock2:'assets/ezra_lock2.png', '00_welcome':'assets/00_welcome.png', badges:'assets/badges.png',
   '02_home':'assets/02_home_blank.png','03_community':'assets/03_community.png',
   '04_meetings':'assets/04_meetings.png','05_chat':'assets/05_chat.png',
   '06_profile':'assets/06_profile.png','07_nearby':'assets/07_nearby.png',

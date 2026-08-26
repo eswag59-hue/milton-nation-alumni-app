@@ -187,8 +187,13 @@ for name, fel, dist, day, time_, addr, loc in MEETINGS:
     d.text((bx1-int(12*PT)-lw, by0+31), lbl, font=lf, fill=(255, 255, 255), anchor="lm")
 
     y += ch + int(12*PT)
-    if y > H - 300:
+    if y + 380 > 2700:                  # leave the tab bar a clean run-out
         break
+
+d.text((W/2, y + 30), "Showing NA & AA meetings from participating intergroups via",
+       font=font(400, 33), fill=(120, 132, 140), anchor="ma")
+d.text((W/2, y + 76), "BMLT. For a complete AA meeting list, visit aa.org/find-aa.",
+       font=font(400, 33), fill=(120, 132, 140), anchor="ma")
 
 # ── real tab bar off the capture ─────────────────────────────────────────────
 img.paste(base.crop((0, 2700, W, H)), (0, 2700))
