@@ -1,0 +1,14 @@
+import { chromium } from 'playwright';
+import { resolve } from 'path';
+const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium-1194/chrome-linux/chrome',args:['--no-sandbox','--disable-gpu']});
+const p=await b.newPage({viewport:{width:1080,height:1920}});
+p.on('pageerror',e=>console.error('PAGEERROR:',e.message));
+p.on('console',m=>console.log('CONSOLE['+m.type()+']:',m.text()));
+await p.goto('file://'+resolve('intro.html'));
+await new Promise(r=>setTimeout(r,4000));
+console.log('READY      =', await p.evaluate(()=>window.READY));
+console.log('SEEK       =', await p.evaluate(()=>typeof window.SEEK));
+console.log('refGround  =', await p.evaluate(()=>typeof refGround));
+console.log('fonts.status=', await p.evaluate(()=>document.fonts.status));
+console.log('fonts.size =', await p.evaluate(()=>document.fonts.size));
+await b.close();
