@@ -128,7 +128,7 @@ print('02_home_blank.png', home.size)
 # it reads as printed inside the glass rather than pasted on the front.
 from PIL import ImageFilter as _IF
 
-FACE = [(0.211, 0.317), (0.820, 0.308), (0.829, 0.681), (0.217, 0.672)]  # TL TR BR BL
+FACE = [(0.211, 0.308), (0.820, 0.317), (0.829, 0.672), (0.217, 0.681)]  # TL TR BR BL
 INSET = 0.004                       # Ezra: it must FILL the face, not sit inside it
 
 

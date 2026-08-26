@@ -69,7 +69,7 @@ function markScreen(S){ HOLE={x:S.x,y:S.y,w:S.w,h:S.h,r:S.w*0.137}; }
    the emblem. Lower the icon just a tiny bit." His installed build has the dim
    teal artwork; the bright one has to sit slightly proud of it to cover it, and
    about a millimetre lower — 0.6% of screen height on a 6.3in display. */
-const SLOT={cx:0.3827,cy:0.5866,s:0.1553}, SLOT_COVER=1.055;
+const SLOT={cx:0.3878,cy:0.5805,s:0.1536}, SLOT_COVER=1.05;
 function slot(S){return {x:S.x+S.w*SLOT.cx, y:S.y+S.h*SLOT.cy, s:S.w*SLOT.s*SLOT_COVER}}
 
 /* offscreen used for anything that needs its own alpha (logo sweep, cards) */
@@ -126,104 +126,140 @@ function kinetic(t,t0,words,y,size,limeFrom,face,cols){
   g.restore();
 }
 
-/* ── beat 1 · the colour pours down, and gathers into the word ───────────────
-   Ezra on the ribbon version: "should be milkier and creamier, much smoother,
-   coming DOWN the screen, covering the whole screen, and then it all lands and
-   comes into the word. Make the word bolder."
+/* ── beat 1 · paint out of a can ────────────────────────────────────────────
+   Ezra: "paint to look real, like paint dripping out of a can, coming all over
+   the entire screen. To fill in those words, they should be white at first and
+   then it fills in with the paint. The paint should look creamy and matte."
 
-   So it falls rather than sweeps, and it is built from wide soft columns with
-   long vertical falloffs instead of stroked ribbons — the ribbons read as
-   stripes because their edges were hard relative to their width. These are
-   nearly all falloff. They gather onto the wordmark's line and dissolve into it. */
+   The previous version was additive light — 'lighter' blending, glowing edges —
+   which is the exact opposite of matte paint, and is most of why it read as
+   slop. This is opaque source-over colour on its own canvas, with rounded drip
+   heads that only ever grow. The words are drawn white on top and filled by
+   whatever paint has arrived behind them, so the fill happens by coverage
+   rather than by a timer. When the paint drains, the fill stays. */
 const RAMP=['#165C7D','#007396','#0093B2','#369DA0','#56B093','#D4EB8E'];
-const CREAM='#EAF6F4';
-const POUR=[0.00,1.62], LAND=1.86, GATHER=[1.52,2.06];
+const CREAM='#F2F0E6';
+const POUR=[0.00,1.70], LAND=1.80, DRAIN=[1.90,2.85];
 
-function column(i,t,fall,gath,alpha,wy){
-  const n=9;
-  const x=W*((i+0.5)/n) + Math.sin(t*0.5+i*1.9)*W*0.035;
-  /* each column runs a little ahead or behind so the front is a soft edge,
-     not a ruled line */
-  const lead=cl(fall*1.30 + 0.20 - i*0.040, 0, 1.2);
-  const head=mix(-H*0.30, H*1.22, lead);
-  const len=H*(0.52+((i*7)%5)*0.09);
-  const wid=W*(0.20+((i*5)%4)*0.075);
-  /* position resolves onto the word faster than size does, or the mass piles up
-     under the wordmark instead of arriving in it */
-  const gp=Math.pow(gath,0.32);
-  const cx=mix(x, CX+(x-CX)*0.10, gp);
-  const cy=mix(head-len*0.35, wy, gp);
-  const hh=mix(len, H*0.035, gath);
-  const ww=mix(wid, W*0.44, gath);
-  const c=(i%3===1)?CREAM:RAMP[(i*2)%RAMP.length];
-  const gr=g.createRadialGradient(cx,cy,0,cx,cy,Math.max(ww,hh));
-  gr.addColorStop(0, c); gr.addColorStop(0.34,c); gr.addColorStop(1,'rgba(0,0,0,0)');
-  g.save();
-  g.globalAlpha=alpha*(0.30+((i*3)%4)*0.05);
-  g.translate(cx,cy); g.scale(ww/Math.max(ww,hh), hh/Math.max(ww,hh));
-  g.translate(-cx,-cy);
-  g.fillStyle=gr; g.beginPath(); g.arc(cx,cy,Math.max(ww,hh),0,7); g.fill();
-  g.restore();
+const pc=document.createElement('canvas'); pc.width=W; pc.height=H;
+const pg=pc.getContext('2d');
+
+/* Uniform bands at even spacing read as a barcode, not paint. Real paint has an
+   irregular front edge, drips of wildly different widths that overlap into one
+   mass, and only two or three tones layered for body — not a stripe per colour. */
+const DRIPS=(function(){
+  const spec=[[0.04,0.150],[0.13,0.230],[0.24,0.110],[0.34,0.265],
+              [0.45,0.135],[0.55,0.210],[0.65,0.120],[0.74,0.245],
+              [0.85,0.145],[0.95,0.200],[0.19,0.090],[0.60,0.085]];
+  return spec.map(([x,w],i)=>({
+    x, w,
+    lag:((i*29)%13)/13*0.26,
+    rate:0.70+((i*17)%9)/9*0.70,
+    tone:(i%3)
+  }));
+})();
+/* one paint, three tones — under, body, and the cream that rides on top */
+const COAT=['#0B4256','#0C7EA0','#F2F0E6'];
+
+function frontY(x,base,t){
+  return base
+       + Math.sin(x*0.0062+t*0.5)*H*0.028
+       + Math.sin(x*0.0131-t*0.8)*H*0.017
+       + Math.sin(x*0.0233+t*1.3)*H*0.009;
 }
 
-/* the wordmark is a thin didone; drawing it in a tight ring thickens the strokes,
-   which is the only honest way to make his own logo read bolder */
-function boldLogo(lg,x,y,w,h,spread){
-  g.save();
-  g.shadowColor='rgba(46,178,206,.55)'; g.shadowBlur=44;
-  g.drawImage(lg,x,y,w,h);                       // the glow, once
-  g.shadowBlur=0; g.shadowColor='transparent';
+function sheet(base,col,t){
+  if(base<=-H*0.04) return;
+  pg.fillStyle=col;
+  pg.beginPath();
+  pg.moveTo(-W*0.05,-H*0.06);
+  pg.lineTo(W*1.05,-H*0.06);
+  for(let x=W*1.05;x>=-W*0.05;x-=W*0.02) pg.lineTo(x, frontY(x,base,t));
+  pg.closePath(); pg.fill();
+}
+
+function drip(d,head,t){
+  const x=d.x*W, w=d.w*W, tip=w*0.30;
+  pg.fillStyle=COAT[d.tone];
+  pg.beginPath();
+  pg.moveTo(x-w/2,-H*0.06);
+  pg.lineTo(x+w/2,-H*0.06);
+  pg.quadraticCurveTo(x+w*0.46, head-w*0.9, x+tip, head);
+  pg.arc(x, head, tip, 0, Math.PI);
+  pg.quadraticCurveTo(x-w*0.46, head-w*0.9, x-w/2, -H*0.06);
+  pg.closePath(); pg.fill();
+}
+
+function paintTo(t){
+  pg.clearRect(0,0,W,H);
+  const p=eIO(seg(t,POUR[0],POUR[1]));
+  const lip=cl(p*1.42,0,1);
+  for(const d of DRIPS){
+    const run=cl((p-d.lag)*d.rate*2.20,0,1);
+    if(run>0) drip(d, lip*H*0.20 + run*H*1.30, t);
+  }
+  sheet(mix(-H*0.08, H*0.720, lip),       COAT[0], t);
+  sheet(mix(-H*0.10, H*0.600, lip*1.05),  COAT[1], t+2.1);
+  sheet(mix(-H*0.12, H*0.115, lip*1.20),  COAT[2], t+4.7);
+}
+
+/* white letterform, filled by whatever paint has reached it */
+function paintedArt(draw,alpha,edge){
+  if(alpha<=0.003)return;
+  og.clearRect(0,0,W,H);
+  og.globalCompositeOperation='source-over'; og.globalAlpha=1;
+  draw(og);
+  og.globalCompositeOperation='source-in';
+  og.fillStyle='#FFFFFF'; og.fillRect(0,0,W,H);
+  og.globalCompositeOperation='source-atop';
+  og.drawImage(pc,0,0);
+  og.globalCompositeOperation='source-over';
+  g.save(); g.globalAlpha=cl(alpha,0,1);
+  if(edge!==false){
+    g.save();
+    g.shadowColor='rgba(4,20,28,.85)'; g.shadowBlur=0;
+    for(const [dx,dy] of [[-2,0],[2,0],[0,-2],[0,2],[-2,-2],[2,2],[-2,2],[2,-2]]){
+      g.shadowOffsetX=dx; g.shadowOffsetY=dy; g.drawImage(oc,0,0);
+    }
+    g.restore();
+  }
+  g.drawImage(oc,0,0); g.restore();
+}
+
+function boldLogo(ctx,lg,x,y,w,h,spread){
   for(let a=0;a<8;a++)
-    g.drawImage(lg, x+Math.cos(a*0.785)*spread, y+Math.sin(a*0.785)*spread, w, h);
-  g.drawImage(lg,x,y,w,h);
-  g.restore();
+    ctx.drawImage(lg, x+Math.cos(a*0.785)*spread, y+Math.sin(a*0.785)*spread, w, h);
+  ctx.drawImage(lg,x,y,w,h);
 }
 
 function hook(t){
-  g.fillStyle='#05070A'; g.fillRect(0,0,W,H);
-  const bg=g.createRadialGradient(CX,CY-H*0.04,0,CX,CY-H*0.04,W*0.95);
-  bg.addColorStop(0,'rgba(14,28,36,.80)'); bg.addColorStop(1,'rgba(4,6,9,0)');
-  g.fillStyle=bg; g.fillRect(0,0,W,H);
-
+  g.fillStyle='#07090C'; g.fillRect(0,0,W,H);
   const lg=T.logo; if(!lg)return;
   const lw=W*0.82, lh=lg.height*(lw/lg.width);
   const wy=CY-H*0.060;
 
-  const fall=eIO(seg(t,POUR[0],POUR[1]));
-  const gath=eIO(seg(t,GATHER[0],GATHER[1]));
-  const env=cl(seg(t,0.00,0.16),0,1)*(1-seg(t,GATHER[0]+0.16,GATHER[1]+0.16));
-  if(env>0.003){
-    g.save(); g.globalCompositeOperation='lighter';
-    for(let i=0;i<9;i++) column(i,t,fall,gath,env,wy);
+  paintTo(t);
+  const vis=1-eIO(seg(t,DRAIN[0],DRAIN[1]));
+  if(vis>0.003){ g.save(); g.globalAlpha=vis; g.drawImage(pc,0,0); g.restore(); }
+
+  const wa=cl(seg(t,0.48,0.86),0,1)*(1-seg(t,5.05,5.4));
+  if(wa>0){
+    const b=t>=LAND?Math.exp(-(t-LAND)*8.0)*Math.sin((t-LAND)*22.0):0;
+    const sc=1+b*0.055;
+    g.save(); g.translate(CX,wy); g.scale(sc,sc); g.translate(-CX,-wy);
+    paintedArt(ctx=>boldLogo(ctx,lg,CX-lw/2,wy-lh/2,lw,lh,Math.max(2.0,lw*0.0030)), wa);
     g.restore();
   }
 
-  /* the word arrives as the pour reaches it, not on a wipe */
-  const rev=cl(seg(t,0.92,1.72),0,1);
-  if(rev>0.004){
-    const b=t>=LAND?Math.exp(-(t-LAND)*8.4)*Math.sin((t-LAND)*24.0):0;
-    const sc=1+b*0.070;
-    g.save();
-    g.translate(CX,wy); g.scale(sc,sc); g.translate(-CX,-wy);
-    g.globalAlpha=(1-seg(t,5.05,5.4))*rev;
-    boldLogo(lg, CX-lw/2, wy-lh/2, lw, lh, Math.max(2.0, lw*0.0030));
-    g.restore();
+  const la=cl(seg(t,1.15,1.60),0,1)*(1-seg(t,5.05,5.4));
+  if(la>0){
+    paintedArt(ctx=>{
+      ctx.font='600 72px Jost, system-ui, sans-serif';
+      ctx.textAlign='center'; ctx.textBaseline='alphabetic';
+      ctx.fillStyle='#fff';
+      ctx.fillText('Nobody can recover alone.', CX, CY+H*0.120);
+    }, la);
   }
-
-  const fl=Math.max(0,1-Math.abs(t-LAND)*3.8);
-  if(fl>0){
-    g.save(); g.globalCompositeOperation='lighter'; g.globalAlpha=fl*0.40;
-    const rg=g.createRadialGradient(CX,wy,0,CX,wy,W*0.62);
-    rg.addColorStop(0,'rgba(226,248,252,.95)');
-    rg.addColorStop(0.26,'rgba(80,175,200,.20)');
-    rg.addColorStop(1,'rgba(0,0,0,0)');
-    g.fillStyle=rg; g.fillRect(0,0,W,H); g.restore();
-  }
-
-  /* "put the colors going through those words" — each word takes its own step
-     down the brand ramp, and the colour travels along the line as they land */
-  kinetic(t,2.30,['Nobody','can','recover','alone.'],CY+H*0.120,72,-1,null,
-          ['#0093B2', CREAM, '#56B093', '#D4EB8E']);
 }
 
 /* ── beat 2 · out of the emblem, onto his own home screen ───────────────────
@@ -311,7 +347,8 @@ function openBeat(t){
        as the real animation does it */
     const cx=mix(sl.x,x+w/2,k), cy=mix(sl.y,y+h/2,k);
     const cw=mix(sl.s,w,k),     ch=mix(sl.s,h,k);
-    const rr=mix(sl.s*0.225, w*0.137, k);
+    /* radius follows the card, not the icon, or it reads square mid-expansion */
+    const rr=cw*mix(0.225,0.137,k);
     g.save();
     g.beginPath(); g.roundRect(cx-cw/2,cy-ch/2,cw,ch,rr); g.clip();
     /* the icon stays square inside the growing card — stretching it to the card
@@ -461,9 +498,12 @@ function commBeat(t){
   const off=eIO(seg(t,b[0]+0.85,b[1]-0.55))*1.0;
   const A=rise*(1-fall);
 
-  /* Compose the device offscreen so the bezel, rail and screen all tip
-     together — tilting the screen alone left a phone bent in a way phones are
-     not, and dissolving the chrome lost the device entirely. */
+  /* Ezra: "a vertical phone with the comments coming out of the phone, and then
+     the phone turns horizontal. The horizontal phone turns vertical and then
+     shows this entire comment page and scrolls through it." So it is a rotation,
+     not a tilt — composed offscreen and turned as one piece, with a squeeze
+     through the quarter turn so it reads as a physical object rather than a
+     sprite being spun. */
   const bz=S.w*0.018+S.w*0.021;
   const BX=S.x-bz, BY=S.y-bz, BW=S.w+2*bz, BH=S.h+2*bz;
   og.clearRect(0,0,W,H);
@@ -471,22 +511,22 @@ function commBeat(t){
   drawDevice(og,(x,y,w,h)=>screenScroll(im,x,y,w,h,off,og),
     S.x,S.y,S.w,S.h,{spill:im});
 
-  if(tilt<0.02){
+  const turn=eIO(seg(t,b[0]+2.20,b[0]+3.20))-eIO(seg(t,b[0]+4.00,b[0]+5.00));
+  const ang=-turn*Math.PI/2;
+  const sq=1-Math.sin(Math.abs(ang))*0.06;      // a little foreshortening mid-turn
+  if(Math.abs(turn)<0.004){
     g.save(); g.globalAlpha=A; g.drawImage(oc,0,0); g.restore();
     markScreen(S);
   } else {
-    tiltedPlane(oc, BX, BY, BW, BH, CX, BY+mix(0,H*0.105,tilt),
-                BW, BH*mix(1,0.74,tilt), tilt, A*(1-tilt*0.20));
-    /* the surface it is lying on */
-    g.save(); g.globalAlpha=A*tilt*0.55;
-    const tb=g.createLinearGradient(0,BY+BH*0.62,0,H);
-    tb.addColorStop(0,'rgba(0,0,0,0)'); tb.addColorStop(1,'rgba(2,5,8,.85)');
-    g.fillStyle=tb; g.fillRect(0,BY+BH*0.62,W,H-BY-BH*0.62); g.restore();
-    g.save(); g.globalAlpha=A*tilt*0.42;
-    g.globalCompositeOperation='lighter';
-    const gl=g.createRadialGradient(CX,S.y+S.h*0.45,0,CX,S.y+S.h*0.45,S.w*1.15);
-    gl.addColorStop(0,'rgba(150,225,240,.28)'); gl.addColorStop(1,'rgba(0,0,0,0)');
-    g.fillStyle=gl; g.fillRect(0,0,W,H); g.restore();
+    const fit=mix(1, (H*0.86)/BH, Math.sin(Math.abs(ang)));   // keep it in frame
+    /* a display turned edge-on to the room is dimmer, and at full brightness the
+       landscape phase blew out to a white slab */
+    g.save(); g.globalAlpha=A*(1-Math.sin(Math.abs(ang))*0.22);
+    g.translate(CX, S.y+S.h/2);
+    g.rotate(ang); g.scale(fit*sq, fit);
+    g.translate(-CX, -(S.y+S.h/2));
+    g.drawImage(oc,0,0);
+    g.restore();
   }
 
   /* the posts, then the likes and comments, coming off the plane */
@@ -536,32 +576,6 @@ function meetBeat(t){
       const o2=eIO(seg(t,NEAR_T+0.5,b[1]-0.55))*1.0;
       screenScroll(n,x+(1-swap)*w,y,w,h,o2);
     }
-    /* the Virtual badge, tapped: one ring plus a chip naming what it does */
-    const zp=seg(t,ZOOM_T,ZOOM_T+0.55);
-    if(zp>0&&swap<0.02){
-      const zx=onScreenX(x,w,0.8182), zy=onScreenY(y,h,0.3583,o1);
-      if(zp<1){
-        g.save(); g.globalAlpha=(1-zp)*0.9;
-        g.strokeStyle='rgba(255,255,255,.95)'; g.lineWidth=w*0.009;
-        g.beginPath(); g.arc(zx,zy,w*0.05+zp*w*0.09,0,Math.PI*2); g.stroke();
-        g.restore();
-      }
-      const ca2=seg(t,ZOOM_T+0.30,ZOOM_T+0.70)-seg(t,NEAR_T-0.45,NEAR_T-0.05);
-      if(ca2>0.004){
-        g.save(); g.globalAlpha=cl(ca2,0,1);
-        g.font=`600 ${Math.round(w*0.052)}px Jost, system-ui, sans-serif`;
-        const lbl='Join by Zoom, one tap';
-        const tw=g.measureText(lbl).width, ph=w*0.095, pw=tw+w*0.10;
-        const px=cl(zx-pw*0.72, x+w*0.03, x+w-pw-w*0.03), py=zy-ph*1.55;
-        g.fillStyle='rgba(6,12,16,.90)';
-        g.beginPath(); g.roundRect(px,py,pw,ph,ph/2); g.fill();
-        g.strokeStyle='rgba(200,229,114,.55)'; g.lineWidth=Math.max(w*0.004,1); g.stroke();
-        g.fillStyle=LIME; g.textAlign='center'; g.textBaseline='middle';
-        g.fillText(lbl, px+pw/2, py+ph/2+ph*0.03);
-        g.restore();
-      }
-    }
-
     /* the tap on the Nearby pill, at its measured place on the real capture */
     const tp=seg(t,NEAR_T-0.42,NEAR_T+0.12);
     if(tp>0&&tp<1&&swap<0.5){
@@ -579,7 +593,7 @@ function meetBeat(t){
   /* the constellation feeding the phone */
   const into=seg(t,NEAR_T+0.35,NEAR_T+1.1)-seg(t,b[1]-1.0,b[1]-0.3);
   if(into>0) light(g,T.plume_in,CX,S.y+S.h*0.10,W*1.05,into*0.55,0);
-  cap(t,b[0]+0.9,ZOOM_T+0.15,["We're there for you",''],['every step of the way.','']);
+  cap(t,b[0]+0.9,NEAR_T-0.30,["We're there with you",''],['every step of the way.','']);
   cap(t,NEAR_T+0.50,b[1],['Real AA & NA meetings',''],['','near you, right now.']);
   return S;
 }
@@ -612,12 +626,14 @@ function profBeat(t){
     g.textAlign='left'; g.textBaseline='alphabetic';
     g.shadowColor='rgba(0,0,0,.65)'; g.shadowBlur=26;
     const x=W*0.070;
-    g.font="600 66px Jost, system-ui, sans-serif"; g.fillStyle='#FFFFFF';
-    g.fillText('Driven by', x, CY-H*0.045);
-    g.fillText('purpose.',  x, CY+H*0.020);
-    g.font="600 52px Jost, system-ui, sans-serif"; g.fillStyle=LIME;
-    g.fillText('Committed', x, CY+H*0.105);
-    g.fillText('to care.',  x, CY+H*0.162);
+    /* Ezra: "the font of Driven by Purpose, Committed to Care is terrible."
+       Set in the wordmark's own didone, which is the brand's actual voice. */
+    g.font="500 86px 'Bodoni Moda', Georgia, serif"; g.fillStyle='#FFFFFF';
+    g.fillText('Driven by', x, CY-H*0.048);
+    g.fillText('purpose.',  x, CY+H*0.024);
+    g.font="500 66px 'Bodoni Moda', Georgia, serif"; g.fillStyle=LIME;
+    g.fillText('Committed', x, CY+H*0.112);
+    g.fillText('to care.',  x, CY+H*0.172);
     g.textAlign='center'; g.restore();
   }
 }
@@ -646,7 +662,7 @@ function endBeat(t){
       if(home) g.drawImage(home,x,y,w,h);
       const cx=mix(sl.x,x+w/2,k), cy=mix(sl.y,y+h/2,k);
       const cw=mix(sl.s,w,k),     ch=mix(sl.s,h,k);
-      const rr=mix(sl.s*0.225, w*0.137, k);
+      const rr=cw*mix(0.225,0.137,k);
       g.save();
       g.beginPath(); g.roundRect(cx-cw/2,cy-ch/2,cw,ch,rr); g.clip();
       if(T['06_profile']&&k>0.02){
@@ -665,23 +681,18 @@ function endBeat(t){
   /* and then the same pour that opened the film closes it */
   const t0=b[0]+2.30;
   const lg=T.logo;
-  const fall=eIO(seg(t,t0,t0+1.40));
-  const gath=eIO(seg(t,t0+1.16,t0+1.80));
-  const env=cl(seg(t,t0,t0+0.18),0,1)*(1-seg(t,t0+1.34,t0+1.92));
+  /* "the ending should have the same paint idea" */
   const wy=CY-H*0.190;
-  if(env>0.003){
-    g.save(); g.globalCompositeOperation='lighter';
-    for(let i=0;i<9;i++) column(i,t,fall,gath*0.82,env*0.52,wy);
-    g.restore();
-  }
-  const la=cl(seg(t,t0+0.58,t0+1.16),0,1);
+  paintTo(t-t0+0.10);
+  const vis=1-eIO(seg(t,t0+1.55,t0+2.35));
+  if(vis>0.003){ g.save(); g.globalAlpha=vis; g.drawImage(pc,0,0); g.restore(); }
+  const la=cl(seg(t,t0+0.50,t0+1.00),0,1);
   if(lg&&la>0){
-    const LAND2=t0+1.56;
-    const bb=t>=LAND2?Math.exp(-(t-LAND2)*8.4)*Math.sin((t-LAND2)*24.0):0;
-    const lw=W*0.74*(1+bb*0.06), lh=lg.height*(lw/lg.width);
-    g.save(); g.globalAlpha=la;
-    g.translate(CX,wy); g.scale(1,1); g.translate(-CX,-wy);
-    boldLogo(lg, CX-lw/2, wy-lh/2, lw, lh, Math.max(2.0, lw*0.0030));
+    const LAND2=t0+1.42;
+    const bb=t>=LAND2?Math.exp(-(t-LAND2)*8.0)*Math.sin((t-LAND2)*22.0):0;
+    const lw=W*0.74, lh=lg.height*(lw/lg.width);
+    g.save(); g.translate(CX,wy); g.scale(1+bb*0.05,1+bb*0.05); g.translate(-CX,-wy);
+    paintedArt(ctx=>boldLogo(ctx,lg,CX-lw/2,wy-lh/2,lw,lh,Math.max(2.0,lw*0.0030)), la);
     g.restore();
   }
 
