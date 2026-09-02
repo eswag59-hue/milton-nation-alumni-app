@@ -1,0 +1,68 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="base.css">
+<style>
+  .chips{display:flex;gap:16px;margin:8px 2px 30px;overflow:hidden}
+  .chip{border-radius:999px;padding:14px 30px;font-size:27px;font-weight:600;background:#fff;
+    color:var(--tx2);border:2px solid var(--line);white-space:nowrap}
+  .chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  #vp{position:absolute;left:40px;right:40px;top:130px;bottom:20px;overflow:hidden}
+  #feed{display:flex;flex-direction:column;gap:26px;transition:transform 2.4s cubic-bezier(.35,.2,.25,1)}
+  .post{padding:34px 36px}
+  .prow{display:flex;align-items:center;gap:20px;margin-bottom:20px}
+  .av{width:74px;height:74px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:32px}
+  .pn{font-weight:600;font-size:30px}.pt{color:var(--tx2);font-size:24px}
+  .badge{margin-left:auto;border-radius:999px;padding:8px 22px;font-size:23px;font-weight:600;color:#fff}
+  .body{font-size:30px;line-height:1.45;color:var(--ink)}
+  .acts{display:flex;gap:44px;margin-top:24px;color:var(--tx2);font-size:27px;align-items:center}
+  .hrt{display:inline-flex;align-items:center;gap:10px}
+  .hrt svg{width:40px;height:40px;fill:none;stroke:var(--tx2);stroke-width:2.2}
+  .hrt.liked svg{fill:var(--red);stroke:var(--red)}
+  .hrt.liked{color:var(--red)}
+  #npwrap{margin-top:-520px;opacity:0}
+</style></head>
+<body><div class="stage">
+  <canvas class="bg" id="cv"></canvas>
+  <div class="cap cap-bottom" id="c1">every win. <span class="hi">witnessed.</span></div>
+  <div class="dip" id="dip"></div>
+</div>
+<script src="lib.js"></script>
+<script>
+/* SEG-05 · 7.0s · community feed: scroll, a like pops, a gratitude post lands on top */
+startWaves(document.getElementById('cv'));
+mkPhone({ theme: 'light', active: 'Community' });
+const H = '<svg viewBox="0 0 24 24"><path d="M12 21s-7.5-4.8-9.8-9A5.8 5.8 0 0 1 12 6.4 5.8 5.8 0 0 1 21.8 12c-2.3 4.2-9.8 9-9.8 9z"/></svg>';
+function post(id, av, avc, name, time, cat, catc, body, likes, cmts) {
+  return `<div class="mcard post" id="${id}">
+    <div class="prow"><div class="av" style="background:${avc}">${av}</div>
+      <div><div class="pn">${name}</div><div class="pt">${time}</div></div>
+      <div class="badge" style="background:${catc}">${cat}</div></div>
+    <div class="body">${body}</div>
+    <div class="acts"><span class="hrt" id="${id}h">${H}<b id="${id}n">${likes}</b></span><span>&#128172; ${cmts}</span></div>
+  </div>`;
+}
+document.getElementById('content').innerHTML = `
+  <div class="chips"><span class="chip on">All</span><span class="chip">&#127881; Wins</span><span class="chip">&#128170; Struggles</span><span class="chip">&#129309; Support</span><span class="chip">&#128591; Gratitude</span></div>
+  <div id="vp"><div id="feed">
+    <div id="npwrap">${post('np','A','#007396','alex &middot; recovery_warrior','Just now','&#128591; Gratitude','#9aab54','90 days today. Grateful for this community.','0','0')}</div>
+    ${post('p1','G','#56B093','grateful_heart','2h ago','&#127881; Wins','#56B093','6 months clean today. To everyone in this app who answered my 2am messages &mdash; this one is yours too.','23','7')}
+    ${post('p2','N','#0093B2','new_chapter','5h ago','&#129309; Support','#0093B2','First job interview since treatment tomorrow. Send me some strength &#128170;','18','12')}
+    ${post('p3','P','#E8A838','phoenix_rising','8h ago','&#127881; Wins','#56B093','One year ago I checked in scared. Today I picked up my 365 chip with my daughter watching.','41','15')}
+  </div></div>`;
+dipIn(dip, .4);
+/* gentle scroll down the feed, like pop on p3, scroll back, new gratitude post pushes in */
+const feed = document.getElementById('feed');
+at(.7, () => feed.style.transform = 'translateY(-620px)');
+at(2.6, () => {
+  const h = document.getElementById('p3h'), n = document.getElementById('p3n');
+  h.classList.add('liked'); n.textContent = '42';
+  h.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.35)' }, { transform: 'scale(1)' }], { duration: 420, easing: 'cubic-bezier(.2,.8,.2,1)' });
+});
+at(3.6, () => { feed.style.transition = 'transform 1s cubic-bezier(.3,.6,.25,1)'; feed.style.transform = 'translateY(0)'; });
+at(4.5, () => {
+  const np = document.getElementById('npwrap');
+  np.style.transition = 'margin-top 1s cubic-bezier(.2,.8,.2,1), opacity .6s ease .3s';
+  np.style.marginTop = '0'; np.style.opacity = '1';
+});
+at(1.6, () => c1.classList.add('rise'));
+at(6.35, () => c1.classList.add('fadeout'));
+dipOut(dip, 6.62, .35);
+</script></body></html>

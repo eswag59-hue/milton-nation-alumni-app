@@ -1,0 +1,72 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="base.css">
+<style>
+  .segsel{display:flex;background:#E7EBEB;border-radius:999px;padding:8px;margin:4px 2px 28px}
+  .segopt{flex:1;text-align:center;border-radius:999px;padding:16px 0;font-size:27px;font-weight:600;color:var(--tx2)}
+  .segopt.on{background:#fff;color:var(--ink);box-shadow:0 4px 14px rgba(0,0,0,.1)}
+  #map{width:100%;height:520px;border-radius:34px;overflow:hidden;position:relative;background:#12222e}
+  .mhead{font-weight:600;font-size:31px;margin:30px 4px 20px}
+  .mcardm{padding:30px 34px;background:var(--dcard);color:var(--dtx);display:flex;flex-direction:column;gap:10px}
+  .mrow{display:flex;align-items:center;gap:18px}
+  .mname{font-weight:600;font-size:30px;flex:1}
+  .fel{border-radius:12px;padding:6px 18px;font-size:23px;font-weight:700;color:#fff}
+  .dist{margin-left:auto;background:#22303C;border-radius:999px;padding:8px 20px;font-size:23px;color:#B9C4CE}
+  .msub{color:#96A2AC;font-size:26px}
+  .dirs{align-self:flex-start;margin-top:10px;background:var(--cyan);color:#fff;border-radius:999px;padding:12px 34px;font-size:25px;font-weight:600}
+  #cards{display:flex;flex-direction:column;gap:22px;transform:translateY(70px);opacity:0}
+</style></head>
+<body><div class="stage">
+  <canvas class="bg" id="cv"></canvas>
+  <div class="cap cap-bottom" id="c1">meetings. <span class="hi">everywhere.</span></div>
+  <div class="dip" id="dip"></div>
+</div>
+<script src="lib.js"></script>
+<script>
+/* SEG-07 · 6.0s · Nearby meetings: dark map, pins pulse alive like a network, cards rise */
+startWaves(document.getElementById('cv'));
+mkPhone({ theme: 'light', active: 'Meetings' });
+document.getElementById('content').innerHTML = `
+  <div class="segsel"><div class="segopt">&#127970; Milton</div><div class="segopt on">&#128205; Nearby</div><div class="segopt">&#127909; My Sessions</div></div>
+  <div id="map"><canvas id="mapcv" width="770" height="520"></canvas></div>
+  <div class="mhead">Nearest 5 Meetings</div>
+  <div id="cards">
+    <div class="mcardm"><div class="mrow"><span class="mname">Sunrise Serenity Group</span><span class="fel" style="background:#2E6FB2">AA</span><span class="dist">1.2 mi</span></div>
+      <div class="msub">Tuesday &middot; 7:00 PM</div>
+      <div class="msub">Community Hall &middot; 401 E 4th St</div>
+      <div class="mrow" style="margin-top:6px"><span class="dirs">Directions</span><span class="msub" style="margin-left:auto;font-size:23px">Tap for details</span></div></div>
+    <div class="mcardm"><div class="mrow"><span class="mname">New Horizons Recovery</span><span class="fel" style="background:#3D9C63">NA</span><span class="dist">2.6 mi</span></div>
+      <div class="msub">Daily &middot; 6:30 AM</div>
+      <div class="msub">St. Andrew&rsquo;s Annex &middot; 118 Palm Ave</div>
+      <div class="mrow" style="margin-top:6px"><span class="dirs">Directions</span><span class="msub" style="margin-left:auto;font-size:23px">Tap for details</span></div></div>
+    <div class="msub" style="text-align:center;padding:14px 30px 0;font-size:22px;color:#7C8894">Showing NA &amp; AA meetings from participating intergroups via BMLT.</div>
+  </div>`;
+dipIn(dip, .4);
+/* map: faint street grid + pins that drop and pulse */
+const mc = document.getElementById('mapcv'), mx = mc.getContext('2d');
+const pins = [[130,140],[300,300],[520,180],[640,360],[220,430],[430,90]];
+function map(t){
+  mx.clearRect(0,0,770,520);
+  mx.strokeStyle='rgba(154,178,192,.10)';mx.lineWidth=2;
+  for(let i=0;i<9;i++){mx.beginPath();mx.moveTo(i*95-40,0);mx.lineTo(i*95+50,520);mx.stroke();}
+  for(let i=0;i<7;i++){mx.beginPath();mx.moveTo(0,i*85-20);mx.lineTo(770,i*85+30);mx.stroke();}
+  mx.strokeStyle='rgba(0,147,178,.16)';mx.lineWidth=8;
+  mx.beginPath();mx.moveTo(-10,380);mx.quadraticCurveTo(320,300,780,420);mx.stroke();
+  /* user's blue location dot, breathing */
+  const bp=(t%2.4)/2.4;
+  mx.beginPath();mx.arc(385,470,14+bp*26,0,7);mx.strokeStyle=`rgba(64,156,255,${.45*(1-bp)})`;mx.lineWidth=4;mx.stroke();
+  mx.beginPath();mx.arc(385,470,13,0,7);mx.fillStyle='#409CFF';mx.strokeStyle='#fff';mx.lineWidth=5;mx.fill();mx.stroke();
+  pins.forEach(([px,py],i)=>{
+    const born=.5+i*.42; if(t<born)return;
+    const age=t-born, drop=Math.min(1,age/.35), yy=py-(1-Math.pow(drop,2))*60;
+    const pulse=(age%1.6)/1.6;
+    mx.beginPath();mx.arc(px,yy,16+pulse*30,0,7);mx.strokeStyle=`rgba(0,147,178,${.5*(1-pulse)})`;mx.lineWidth=4;mx.stroke();
+    mx.beginPath();mx.arc(px,yy,13,0,7);mx.fillStyle=i%2?'#56B093':'#0093B2';mx.shadowColor='#0093B2';mx.shadowBlur=18;mx.fill();mx.shadowBlur=0;
+    mx.beginPath();mx.arc(px,yy,5,0,7);mx.fillStyle='#fff';mx.fill();
+  });
+  requestAnimationFrame(()=>map(now()));
+}
+map(0);
+at(2.6, () => { const c=document.getElementById('cards'); c.style.transition='transform .9s cubic-bezier(.2,.8,.2,1), opacity .6s'; c.style.transform='translateY(0)'; c.style.opacity='1'; });
+at(1.5, () => c1.classList.add('rise'));
+at(5.35, () => c1.classList.add('fadeout'));
+dipOut(dip, 5.62, .35);
+</script></body></html>

@@ -1,0 +1,54 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="base.css">
+<style>
+  #rays{position:absolute;left:50%;top:24%;width:1700px;height:1700px;transform:translate(-50%,-50%);
+    background:conic-gradient(from 0deg,transparent 0 9%,rgba(0,147,178,.13) 12%,transparent 16%,transparent 44%,rgba(22,92,125,.17) 49%,transparent 54%,transparent 76%,rgba(0,147,178,.11) 81%,transparent 86%);
+    border-radius:50%;filter:blur(8px);opacity:0;transition:opacity 1.4s}
+  #icon{position:absolute;left:50%;top:24%;width:330px;height:330px;transform:translate(-50%,-50%) translateY(-150px) scale(.82);
+    border-radius:74px;opacity:0;box-shadow:0 40px 110px rgba(0,0,0,.55),0 0 90px rgba(0,147,178,.5)}
+  #wm{position:absolute;left:50%;top:36.5%;width:560px;transform:translateX(-50%);opacity:0}
+  .l1{position:absolute;left:0;right:0;top:52%;text-align:center;color:#DFE7ED;font-size:34px;font-weight:500;opacity:0;padding:0 90px;line-height:1.5}
+  .l2{position:absolute;left:0;right:0;top:59%;text-align:center;color:#D4EB8E;font-size:41px;font-weight:800;opacity:0;letter-spacing:.01em}
+  .badges{position:absolute;left:0;right:0;top:64.5%;display:flex;justify-content:center;gap:34px;opacity:0}
+  .badges img{height:104px;border-radius:16px}
+  .l3{position:absolute;left:0;right:0;top:73.5%;text-align:center;color:#8FA0AC;font-size:25px;opacity:0}
+  .fades{transition:opacity 1s ease, transform 1.2s cubic-bezier(.2,.7,.2,1)}
+</style></head>
+<body><div class="stage">
+  <canvas class="bg" id="cv"></canvas>
+  <div id="rays"></div>
+  <img id="icon" class="fades" src="appicon.png">
+  <img id="wm" class="fades" src="wordmark_tight.png">
+  <div class="l1 fades">The official alumni app of<br><b style="color:#F2F5F5">Milton Recovery Centers</b> &amp; <b style="color:#F2F5F5">Milton Jefferson</b></div>
+  <div class="l2 fades">Available now &middot; Free for verified alumni</div>
+  <div class="badges fades"><img src="apple-badge.svg" alt="Download on the App Store"><img src="play-badge.png" alt="Get it on Google Play"></div>
+  <div class="l3 fades">Demo data shown</div>
+  <div class="dip" id="dip"></div>
+</div>
+<script src="lib.js"></script>
+<script>
+/* SEG-10 v2 · 9.0s · end-card: rays, the mark afloat, and both store badges — it's live */
+startWaves(document.getElementById('cv'), { sky: true, bands: [
+  { c: 'rgba(22,92,125,', a: .6, amp: 60, len: 900, sp: .12, y: .80, th: 380 },
+  { c: 'rgba(0,115,150,', a: .6, amp: 46, len: 640, sp: .2,  y: .87, th: 320 },
+  { c: 'rgba(0,147,178,', a: .55, amp: 36, len: 470, sp: .3, y: .93, th: 300 },
+  { c: 'rgba(86,176,147,', a: .35, amp: 26, len: 360, sp: .4, y: .975, th: 220 },
+]});
+dipIn(dip, .5);
+const show = (el, t, tf) => at(t, () => { el.style.opacity = '1'; if (tf) el.style.transform = tf; });
+at(.4, () => rays.style.opacity = '1');
+rays.animate([{ rotate: '0deg' }, { rotate: '52deg' }], { duration: 9000, easing: 'linear' });
+show(icon, .5, 'translate(-50%,-50%) translateY(0) scale(1)');
+at(1.8, () => icon.animate(
+  [{ transform: 'translate(-50%,-50%) translateY(0) scale(1)' },
+   { transform: 'translate(-50%,-50%) translateY(-16px) scale(1)' },
+   { transform: 'translate(-50%,-50%) translateY(0) scale(1)' }],
+  { duration: 5200, iterations: 2, easing: 'ease-in-out' }));
+show(wm, 1.5, 'translateX(-50%)');
+show(document.querySelector('.l1'), 2.4);
+show(document.querySelector('.l2'), 3.1);
+at(3.9, () => { const b = document.querySelector('.badges');
+  b.style.transition = 'opacity .9s ease, transform 1s cubic-bezier(.2,.8,.2,1)';
+  b.style.opacity = '1'; });
+show(document.querySelector('.l3'), 4.8);
+dipOut(dip, 8.45, .55);
+</script></body></html>

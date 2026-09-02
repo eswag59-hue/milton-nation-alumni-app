@@ -62,6 +62,8 @@ final class AppViewModel {
     func login(user: User) {
         currentUser = user
         isAuthenticated = true
+        // Lift the screen-capture block only for PHI-free demo accounts.
+        MarketingCapture.update(for: user)
         // Default the admin dashboard's facility filter to the admin's OWN
         // facility (super_admin has none → keep Florida as the initial view).
         // Without this an Ohio admin's dashboard opened filtered to Florida.
@@ -200,6 +202,9 @@ final class AppViewModel {
                 // attributed to user B after re-login.
                 AnalyticsService.shared.reset()
 
+                // Re-arm the screen-capture block for the next session.
+                MarketingCapture.update(for: nil)
+
                 currentUser = nil
                 isAuthenticated = false
                 isStrugglingMode = false
@@ -236,6 +241,7 @@ final class AppViewModel {
                 RealtimeService.shared.disconnectAll()
                 PushNotificationService.shared.unregisterDeviceToken()
                 CrashReportingService.shared.clearUser()
+                MarketingCapture.update(for: nil)
                 currentUser = nil
                 isAuthenticated = false
                 isStrugglingMode = false

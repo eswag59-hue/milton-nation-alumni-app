@@ -1,0 +1,99 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="base.css">
+<style>
+  /* springboard */
+  #board{position:absolute;inset:0;z-index:18;background:
+    radial-gradient(120% 90% at 30% 0%,#16303f,#0d1a24 55%,#0a1219);overflow:hidden}
+  #board .bwave{position:absolute;left:-10%;right:-10%;height:46%;bottom:-6%;border-radius:50% 50% 0 0/100% 100% 0 0;opacity:.5}
+  .icons{position:absolute;top:220px;left:70px;right:70px;display:grid;grid-template-columns:repeat(4,1fr);gap:44px 0;justify-items:center}
+  .ic{width:132px;height:132px;border-radius:32px;opacity:.5}
+  .icons span{font-size:20px;color:rgba(255,255,255,.45);margin-top:-30px}
+  #mic{position:absolute;left:50%;top:52%;width:172px;height:172px;border-radius:42px;transform:translate(-50%,-50%);
+    box-shadow:0 24px 70px rgba(0,0,0,.55),0 0 46px rgba(0,147,178,.35)}
+  #miclabel{position:absolute;left:50%;top:58.5%;transform:translateX(-50%);color:#fff;font-size:24px;font-weight:500}
+  #ring{position:absolute;left:50%;top:52%;width:172px;height:172px;border-radius:42px;border:4px solid rgba(212,235,142,.9);
+    transform:translate(-50%,-50%);opacity:0}
+  .dock{position:absolute;left:40px;right:40px;bottom:36px;height:170px;border-radius:44px;
+    background:rgba(255,255,255,.10);backdrop-filter:blur(20px);display:flex;align-items:center;justify-content:space-around;padding:0 20px}
+  /* app layer that zooms out of the icon */
+  #applayer{position:absolute;inset:0;z-index:19;transform-origin:50% 52%;transform:scale(.115);border-radius:340px;
+    overflow:hidden;opacity:0}
+  #scroller{transition:transform 1.5s cubic-bezier(.33,.72,.22,1)}
+</style></head>
+<body><div class="stage">
+  <canvas class="bg" id="cv"></canvas>
+  <div class="cap cap-bottom" id="c1">every day. <span class="hi">counted.</span></div>
+  <div class="dip" id="dip"></div>
+</div>
+<script src="lib.js"></script>
+<script>
+/* SEG-03 · 8.0s · springboard → Apple-style app launch → full Home → natural scroll, counter rolls */
+startWaves(document.getElementById('cv'));
+const ph = mkPhone({ theme: 'light', active: 'Home' });
+document.getElementById('content').innerHTML = `<div id="scroller">${homeHTML('h', false)}</div>`;
+
+/* wrap the app UI in a zoom layer, then put a springboard above it */
+const screen = ph.querySelector('.screen');
+const app = ph.querySelector('.app');
+const appLayer = document.createElement('div'); appLayer.id = 'applayer';
+app.parentNode.insertBefore(appLayer, app); appLayer.appendChild(app);
+
+const board = document.createElement('div'); board.id = 'board';
+const mut = (c1, c2) => `background:linear-gradient(140deg,${c1},${c2})`;
+board.innerHTML = `
+  <div class="bwave" style="background:#165C7D"></div>
+  <div class="bwave" style="background:#0093B2;height:34%;bottom:-10%;opacity:.35"></div>
+  <div class="icons">
+    <div class="ic" style="${mut('#3a4a58','#232f3a')}"></div><div class="ic" style="${mut('#40525f','#28323d')}"></div>
+    <div class="ic" style="${mut('#37525c','#1f2e36')}"></div><div class="ic" style="${mut('#455663','#2a3540')}"></div>
+    <div class="ic" style="${mut('#3d4d5a','#242f39')}"></div><div class="ic" style="${mut('#425764','#262f3a')}"></div>
+    <div class="ic" style="${mut('#374d59','#202b34')}"></div><div class="ic" style="${mut('#46586a','#293440')}"></div>
+  </div>
+  <img id="mic" src="appicon.png"><div id="miclabel">Milton Nation</div><div id="ring"></div>
+  <div class="dock">
+    <div class="ic" style="${mut('#4a5a67','#2d3843')};opacity:.55"></div>
+    <div class="ic" style="${mut('#405663','#27323d')};opacity:.55"></div>
+    <div class="ic" style="${mut('#4a5a67','#2d3843')};opacity:.55"></div>
+    <div class="ic" style="${mut('#405663','#27323d')};opacity:.55"></div>
+  </div>`;
+screen.insertBefore(board, screen.querySelector('.status'));
+dipIn(dip, .45);
+
+/* tap → Apple launch zoom */
+at(0.95, () => {
+  ring.animate([{ opacity: .9, transform: 'translate(-50%,-50%) scale(1)' },
+                { opacity: 0, transform: 'translate(-50%,-50%) scale(1.7)' }], { duration: 480, easing: 'ease-out' });
+  mic.animate([{ transform: 'translate(-50%,-50%) scale(1)' }, { transform: 'translate(-50%,-50%) scale(.9)' },
+               { transform: 'translate(-50%,-50%) scale(1)' }], { duration: 340, easing: 'ease-out' });
+});
+at(1.35, () => {
+  appLayer.style.opacity = '1';
+  appLayer.animate([{ transform: 'scale(.115)', borderRadius: '340px' },
+                    { transform: 'scale(1)', borderRadius: '0px' }],
+    { duration: 700, fill: 'forwards', easing: 'cubic-bezier(.32,.72,.28,1)' });
+  board.animate([{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(1.18)', opacity: 0 }],
+    { duration: 620, fill: 'forwards', easing: 'cubic-bezier(.4,.5,.3,1)' });
+});
+
+/* counter roll while the card is front and center */
+const dayEl = document.getElementById('hday'), wkEl = document.getElementById('hwk'), moEl = document.getElementById('hmo');
+const START = 2.2, ROLL = 1.9;
+(function roll() {
+  const t = now();
+  if (t < START) { dayEl.textContent = '0'; wkEl.textContent = '0'; moEl.textContent = '0'; return requestAnimationFrame(roll); }
+  const p = Math.min(1, (t - START) / ROLL);
+  const e = 1 - Math.pow(1 - p, 3);
+  const d = Math.round(365 * e);
+  dayEl.textContent = d; wkEl.textContent = Math.floor(d / 7); moEl.textContent = Math.min(12, Math.floor(d / 30));
+  if (p >= 1) { dayEl.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.06)' }, { transform: 'scale(1)' }], { duration: 520, easing: 'ease-out' }); return; }
+  requestAnimationFrame(roll);
+})();
+
+/* natural scroll through the full page */
+const sc = document.getElementById('scroller');
+at(4.5, () => sc.style.transform = 'translateY(-560px)');
+at(6.1, () => sc.style.transform = 'translateY(-1130px)');
+
+at(2.6, () => c1.classList.add('rise'));
+at(7.3, () => c1.classList.add('fadeout'));
+dipOut(dip, 7.6, .35);
+</script></body></html>

@@ -1,0 +1,47 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="base.css"></head>
+<body><div class="stage">
+  <canvas class="bg" id="cv"></canvas>
+  <img id="wm0" src="wordmark_tight.png" style="position:absolute;left:50%;top:31%;width:480px;transform:translateX(-50%) translateY(24px);opacity:0;filter:drop-shadow(0 8px 40px rgba(0,147,178,.35))">
+  <div class="cap" id="c1" style="top:44%">nobody recovers <span class="hi">alone</span></div>
+  <div class="dip" id="dip"></div>
+</div>
+<script src="lib.js"></script>
+<script>
+/* SEG-01 · 5.0s · a pulse of teal light draws a wave, then the ocean rises */
+const cv = document.getElementById('cv'), x = cv.getContext('2d');
+const W = cv.width = 1080, H = cv.height = 1920;
+dipIn(dip, .5);
+
+const DRAW_T = 2.1;             // seconds for the light line to draw
+function line(t) {
+  x.clearRect(0, 0, W, H);
+  const prog = Math.min(1, t / DRAW_T);
+  const eased = 1 - Math.pow(1 - prog, 3);
+  const endX = -40 + eased * (W + 80);
+  x.beginPath();
+  for (let px = -40; px <= endX; px += 6) {
+    // flatline → heartbeat bump → wave
+    const ph = px / W;
+    let y = H * .52;
+    y += Math.sin(ph * Math.PI * 4 + t * 1.2) * 46 * Math.min(1, ph * 2.2);
+    if (ph > .30 && ph < .40) y -= Math.sin((ph - .30) / .10 * Math.PI) * 150; // the beat
+    px === -40 ? x.moveTo(px, y) : x.lineTo(px, y);
+  }
+  x.strokeStyle = '#19c8e8'; x.lineWidth = 7; x.lineCap = 'round';
+  x.shadowColor = '#0093B2'; x.shadowBlur = 34; x.stroke();
+  x.shadowBlur = 18; x.strokeStyle = 'rgba(212,235,142,.85)'; x.lineWidth = 2.4; x.stroke();
+  x.shadowBlur = 0;
+}
+let waveStarted = false;
+(function frame() {
+  const t = now();
+  if (t < DRAW_T + .35) line(t);
+  else if (!waveStarted) { waveStarted = true; startWaves(cv, { rise: DRAW_T + 2.2 }); }
+  requestAnimationFrame(frame);
+})();
+at(0.9, () => c1.classList.add('rise'));
+at(1.6, () => { wm0.style.transition = 'opacity 1s ease, transform 1.2s cubic-bezier(.2,.7,.2,1)';
+  wm0.style.opacity = '1'; wm0.style.transform = 'translateX(-50%) translateY(0)'; });
+at(4.35, () => { c1.classList.add('fadeout'); wm0.style.opacity = '0'; });
+dipOut(dip, 4.65, .35);
+</script></body></html>

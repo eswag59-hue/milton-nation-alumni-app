@@ -5,6 +5,16 @@ import Foundation
 @Suite("AppViewModel Tests")
 struct AppViewModelTests {
 
+    /// Polls until `cond` holds (or the deadline passes) — fixed 1.2s sleeps
+    /// raced the async logout/points Tasks on slow CI simulators.
+    private func waitUntil(timeout: Double = 10, _ cond: () -> Bool) async throws {
+        let deadline = Date().addingTimeInterval(timeout)
+        while !cond() && Date() < deadline {
+            try await Task.sleep(for: .milliseconds(100))
+            await Task.yield()
+        }
+    }
+
     // MARK: - Login
 
     @Test("login sets authenticated state correctly")
@@ -30,8 +40,7 @@ struct AppViewModelTests {
         vm.isStrugglingMode = true
 
         vm.logout()
-        // Give the Task time to complete
-        try await Task.sleep(for: .milliseconds(1200))
+        try await waitUntil { !vm.isAuthenticated && vm.currentUser == nil }
 
         #expect(vm.isAuthenticated == false)
         #expect(vm.currentUser == nil)
@@ -94,8 +103,7 @@ struct AppViewModelTests {
         user.lastPointsAwarded = nil
         vm.login(user: user)
 
-        // Give the async point award time to process
-        try await Task.sleep(for: .milliseconds(1200))
+        try await waitUntil { (vm.currentUser?.totalPoints ?? 0) > 0 }
 
         // Points should have been updated (original was 0, dailyLogin adds 10)
         #expect(vm.currentUser?.totalPoints ?? 0 > 0)
@@ -109,7 +117,8 @@ struct AppViewModelTests {
         user.totalPoints = 100
         vm.login(user: user)
 
-        // Give any async work time
+        // Negative assertion: points must NOT change, so there is no state
+        // transition to poll for — a fixed window is the only option here.
         try await Task.sleep(for: .milliseconds(1200))
 
         // Points should remain the same since we already got them today

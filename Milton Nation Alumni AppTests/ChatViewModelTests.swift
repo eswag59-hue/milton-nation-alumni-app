@@ -5,10 +5,15 @@ import Foundation
 @Suite("ChatViewModel Tests")
 struct ChatViewModelTests {
 
-    /// Waits for an unstructured MainActor Task spawned inside a ViewModel to complete.
-    private func waitForViewModel(ms: Int = 1200) async throws {
-        try await Task.sleep(for: .milliseconds(ms))
-        for _ in 0..<10 { await Task.yield() }
+    /// Polls until `cond` holds (or the deadline passes), instead of sleeping a
+    /// fixed interval. Fixed 1.2s sleeps raced the ViewModel's async Tasks on
+    /// slow shared CI simulators and made these tests flaky.
+    private func waitUntil(timeout: Double = 10, _ cond: () -> Bool) async throws {
+        let deadline = Date().addingTimeInterval(timeout)
+        while !cond() && Date() < deadline {
+            try await Task.sleep(for: .milliseconds(100))
+            await Task.yield()
+        }
     }
 
     // MARK: - Conversations
@@ -17,7 +22,7 @@ struct ChatViewModelTests {
     func loadConversations() async throws {
         let vm = ChatViewModel()
         vm.loadConversations()
-        try await waitForViewModel()
+        try await waitUntil { !vm.conversations.isEmpty && !vm.isLoading }
         #expect(!vm.conversations.isEmpty)
         #expect(!vm.isLoading)
     }
@@ -26,7 +31,7 @@ struct ChatViewModelTests {
     func loadAssignedStaff() async throws {
         let vm = ChatViewModel()
         vm.loadConversations()
-        try await waitForViewModel()
+        try await waitUntil { !vm.assignedStaff.isEmpty }
         #expect(!vm.assignedStaff.isEmpty)
     }
 
@@ -37,7 +42,7 @@ struct ChatViewModelTests {
         let vm = ChatViewModel()
         let conversationId = MockData.conversations.first?.id ?? UUID()
         vm.loadMessages(conversationId: conversationId)
-        try await waitForViewModel()
+        try await waitUntil { !vm.isLoading }
         #expect(!vm.isLoading)
     }
 
@@ -57,7 +62,8 @@ struct ChatViewModelTests {
         vm.messageText = "   "
         let initialCount = vm.messages.count
         vm.sendMessage(conversationId: UUID())
-        try await waitForViewModel(ms: 300)
+        // Negative assertion: a short fixed window is the best we can do.
+        try await Task.sleep(for: .milliseconds(300))
         #expect(vm.messages.count == initialCount)
     }
 

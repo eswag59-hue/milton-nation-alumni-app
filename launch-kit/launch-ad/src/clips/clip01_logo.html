@@ -1,0 +1,137 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+ html,body{margin:0;background:#04070A;overflow:hidden}canvas{display:block}
+</style></head><body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script>
+/* CLIP 01 — 0:00–0:04 — the swirl travels through the wordmark.
+   The logotype is drawn from its own alpha, so the swirl can be masked to the
+   letterforms exactly: it passes THROUGH the glyphs rather than over them. */
+const W=1080,H=1920,CX=W/2,CY=H/2,DUR=4.0;
+const c=document.getElementById('c'),g=c.getContext('2d');
+const BRAND=['#17607F','#0A7E9C','#0C93B2','#2FA1A6','#57B295','#8CC77F','#C9E77E'];
+const ease=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+const easeO=t=>1-Math.pow(1-t,3);
+const cl=(v,a,b)=>Math.max(a,Math.min(b,v));
+const seg=(t,a,b)=>cl((t-a)/(b-a),0,1);
+
+let LOGO=null, LW=0, LH=0;
+const off=document.createElement('canvas'), og=off.getContext('2d');   // logo layer
+const sw =document.createElement('canvas'), sg=sw.getContext('2d');    // swirl layer
+
+function ground(t){
+  const gr=g.createRadialGradient(CX,CY,0,CX,CY,H*0.8);
+  gr.addColorStop(0,'#0A1A22');gr.addColorStop(.55,'#061116');gr.addColorStop(1,'#04070A');
+  g.fillStyle=gr;g.fillRect(0,0,W,H);
+  // brand haze drifting behind
+  g.save();g.globalCompositeOperation='lighter';g.globalAlpha=.30;
+  for(let k=0;k<3;k++){
+    const yb=CY+180+k*130, amp=150-k*40;
+    const lg=g.createLinearGradient(-160,yb,W+160,yb);
+    BRAND.forEach((col,i)=>lg.addColorStop(i/(BRAND.length-1),col));
+    g.strokeStyle=lg;g.lineWidth=110-k*28;g.filter=`blur(${44+k*24}px)`;
+    g.beginPath();
+    for(let x=-160;x<=W+160;x+=20){
+      const y=yb+Math.sin((x+t*90)/520+k*1.3)*amp;
+      x===-160?g.moveTo(x,y):g.lineTo(x,y);
+    }
+    g.stroke();
+  }
+  g.filter='none';g.restore();
+}
+
+function drawAt(t){
+  ground(t);
+  if(!LOGO) return;
+
+  const p = t/DUR;
+  // Fit to frame first, THEN push. The asset is ~1725px wide, so a raw scale
+  // factor cropped the final 'n' straight off. Solve for 76% of frame width.
+  const fit = (W*0.76)/LW;
+  const scale = fit * (1 + easeO(seg(t,0,3.0))*0.09)
+                    * (1 + Math.pow(seg(t,3.2,4.0),2.2)*1.9);
+  const w = LW*scale, h = LH*scale;
+  const x = CX-w/2, y = CY-h/2;
+
+  // 1. the wordmark itself, fading up
+  const app = easeO(seg(t,0.15,1.05));
+  og.clearRect(0,0,LW,LH);
+  og.globalAlpha=1; og.drawImage(LOGO,0,0);
+
+  // 2. the swirl — a luminous band travelling left to right, CLIPPED to the
+  //    glyph alpha so it reads as passing through the letters
+  const travel = seg(t, 0.55, 3.15);
+  sg.clearRect(0,0,LW,LH);
+  if(travel>0 && travel<1){
+    const head = -0.35 + travel*1.75;          // 0..1 across the word, with lead-in/out
+    const bandW = LW*0.30;
+    const gx = head*LW;
+    const lg = sg.createLinearGradient(gx-bandW, 0, gx+bandW, 0);
+    lg.addColorStop(0.00,'rgba(255,255,255,0)');
+    lg.addColorStop(0.42,'rgba(220,250,255,0.55)');
+    lg.addColorStop(0.50,'rgba(255,255,255,0.95)');
+    lg.addColorStop(0.58,'rgba(214,235,142,0.60)');
+    lg.addColorStop(1.00,'rgba(255,255,255,0)');
+    sg.save();
+    sg.fillStyle=lg;
+    // give the band a wave so it's a swirl, not a wipe
+    sg.beginPath();
+    sg.moveTo(-bandW, 0);
+    for(let xx=-bandW; xx<=LW+bandW; xx+=8){
+      const yy = LH*0.5 + Math.sin((xx/LW)*3.0*Math.PI + travel*2.2)*LH*0.42;
+      sg.lineTo(xx, yy - LH*0.55);
+    }
+    for(let xx=LW+bandW; xx>=-bandW; xx-=8){
+      const yy = LH*0.5 + Math.sin((xx/LW)*3.0*Math.PI + travel*2.2)*LH*0.42;
+      sg.lineTo(xx, yy + LH*0.55);
+    }
+    sg.closePath(); sg.fill();
+    sg.globalCompositeOperation='destination-in';   // clip to the glyphs
+    sg.drawImage(LOGO,0,0);
+    sg.restore();
+    og.globalCompositeOperation='lighter';
+    og.drawImage(sw,0,0);
+    og.globalCompositeOperation='source-over';
+  }
+
+  g.save();
+  g.globalAlpha = app * (1-seg(t,3.55,4.0));
+  g.shadowColor='rgba(90,200,230,.42)'; g.shadowBlur=52;
+  g.drawImage(off, x, y, w, h);
+  g.restore();
+
+  // the light we accelerate into
+  const bl=seg(t,3.15,4.0);
+  if(bl>0){
+    g.save();g.globalCompositeOperation='lighter';g.globalAlpha=Math.pow(bl,1.7)*0.92;
+    const gr=g.createRadialGradient(CX,CY,0,CX,CY,H*0.66*bl+70);
+    gr.addColorStop(0,'rgba(226,250,255,.95)');gr.addColorStop(.55,'rgba(90,200,230,.35)');
+    gr.addColorStop(1,'rgba(0,120,160,0)');
+    g.fillStyle=gr;g.fillRect(0,0,W,H);g.restore();
+  }
+  // open from black
+  const fi=1-seg(t,0,0.55);
+  if(fi>0){g.save();g.globalAlpha=fi;g.fillStyle='#04070A';g.fillRect(0,0,W,H);g.restore()}
+}
+
+const SUB=3, DT=1/30;
+const acc=document.createElement('canvas');acc.width=W;acc.height=H;
+const ag=acc.getContext('2d');
+window.SEEK=function(t){
+  ag.clearRect(0,0,W,H);ag.fillStyle='#000';ag.fillRect(0,0,W,H);
+  for(let i=0;i<SUB;i++){
+    drawAt(cl(t+(i/SUB-0.5)*DT,0,DUR));
+    ag.globalAlpha=1/(i+1);ag.drawImage(c,0,0);ag.globalAlpha=1;
+  }
+  g.clearRect(0,0,W,H);g.drawImage(acc,0,0);
+  return true;
+};
+window.DURATION=DUR;
+
+const img=new Image();
+img.onload=()=>{
+  LOGO=img; LW=img.width; LH=img.height;
+  off.width=LW; off.height=LH; sw.width=LW; sw.height=LH;
+  window.READY=true; SEEK(0);
+};
+img.src='assets/logo.png';
+</script></body></html>
