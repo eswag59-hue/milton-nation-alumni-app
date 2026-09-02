@@ -397,3 +397,135 @@ outdoor sound only.
 - [ ] Presenter never claims to be an alumnus
 - [ ] No music requested; ambient only
 - [ ] Captions decided after render, burned from a real transcript, never planned
+
+---
+
+## 11. Render log — 2026-09-02
+
+One video rendered on the balance available (61.08 credits), no top-up.
+Final balance 3.72. Every charge matched its preflight quote exactly.
+
+### Decisions made on the day
+
+- **One video names both states.** With budget for a single render, a cut that
+  says "Florida, Ohio" serves the whole alumni base. Location is a neutral
+  American sidewalk — brick-and-glass building, green trees — no palms, no
+  turning maples, so it belongs to neither state and excludes neither.
+- **Seedance 2.0 std at 12s over Seedance 2.5 at 8s.** Real per-second prices
+  (9:16, native audio): 2.5 = 6.5 cr/s at 720p, 9 cr/s at 1080p; 2.0 std = 4.5
+  cr/s at 720p. Same identity/native-audio lineage; 12 seconds holds an actual
+  announcement (20–28 words), 8 seconds holds a teaser. The budget models
+  (2.0 mini, Kling, Wan at 2.5 cr/s) were priced and rejected — the face is
+  the one place not to save.
+- **One continuous take, no storyboard.** The 8-cut board is a 15-second
+  TikTok-ad convention; eight cuts in twelve seconds reads frantic. A single
+  unbroken handheld selfie take is how a real person films this, and it is the
+  most robust shape for lip-sync on a one-shot render. Skipping the
+  `gpt_image_2` board also freed its credits for video seconds.
+- **720p, not 1080p.** Instagram and TikTok deliver vertical video at ~720p
+  regardless. Realism comes from the presenter still and the iPhone-grain
+  prompting, not the resolution tier.
+
+### Spend
+
+| Step | Model | Config | Credits |
+|---|---|---|---|
+| 3 presenter candidates | `soul_2` | 9:16, 2k | 0.36 |
+| Logo removal + realism pass on the pick | `seedream_v5_pro` | 9:16, 2k, inpaint | 3.00 |
+| Video | `seedance_2_0` | std, 720p, 12s, 9:16, audio | 54.00 |
+| | | **Total** | **57.36** |
+
+### Casting
+
+Three stills generated, one prompt each: two women (dark hair / navy polo;
+light hair / grey sweatshirt) and one man (beard / navy quarter-zip).
+
+- Grey-sweatshirt candidate rejected: glossy, contoured, beauty-filter skin —
+  the exact AI-tell the pack is built to avoid.
+- Navy-polo candidate: genuinely real, rule-perfect neutral light, held as
+  fallback. Expression read flat for a "let's go" line.
+- **Bearded man selected.** Best skin texture, warmest face, mouth already
+  mid-word. One defect: a gibberish orange brand mark on the chest. Removed
+  with the realism pass in a single Seedream edit (`is_inpaint: true`,
+  reference = the raw still), verified clean before the video spend.
+
+### Script as rendered — 27 words
+
+> Early October, Milton Recovery launches Milton Nation Alumni. Your care
+> team, A.A. and N.A. meetings near you, your people — ONE app. Florida,
+> Ohio — let's go, Milton Nation.
+
+"A.A." and "N.A." are written with periods so the model reads them as
+letters, and so they are not mistaken for CAPS volume spikes — "ONE" is the
+single spike in the line.
+
+### Video prompt as submitted
+
+Medias: the cleaned still as both `start_image` and `image_references`.
+
+```
+Style & Mood: UGC iPhone aesthetic, soft even overcast daylight, neutral and
+clean, front-facing camera, intimate handheld feel, one continuous take with
+no cuts, social media vertical format.
+
+Narrative Summary: A warm, grounded Milton Recovery team member walks along
+the sidewalk and announces the Milton Nation Alumni app straight to camera in
+one unbroken selfie take, then lands the closer with one honest grin —
+performed by a natural, engaged creator — genuine reactions, lively but
+human, never staged screaming energy.
+
+Dynamic Description:
+One continuous handheld selfie take, 0-12s, MEDIUM CLOSE-UP SELFIE: frame one
+is already mid-stride and mid-word — his head settling from a glance back to
+the lens as the first word lands, his near arm extended toward the lens just
+out of frame, the other arm swinging naturally at his side. He keeps walking
+forward the entire time; the brick-and-glass building and the strip of lawn
+slide past behind him, the sidewalk perspective shifts, a parked car passes
+far back. At "Milton Nation Alumni" a small affirming nod, then a
+closed-mouth beat — lips together, a short breath through the nose — before
+"Your care team". Through the feature list his eyebrows lift once on "your
+people", a half-smile pulling at one side of his mouth; a slight tilt of the
+head as the framing drifts off-center and corrects. On "ONE app" a single
+emphatic dip of the chin. On "Florida, Ohio" his eyes brighten, a real grin
+breaks on "let's go", and he holds the lens with a calm steady look on
+"Milton Nation" as the take ends, still walking.
+
+Static Description: A quiet tree-lined sidewalk outside a low modern
+brick-and-glass building, a strip of green lawn with a low brick edge, grey
+concrete path, leafy green trees, a car far back; soft overcast daylight from
+above, deep focus with the background sharp.
+
+Audio: He speaks to camera in a natural American accent, warm and unhurried,
+iPhone microphone audio with light outdoor ambience — faint wind, distant
+traffic, his footsteps: "Early October, Milton Recovery launches Milton
+Nation Alumni. Your care team, A.A. and N.A. meetings near you, your people —
+ONE app. Florida, Ohio — let's go, Milton Nation."
+
+Facial features clear and undistorted, consistent clothing throughout — plain
+navy quarter-zip over a white tee. Shot on iPhone, natural lighting, social
+media aesthetic, slight natural handheld micro-shake from his grip, one
+continuous take, no cuts, no transitions. No on-screen text, no subtitles, no
+captions, no watermarks, no legible text on any object, no real brand logos
+anywhere, no phone visible in frame, no mirror, no reflection, no cinematic
+grade, no film grain, no bokeh, no lens flare, no fisheye lens, no ultra-wide
+distortion, no slow motion, no beauty filter, no music, no third arm, no
+extra hands, no duplicated limbs, no deformed hands.
+```
+
+### QA — verified before delivery
+
+- **Streams:** 12.05s, 720×1280, 24 fps, AAC stereo. Speech peaks at −2.5 dB,
+  mean −19.8 dB, no clipping.
+- **Words:** transcribed with faster-whisper from the rendered audio —
+  verbatim, 27 of 27 words in order. First word lands at 0.00s (hook law
+  held); last word ends at 11.62s, so the closer sits inside the take with
+  nothing clipped. "A.A. and N.A." rendered as letters; "one" stretches to
+  0.76s — the written emphasis spike, delivered.
+- **Frames** at 0.2 / 1.5 / 3 / 4.5 / 6 / 7.5 / 9 / 10.5 / 11.8s: identity
+  constant across all nine, walking motion real (building and brick edge
+  progress frame to frame), no phone, no text, no logo, no extra limbs. The
+  grin lands at 10.5s on "let's go"; a calm steady look closes on "Milton
+  Nation".
+- **Output:** `milton-nation-spokesperson-12s.mp4`, 11.6 MB, delivered as a
+  file. Hosted result retained in the Higgsfield account.
+- **Balance after:** 3.72 credits.
